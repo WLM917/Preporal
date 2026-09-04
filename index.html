@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PrepOral — Entraînez-vous à l'entretien avec vos vraies questions</title>
+<meta name="description" content="Collez votre CV et l'offre d'emploi. PrepOral génère cinq questions d'entretien sur mesure, écoute vos réponses et vous corrige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9EBE3;
+  --paper-2:#F3F4EE;
+  --ink:#16211C;
+  --deep:#1E4B3E;
+  --deep-soft:#2E6B58;
+  --ochre:#B8791A;
+  --muted:#68746C;
+  --line:#CBD1C4;
+  --radius:3px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,system-ui,-apple-system,sans-serif;
+  font-size:16px;
+  line-height:1.55;
+}
+.wrap{max-width:660px;margin:0 auto;padding:0 22px}
+
+/* ---------- en-tête ---------- */
+.masthead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:16px;padding:26px 0 0;
+}
+.logo{
+  font-family:Newsreader,Georgia,serif;font-size:21px;font-weight:500;
+  letter-spacing:-.01em;text-decoration:none;color:var(--ink);
+}
+.logo span{color:var(--deep-soft)}
+.status{font-size:13px;color:var(--muted)}
+.status b{color:var(--deep);font-weight:600}
+
+/* ---------- héros ---------- */
+.hero{padding:56px 0 40px;border-bottom:1px solid var(--line)}
+.asked{font-size:13px;color:var(--muted);margin:0 0 14px}
+.hero q{
+  font-family:Newsreader,Georgia,serif;
+  font-size:clamp(28px,6.4vw,41px);
+  font-weight:400;line-height:1.18;letter-spacing:-.015em;
+  quotes:"«\00a0" "\00a0»";display:block;
+}
+.caret{
+  display:inline-block;width:2px;height:.82em;vertical-align:-.06em;
+  background:var(--deep-soft);margin-left:3px;animation:blink 1.1s steps(1) infinite;
+}
+@keyframes blink{50%{opacity:0}}
+.hero p{max-width:52ch;color:var(--muted);margin:22px 0 0;font-size:15.5px}
+
+/* ---------- sections ---------- */
+section{padding:34px 0}
+h2{
+  font-family:Newsreader,Georgia,serif;font-weight:400;
+  font-size:25px;letter-spacing:-.01em;margin:0 0 6px;
+}
+.sub{color:var(--muted);font-size:14.5px;margin:0 0 22px;max-width:56ch}
+
+/* ---------- formulaire ---------- */
+.field{margin-bottom:20px}
+.field label{display:block;font-size:14px;font-weight:500;margin-bottom:7px}
+.field .hint{color:var(--muted);font-weight:400}
+textarea,input[type=text]{
+  width:100%;border:1px solid var(--line);background:var(--paper-2);
+  border-radius:var(--radius);padding:13px 14px;font:inherit;font-size:15px;
+  color:var(--ink);resize:vertical;transition:border-color .15s,box-shadow .15s;
+}
+textarea{min-height:150px;line-height:1.5}
+textarea:focus,input:focus{outline:none;border-color:var(--deep-soft);box-shadow:0 0 0 3px rgba(46,107,88,.13)}
+.count{font-size:12.5px;color:var(--muted);margin-top:5px}
+
+/* ---------- boutons ---------- */
+button{font:inherit;cursor:pointer;border-radius:var(--radius);transition:background .15s,border-color .15s,color .15s}
+button:focus-visible,a:focus-visible{outline:2px solid var(--deep-soft);outline-offset:3px}
+.btn{
+  background:var(--deep);color:#F4F6F0;border:1px solid var(--deep);
+  padding:12px 22px;font-size:15px;font-weight:500;
+}
+.btn:hover{background:var(--deep-soft)}
+.btn:disabled{background:var(--muted);border-color:var(--muted);cursor:not-allowed}
+.btn-ghost{
+  background:transparent;color:var(--deep);border:1px solid var(--line);
+  padding:11px 18px;font-size:14.5px;font-weight:500;
+}
+.btn-ghost:hover{border-color:var(--deep-soft)}
+.btn-text{background:none;border:none;color:var(--muted);font-size:14px;text-decoration:underline;padding:6px 0}
+.actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px}
+
+/* ---------- offres ---------- */
+.plans{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+@media(max-width:560px){.plans{grid-template-columns:1fr}}
+.plan{border:1px solid var(--line);background:var(--paper-2);border-radius:var(--radius);padding:20px}
+.plan .price{font-family:Newsreader,Georgia,serif;font-size:31px;line-height:1;margin:0}
+.plan .price em{font-family:Inter,sans-serif;font-style:normal;font-size:14px;color:var(--muted)}
+.plan h3{font-size:15px;font-weight:600;margin:12px 0 4px}
+.plan p{font-size:14px;color:var(--muted);margin:0 0 18px}
+.plan button{width:100%}
+
+/* ---------- simulation ---------- */
+.progress{display:flex;gap:6px;margin-bottom:26px}
+.progress i{height:3px;flex:1;background:var(--line);border-radius:2px}
+.progress i.done{background:var(--deep-soft)}
+.progress i.now{background:var(--ochre)}
+.qmeta{font-size:13px;color:var(--muted);margin:0 0 10px;display:flex;justify-content:space-between}
+.question{
+  font-family:Newsreader,Georgia,serif;font-size:clamp(22px,4.6vw,29px);
+  font-weight:400;line-height:1.25;letter-spacing:-.01em;margin:0 0 8px;
+}
+.qwhy{font-size:14px;color:var(--muted);margin:0 0 22px;padding-left:13px;border-left:2px solid var(--line)}
+#answer{min-height:190px}
+.timer{font-variant-numeric:tabular-nums}
+
+/* ---------- résultats ---------- */
+.score{
+  display:flex;align-items:baseline;gap:14px;
+  border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:8px;
+}
+.score .big{font-family:Newsreader,Georgia,serif;font-size:64px;line-height:.9;color:var(--deep)}
+.score .out{color:var(--muted);font-size:15px}
+.score .verdict{font-size:15px;max-width:34ch}
+.review{border-bottom:1px solid var(--line);padding:22px 0}
+.review h3{font-family:Newsreader,Georgia,serif;font-weight:400;font-size:19px;margin:0 0 4px;line-height:1.3}
+.review .mark{font-size:13px;color:var(--ochre);font-weight:600;margin:0 0 12px}
+.review dl{margin:0}
+.review dt{font-size:13px;font-weight:600;margin-top:12px}
+.review dd{margin:3px 0 0;font-size:14.5px;color:#2C3A33}
+.review ul{margin:4px 0 0;padding-left:18px;font-size:14.5px;color:#2C3A33}
+.model{
+  margin-top:14px;background:var(--paper-2);border:1px solid var(--line);
+  border-radius:var(--radius);padding:13px 15px;font-size:14.5px;
+  font-family:Newsreader,Georgia,serif;line-height:1.5;
+}
+.model strong{font-family:Inter,sans-serif;font-size:12.5px;display:block;color:var(--muted);font-weight:600;margin-bottom:5px}
+
+/* ---------- états ---------- */
+.notice{
+  border:1px solid var(--line);border-left:3px solid var(--ochre);
+  background:var(--paper-2);padding:13px 15px;border-radius:var(--radius);
+  font-size:14.5px;margin:18px 0;
+}
+.loading{display:flex;align-items:center;gap:11px;color:var(--muted);font-size:15px;padding:30px 0}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--deep-soft);animation:pulse 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.18s}.dot:nth-child(3){animation-delay:.36s}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.hidden{display:none!important}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;font-size:13px;color:var(--muted)}
+footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="masthead">
+    <a class="logo" href="./">Prep<span>Oral</span></a>
+    <div class="status" id="status"></div>
+  </header>
+</div>
+
+<!-- ============ ACCUEIL ============ -->
+<main id="view-home" class="wrap">
+  <div class="hero">
+    <p class="asked">Question 3 sur 5 · poste d'analyste crédit</p>
+    <q id="typed"></q><span class="caret" aria-hidden="true"></span>
+    <p>Votre CV et l'offre en face. PrepOral en tire cinq questions que le recruteur
+       posera vraiment, vous laisse répondre, puis vous dit ce qui manque — argument
+       par argument.</p>
+  </div>
+
+  <section>
+    <h2>Vos documents</h2>
+    <p class="sub">Rien n'est conservé après la simulation. Collez le texte brut, la mise en forme n'a aucune importance.</p>
+
+    <div class="field">
+      <label for="cv">Votre CV <span class="hint">— expériences, formation, compétences</span></label>
+      <textarea id="cv" placeholder="Collez ici le contenu de votre CV…"></textarea>
+      <div class="count" id="cv-count">0 caractère</div>
+    </div>
+
+    <div class="field">
+      <label for="offer">L'offre d'emploi <span class="hint">— missions, profil recherché, entreprise</span></label>
+      <textarea id="offer" placeholder="Collez ici le texte de l'annonce…"></textarea>
+      <div class="count" id="offer-count">0 caractère</div>
+    </div>
+
+    <div class="field">
+      <label for="lang">Langue de l'entretien</label>
+      <select id="lang" style="border:1px solid var(--line);background:var(--paper-2);border-radius:3px;padding:11px 12px;font:inherit;font-size:15px">
+        <option value="français">Français</option>
+        <option value="anglais">Anglais</option>
+      </select>
+    </div>
+
+    <div id="home-error"></div>
+
+    <div class="actions">
+      <button class="btn" id="start">Lancer la simulation</button>
+      <span class="status" id="credits-note"></span>
+    </div>
+  </section>
+
+  <!-- Paywall -->
+  <section id="paywall" class="hidden">
+    <h2>Choisissez votre accès</h2>
+    <p class="sub">Le paiement se fait sur Stripe. Vous revenez ici automatiquement.</p>
+    <div class="plans">
+      <div class="plan">
+        <p class="price">9 €<em> une fois</em></p>
+        <h3>Pack 3 simulations</h3>
+        <p>Trois entretiens complets avec corrections. Sans engagement.</p>
+        <button class="btn-ghost" data-plan="pack">Payer 9 €</button>
+      </div>
+      <div class="plan">
+        <p class="price">12 €<em> par mois</em></p>
+        <h3>Abonnement</h3>
+        <p>Simulations illimitées, pour une recherche qui dure. Résiliable à tout moment.</p>
+        <button class="btn" data-plan="sub">S'abonner</button>
+      </div>
+    </div>
+    <div id="pay-error"></div>
+  </section>
+</main>
+
+<!-- ============ SIMULATION ============ -->
+<main id="view-sim" class="wrap hidden">
+  <section>
+    <div class="progress" id="progress" aria-hidden="true"></div>
+    <p class="qmeta">
+      <span id="qindex">Question 1 sur 5</span>
+      <span class="timer" id="timer">00:00</span>
+    </p>
+    <h1 class="question" id="qtext"></h1>
+    <p class="qwhy" id="qwhy"></p>
+
+    <div class="field">
+      <label for="answer">Votre réponse <span class="hint">— écrivez comme vous parleriez</span></label>
+      <textarea id="answer" placeholder="Répondez à voix haute, puis notez l'essentiel de ce que vous avez dit…"></textarea>
+      <div class="count" id="ans-count">0 mot</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="next">Question suivante</button>
+      <button class="btn-text" id="quit">Abandonner la simulation</button>
+    </div>
+  </section>
+</main>
+
+<!-- ============ ANALYSE EN COURS ============ -->
+<main id="view-loading" class="wrap hidden">
+  <section>
+    <div class="loading">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span id="loading-text">Lecture de votre CV et de l'offre…</span>
+    </div>
+  </section>
+</main>
+
+<!-- ============ RÉSULTATS ============ -->
+<main id="view-results" class="wrap hidden">
+  <section>
+    <h2>Votre entretien, relu</h2>
+    <p class="sub" id="res-sub"></p>
+    <div class="score">
+      <div><span class="big" id="global-score">—</span><span class="out"> / 100</span></div>
+      <p class="verdict" id="verdict"></p>
+    </div>
+    <div id="reviews"></div>
+    <div class="actions" style="margin-top:26px">
+      <button class="btn" id="again">Nouvelle simulation</button>
+      <button class="btn-ghost" id="print">Enregistrer en PDF</button>
+    </div>
+  </section>
+</main>
+
+<div class="wrap">
+  <footer>
+    PrepOral — MVP. Vos textes transitent par l'API du modèle le temps de l'analyse et ne sont pas stockés.
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   PrepOral — logique client
+   Les appels au modèle passent par /api/* (la clé reste côté serveur).
+   ===================================================================== */
+
+const API = {
+  questions: '/api/questions',
+  feedback:  '/api/feedback',
+  checkout:  '/api/create-checkout-session',
+  verify:    '/api/verify-session'
+};
+
+const state = {
+  cv: '', offer: '', lang: 'français',
+  questions: [], answers: [], current: 0,
+  startedAt: null, timerId: null
+};
+
+/* ---------- utilitaires ---------- */
+const $ = id => document.getElementById(id);
+const show = id => {
+  ['view-home','view-sim','view-loading','view-results']
+    .forEach(v => $(v).classList.toggle('hidden', v !== id));
+  window.scrollTo({top:0, behavior:'instant'});
+};
+const err = (target, msg) => {
+  $(target).innerHTML = msg ? `<div class="notice">${msg}</div>` : '';
+};
+
+/* ---------- accès (crédits / abonnement) ----------
+   MVP : l'accès est mémorisé dans le navigateur après validation du
+   paiement côté serveur. Voir le README pour la version robuste (compte
+   utilisateur + base de données).                                      */
+const access = {
+  read(){ try{ return JSON.parse(localStorage.getItem('prepOral.access')) || {credits:0, sub:false}; }
+          catch{ return {credits:0, sub:false}; } },
+  write(a){ localStorage.setItem('prepOral.access', JSON.stringify(a)); render(); },
+  canRun(){ const a = this.read(); return a.sub || a.credits > 0; },
+  consume(){ const a = this.read(); if(!a.sub && a.credits>0){ a.credits--; this.write(a); } }
+};
+
+function render(){
+  const a = access.read();
+  if (a.sub) {
+    $('status').innerHTML = 'Abonnement <b>actif</b>';
+    $('credits-note').textContent = 'Simulations illimitées.';
+  } else if (a.credits > 0) {
+    $('status').innerHTML = `<b>${a.credits}</b> simulation${a.credits>1?'s':''} restante${a.credits>1?'s':''}`;
+    $('credits-note').textContent = '';
+  } else {
+    $('status').textContent = '';
+    $('credits-note').textContent = '';
+  }
+  $('paywall').classList.toggle('hidden', access.canRun());
+}
+
+/* ---------- héros : la question s'écrit ---------- */
+(function typeHero(){
+  const line = "Sur votre stage chez Veolia, quelle décision avez-vous prise seul, sans valider avec votre manager ?";
+  const el = $('typed');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = line; return; }
+  let i = 0;
+  const tick = () => { el.textContent = line.slice(0, ++i); if (i < line.length) setTimeout(tick, 26); };
+  setTimeout(tick, 350);
+})();
+
+/* ---------- compteurs ---------- */
+const bind = (src, out, unit) => $(src).addEventListener('input', e => {
+  const v = e.target.value;
+  const n = unit === 'mot' ? (v.trim() ? v.trim().split(/\s+/).length : 0) : v.length;
+  $(out).textContent = `${n} ${unit}${n > 1 ? 's' : ''}`;
+});
+bind('cv','cv-count','caractère');
+bind('offer','offer-count','caractère');
+bind('answer','ans-count','mot');
+
+/* ---------- Stripe Checkout ---------- */
+document.querySelectorAll('[data-plan]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    err('pay-error','');
+    btn.disabled = true; const label = btn.textContent; btn.textContent = 'Redirection…';
+    try {
+      const r = await fetch(API.checkout, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ plan: btn.dataset.plan })
+      });
+      const data = await r.json();
+      if (!r.ok || !data.url) throw new Error(data.error || 'Session de paiement indisponible.');
+      window.location.href = data.url;
+    } catch(e) {
+      err('pay-error', `Le paiement n'a pas pu démarrer : ${e.message} Réessayez dans un instant.`);
+      btn.disabled = false; btn.textContent = label;
+    }
+  });
+});
+
+/* ---------- retour de Stripe ---------- */
+(async function checkReturn(){
+  const params = new URLSearchParams(location.search);
+  const sid = params.get('session_id');
+  if (!sid) return render();
+  try {
+    const r = await fetch(`${API.verify}?session_id=${encodeURIComponent(sid)}`);
+    const d = await r.json();
+    if (d.paid) {
+      const a = access.read();
+      if (d.plan === 'sub') a.sub = true; else a.credits = (a.credits || 0) + (d.credits || 3);
+      access.write(a);
+      err('home-error', 'Paiement confirmé. Vous pouvez lancer votre première simulation.');
+    }
+  } catch(e){ /* silencieux : l'utilisateur voit simplement le paywall */ }
+  history.replaceState({}, '', location.pathname);
+  render();
+})();
+
+/* ---------- lancer la simulation ---------- */
+$('start').addEventListener('click', async () => {
+  const cv = $('cv').value.trim(), offer = $('offer').value.trim();
+  err('home-error','');
+
+  if (cv.length < 200)    return err('home-error', "Le CV est trop court pour en tirer des questions utiles. Ajoutez vos expériences et vos formations (200 caractères minimum).");
+  if (offer.length < 150) return err('home-error', "L'offre est trop courte. Collez les missions et le profil recherché (150 caractères minimum).");
+  if (!access.canRun()) {
+    $('paywall').classList.remove('hidden');
+    $('paywall').scrollIntoView({behavior:'smooth'});
+    return err('home-error', "Il vous faut un accès pour lancer une simulation. Choisissez une formule ci-dessous.");
+  }
+
+  state.cv = cv; state.offer = offer; state.lang = $('lang').value;
+
+  $('loading-text').textContent = 'Lecture de votre CV et de l’offre…';
+  show('view-loading');
+
+  try {
+    const r = await fetch(API.questions, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ cv, offer, lang: state.lang })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Génération impossible.');
+    if (!Array.isArray(data.questions) || data.questions.length === 0)
+      throw new Error('Aucune question n’a pu être générée à partir de ces textes.');
+
+    state.questions = data.questions;
+    state.answers = new Array(data.questions.length).fill('');
+    state.current = 0;
+    access.consume();
+    showQuestion();
+  } catch(e) {
+    show('view-home');
+    err('home-error', `La génération a échoué : ${e.message} Vérifiez votre connexion et relancez.`);
+  }
+});
+
+/* ---------- affichage d'une question ---------- */
+function showQuestion(){
+  const q = state.questions[state.current];
+  const total = state.questions.length;
+
+  $('progress').innerHTML = state.questions.map((_,i) =>
+    `<i class="${i < state.current ? 'done' : i === state.current ? 'now' : ''}"></i>`).join('');
+  $('qindex').textContent = `Question ${state.current+1} sur ${total}`;
+  $('qtext').textContent  = q.question;
+  $('qwhy').textContent   = q.why || '';
+  $('qwhy').classList.toggle('hidden', !q.why);
+  $('answer').value = state.answers[state.current] || '';
+  $('ans-count').textContent = '0 mot';
+  $('next').textContent = state.current === total - 1 ? 'Terminer et voir la correction' : 'Question suivante';
+
+  show('view-sim');
+  $('answer').focus();
+  startTimer();
+}
+
+function startTimer(){
+  clearInterval(state.timerId);
+  const t0 = Date.now();
+  const paint = () => {
+    const s = Math.floor((Date.now() - t0)/1000);
+    $('timer').textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  };
+  paint();
+  state.timerId = setInterval(paint, 1000);
+}
+
+$('next').addEventListener('click', () => {
+  state.answers[state.current] = $('answer').value.trim();
+  if (state.current < state.questions.length - 1) {
+    state.current++; showQuestion();
+  } else {
+    clearInterval(state.timerId);
+    getFeedback();
+  }
+});
+
+$('quit').addEventListener('click', () => {
+  clearInterval(state.timerId);
+  show('view-home');
+});
+
+/* ---------- correction ---------- */
+async function getFeedback(){
+  $('loading-text').textContent = 'Relecture de vos cinq réponses…';
+  show('view-loading');
+  try {
+    const r = await fetch(API.feedback, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        cv: state.cv, offer: state.offer, lang: state.lang,
+        exchanges: state.questions.map((q,i) => ({ question: q.question, answer: state.answers[i] || '' }))
+      })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Analyse impossible.');
+    renderResults(data);
+  } catch(e) {
+    show('view-sim');
+    err('home-error','');
+    alert(`La correction a échoué : ${e.message}\nVos réponses sont conservées, réessayez en cliquant à nouveau sur le bouton.`);
+  }
+}
+
+function renderResults(d){
+  $('global-score').textContent = d.score ?? '—';
+  $('verdict').textContent = d.verdict || '';
+  $('res-sub').textContent = `${state.questions.length} questions · poste analysé à partir de votre offre`;
+
+  $('reviews').innerHTML = (d.reviews || []).map((r,i) => `
+    <article class="review">
+      <h3>${escapeHtml(state.questions[i]?.question || `Question ${i+1}`)}</h3>
+      <p class="mark">${r.score ?? '—'} / 20</p>
+      <dl>
+        <dt>Ce qui fonctionne</dt>
+        <dd>${escapeHtml(r.strength || '—')}</dd>
+        <dt>Ce qui manque</dt>
+        <dd>${escapeHtml(r.gap || '—')}</dd>
+      </dl>
+      ${Array.isArray(r.fixes) && r.fixes.length ? `
+        <dt style="font-size:13px;font-weight:600;margin-top:12px">À corriger</dt>
+        <ul>${r.fixes.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>` : ''}
+      ${r.model ? `<div class="model"><strong>Une meilleure version de votre réponse</strong>${escapeHtml(r.model)}</div>` : ''}
+    </article>`).join('');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+$('again').addEventListener('click', () => { show('view-home'); render(); });
+$('print').addEventListener('click', () => window.print());
+
+render();
+</script>
+</body>
+</html>
