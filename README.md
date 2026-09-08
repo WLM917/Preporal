@@ -168,7 +168,7 @@ voix dépend du système : macOS et iOS sonnent nettement mieux que Windows.
 
 Le micro exige **HTTPS** (ou `localhost`).
 
----
+--- 
 
 ## À faire avant de vendre
 
