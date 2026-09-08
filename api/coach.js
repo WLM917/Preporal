@@ -1,8 +1,8 @@
-/* ═══════════════════════════════════════════════════════════
+/* ============================================================
    POST /api/coach
    Entrée : { messages: [{role:'user'|'assistant', content}] }
    Sortie : { reponse: string }
-   ═══════════════════════════════════════════════════════════ */
+   ============================================================ */
 
 import { appelerModele, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
 
