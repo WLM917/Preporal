@@ -1,7 +1,7 @@
-/* ═══════════════════════════════════════════════════════════
-   api/_lib/ia.js — appel au modèle, côté serveur uniquement.
-   La clé API ne quitte jamais le serveur.
-   ═══════════════════════════════════════════════════════════ */
+/*
+  api/_lib/ia.js - appel au modèle, côté serveur uniquement.
+  La clé API ne quitte jamais le serveur.
+*/
 
 const URL_API = 'https://api.anthropic.com/v1/messages';
 const MODELE = process.env.MODELE_IA || 'claude-3-5-sonnet-20240620';
@@ -12,8 +12,8 @@ export class ErreurIA extends Error {
 
 /**
  * @param {object} o
- * @param {string} o.systeme      consigne système
- * @param {Array}  o.messages     [{role:'user'|'assistant', content:string}]
+ * @param {string} o.systeme       consigne système
+ * @param {Array}  o.messages      [{role:'user'|'assistant', content:string}]
  * @param {number} o.maxTokens
  * @returns {Promise<string>} texte concaténé de la réponse
  */
@@ -54,7 +54,7 @@ export function extraireJSON(texte) {
 
 /** Coupe les documents utilisateur pour maîtriser le coût par appel. */
 export const tronquer = (txt = '', max = 6000) =>
-  String(txt).slice(0, max) + (String(txt).length > max ? '\n[…document tronqué…]' : '');
+  String(txt).slice(0, max) + (String(txt).length > max ? '\n[...document tronqué...]' : '');
 
 /** Bornes d'entrée communes à toutes les routes. */
 export function verifierMethode(req, res, methode = 'POST') {
@@ -65,9 +65,10 @@ export function verifierMethode(req, res, methode = 'POST') {
   return true;
 }
 
-/* ── Limitation de débit très simple (mémoire de l'instance) ──
+/* — Limitation de débit très simple (mémoire de l'instance) —
    Pour une vraie protection multi-instances, branchez Upstash
-   Redis ou le rate limiting de Vercel.                        */
+   Redis ou le rate limiting de Vercel.
+*/
 const compteurs = new Map();
 export function limiter(req, res, { max = 30, fenetreMs = 60_000 } = {}) {
   const ip = (req.headers['x-forwarded-for'] || 'inconnu').split(',')[0].trim();
