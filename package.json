@@ -1,0 +1,33 @@
+{
+  "name": "preporal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PrepOral — simulateur d'oraux assisté par IA : entretien, Grand Oral, brevet, concours, pitch, certifications de langue.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev",
+    "statique": "npx --yes serve . -l 3000",
+    "deploy": "vercel --prod",
+    "stripe:ecoute": "stripe listen --forward-to localhost:3000/api/webhook"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "stripe": "^16.12.0"
+  },
+  "devDependencies": {
+    "vercel": "^37.0.0"
+  },
+  "keywords": [
+    "oral",
+    "grand-oral",
+    "entretien",
+    "simulateur",
+    "ia",
+    "saas"
+  ],
+  "license": "UNLICENSED"
+}
