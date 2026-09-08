@@ -7,7 +7,7 @@ const ENV = window.PREPORAL_ENV || {};
 
 export const CONFIG = {
   api: ENV.API_BASE || '/api',
-  supabase: { url: ENV.SUPABASE_URL || '', anonKey: ENV.SUPABASE_ANON_KEY || '' },
+  supabase: { url: ENV.SUPABASE_URL || 'https://kcebxepykavnamtxosbc.supabase.co/', anonKey: ENV.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjZWJ4ZXB5a2F2bmFtdHhvc2JjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjAyODgsImV4cCI6MjEwNDQzNjI4OH0.frsPDwlI7WOoKJygIneBjPnd7t8sa614Mdqucs1E7Bg' },
   simulationsGratuites: 2,
   cles: {
     quota: 'prepOral.simulationsUtilisees',
