@@ -10,4 +10,4 @@ Disallow: /moderation.html
 # Retours de paiement : pas de contenu propre à indexer.
 Disallow: /*?paiement=
 
-Sitemap: https://preporal.fr/sitemap.xml
+Sitemap: https://preporal.vercel.app/sitemap.xml

@@ -114,3 +114,32 @@ test('aucune clé secrète n\'est présente dans le front', () => {
       'une clé service_role Supabase est exposée dans le front');
   }
 });
+
+test('le domaine est identique dans la page, robots.txt et le plan du site', () => {
+  /* Une balise canonique qui pointe ailleurs que le site réel dit aux moteurs
+     « la vraie version est là-bas » : c'est le meilleur moyen de se
+     désindexer soi-même. Les trois fichiers doivent parler du même domaine. */
+  const robots = readFileSync(join(RACINE, 'robots.txt'), 'utf8');
+  const sitemap = readFileSync(join(RACINE, 'sitemap.xml'), 'utf8');
+
+  const canonique = html.match(/<link rel="canonical" href="(https:\/\/[^/"]+)/)?.[1];
+  assert.ok(canonique, 'balise canonique absente');
+
+  const hote = u => (u.match(/https:\/\/([^/"<\s]+)/) || [])[1];
+  assert.equal(hote(robots.match(/Sitemap:\s*(\S+)/)[1]), hote(canonique),
+    'robots.txt annonce un autre domaine que la balise canonique');
+  assert.equal(hote(sitemap.match(/<loc>([^<]+)<\/loc>/)[1]), hote(canonique),
+    'sitemap.xml annonce un autre domaine que la balise canonique');
+
+  for (const balise of ['og:url', 'og:image', 'twitter:image']) {
+    const m = html.match(new RegExp(`(?:property|name)="${balise}" content="(https://[^/"]+)`));
+    if (m) assert.equal(hote(m[1]), hote(canonique), `${balise} pointe vers un autre domaine`);
+  }
+});
+
+test('le domaine déclaré n\'est pas un exemple resté en place', () => {
+  const canonique = html.match(/<link rel="canonical" href="(https:\/\/[^/"]+)/)?.[1] || '';
+  for (const factice of ['example.com', 'votre-domaine', 'localhost', 'preporal.fr']) {
+    assert.ok(!canonique.includes(factice), `domaine non renseigné : ${canonique}`);
+  }
+});
