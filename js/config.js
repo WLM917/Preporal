@@ -5,17 +5,53 @@
 
 const ENV = window.PREPORAL_ENV || {};
 
+/* Une URL Supabase avec une barre oblique finale casse la construction
+   des URL du client : on la retire systématiquement. */
+const sansBarreFinale = (u = '') => String(u).trim().replace(/\/+$/, '');
+
 export const CONFIG = {
   api: ENV.API_BASE || '/api',
-  supabase: { url: ENV.SUPABASE_URL || 'https://kcebxepykavnamtxosbc.supabase.co/', anonKey: ENV.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjZWJ4ZXB5a2F2bmFtdHhvc2JjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjAyODgsImV4cCI6MjEwNDQzNjI4OH0.frsPDwlI7WOoKJygIneBjPnd7t8sa614Mdqucs1E7Bg' },
+  /* Renseignés dans le bloc window.PREPORAL_ENV d'index.html.
+     Ces deux valeurs sont publiques par conception (la clé « anon »
+     part de toute façon dans le navigateur et n'ouvre que ce que les
+     règles RLS autorisent). La clé service_role, elle, reste côté
+     serveur — voir .env.example. */
+  supabase: {
+    url: sansBarreFinale(ENV.SUPABASE_URL),
+    anonKey: (ENV.SUPABASE_ANON_KEY || '').trim()
+  },
   simulationsGratuites: 2,
   cles: {
     quota: 'prepOral.simulationsUtilisees',
     historique: 'prepOral.historique',
     avis: 'prepOral.avis',
     premiumLocal: 'prepOral.premiumLocal'
-  }
+  },
+
+  /* ── Identité de l'éditeur ────────────────────────────────
+     Obligatoire avant toute vente en France (mentions légales,
+     CGV, médiateur de la consommation). Renseignez ce bloc dans
+     index.html : tant qu'il est vide, un bandeau d'avertissement
+     s'affiche et les textes légaux signalent ce qui manque. */
+  editeur: {
+    nom: ENV.EDITEUR_NOM || '',
+    statut: ENV.EDITEUR_STATUT || '',
+    siret: ENV.EDITEUR_SIRET || '',
+    tva: ENV.EDITEUR_TVA || '',
+    adresse: ENV.EDITEUR_ADRESSE || '',
+    email: ENV.EDITEUR_EMAIL || '',
+    directeur: ENV.EDITEUR_DIRECTEUR || '',
+    mediateur: ENV.EDITEUR_MEDIATEUR || ''
+  },
+
+  /* Âge minimal pour souscrire seul (art. 1145 s. du code civil :
+     un mineur ne peut pas s'engager seul dans un abonnement payant). */
+  ageMinimumAchat: 18
 };
+
+/** true quand toutes les mentions obligatoires sont renseignées. */
+export const editeurComplet = () =>
+  Object.values(CONFIG.editeur).every(v => String(v).trim().length > 0);
 
 export const OFFRES = {
   mensuel: { id: 'mensuel', nom: 'PrepOral Premium', prix: '9,99 €', periode: 'par mois', mode: 'subscription' },

@@ -6,6 +6,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { appelerModele, extraireJSON, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
+import { verifierQuota, refuserQuota } from './_lib/quota.js';
 
 const CRITERES = {
   entretien: ['Structure de la réponse', "Lien avec l'offre", 'Preuves et chiffres', 'Concision'],
@@ -19,9 +20,14 @@ const CRITERES = {
 
 export default async function handler(req, res) {
   if (!verifierMethode(req, res)) return;
-  if (!limiter(req, res, { max: 20 })) return;
+  if (!await limiter(req, res, { max: 20, prefixe: 'feedback' })) return;
 
   try {
+    /* On revérifie l'accès sans re-décompter : le quota a déjà été
+       consommé par /api/questions au lancement de la simulation. */
+    const verdict = await verifierQuota(req);
+    if (!verdict.autorise && verdict.code === 'connexion') return refuserQuota(res, verdict);
+
     const { typeId = 'entretien', sousChoix = '', champA = '', champB = '', reponses = [], mesures = {} } = req.body || {};
     if (!Array.isArray(reponses) || !reponses.length) throw new ErreurIA('Aucune réponse à corriger.', 400);
 
@@ -66,11 +72,53 @@ ${corpus}
 
 Corrige cette prestation.`;
 
+    /* Schéma construit à partir des critères de l'épreuve : la
+       correction revient toujours dans une forme exploitable. */
+    const proprietesCriteres = {};
+    criteres.forEach(c => { proprietesCriteres[c] = { type: 'integer', minimum: 0, maximum: 100 }; });
+
+    const schema = {
+      type: 'object',
+      properties: {
+        global: { type: 'integer', minimum: 0, maximum: 100 },
+        criteres: {
+          type: 'object',
+          properties: proprietesCriteres,
+          required: criteres,
+          additionalProperties: false
+        },
+        details: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              note: { type: 'integer', minimum: 0, maximum: 20 },
+              forts: { type: 'array', items: { type: 'string' } },
+              axes: { type: 'array', items: { type: 'string' } },
+              reecriture: { type: 'string' }
+            },
+            required: ['note', 'forts', 'axes', 'reecriture'],
+            additionalProperties: false
+          }
+        },
+        eloquence: {
+          type: 'object',
+          properties: { conseils: { type: 'array', items: { type: 'string' } } },
+          required: ['conseils'],
+          additionalProperties: false
+        }
+      },
+      required: ['global', 'criteres', 'details', 'eloquence'],
+      additionalProperties: false
+    };
+
     const brut = await appelerModele({
       systeme,
       messages: [{ role: 'user', content: message }],
       maxTokens: 2600,
-      temperature: 0.4
+      effort: 'medium',        // la correction demande du jugement, pas la génération de questions
+      etiquette: 'feedback',
+      schema
     });
 
     const data = extraireJSON(brut);

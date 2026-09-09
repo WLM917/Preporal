@@ -3,18 +3,20 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { TYPES_ORAL, typeParId } from './config.js';
-import { $, $$, echappe, formaterTemps, compterMots, toast, brancherReglages, reglerGroupe } from './ui.js';
+import { $, $$, echappe, formaterTemps, compterMots, toast, brancherReglages, reglerGroupe, ouvrirModale } from './ui.js';
 import { Voix, Dictee, dicteeSupportee, langueDeLEpreuve } from './speech.js';
 import { brancherDepot } from './upload.js';
-import { genererQuestions, modeDemo as demoQuestions } from './questions.js';
+import { genererQuestions, modeDemo as demoQuestions, ErreurQuota } from './questions.js';
 import { evaluer } from './feedback.js';
 import { afficherRapport, exporterPDF } from './report.js';
 import { initAuth, surChangementCompte, session } from './auth.js';
 import { brancherPaywall, peutLancer, estPremium, consommerSimulation, quotaRestant, ouvrirPaywall, majJauge } from './paywall.js';
 import { brancherHistorique, enregistrerSimulation, chargerDepuisServeur } from './history.js';
-import { brancherAvis } from './reviews.js';
+import { brancherAvis, chargerAvisPublies } from './reviews.js';
 import { initCoach, arreterCoach } from './coach.js';
 import { brancherLegal } from './legal.js';
+import { brancherTheme, brancherCookies } from './theme.js';
+import { brancherAge, chargerAgeProfil, demanderAgeSiNecessaire } from './age.js';
 
 const CIRCONFERENCE = 326.73;
 
@@ -157,6 +159,8 @@ function verifierFormulaire() {
 
 /* ═══ Lancement ═══ */
 $('#btn-lancer').addEventListener('click', async () => {
+  // Première simulation : on demande la tranche d'âge avant de commencer.
+  if (demanderAgeSiNecessaire()) return;
   if (!peutLancer()) { ouvrirPaywall('quota'); return; }
 
   etat.index = 0;
@@ -173,19 +177,37 @@ $('#btn-lancer').addEventListener('click', async () => {
   $('#sous-titre-chargement').textContent = "Préparation des questions de l'examinateur…";
   allerEcran('chargement');
 
-  etat.questions = await genererQuestions({
-    typeId: etat.typeId,
-    sousChoix: etat.sousChoix,
-    champA: $('#champA').value.trim(),
-    champB: $('#champB').value.trim(),
-    nbQuestions: etat.nbQuestions,
-    niveau: etat.niveau,
-    jeton: session.jeton
-  });
+  try {
+    etat.questions = await genererQuestions({
+      typeId: etat.typeId,
+      sousChoix: etat.sousChoix,
+      champA: $('#champA').value.trim(),
+      champB: $('#champB').value.trim(),
+      nbQuestions: etat.nbQuestions,
+      niveau: etat.niveau,
+      jeton: session.jeton
+    });
+  } catch (e) {
+    // Le serveur a refusé : on revient à l'accueil et on ouvre la bonne modale.
+    allerEcran('accueil');
+    if (e instanceof ErreurQuota && e.code === 'connexion') {
+      toast(e.message, 'erreur');
+      ouvrirModale('modal-auth');
+    } else {
+      ouvrirPaywall('quota');
+    }
+    majJauge();
+    verifierFormulaire();
+    return;
+  }
 
-  if (demoQuestions) toast("Mode démo : l'API n'a pas répondu, questions et correction générées localement.");
-
-  consommerSimulation();
+  if (demoQuestions) {
+    // L'API n'a pas répondu : on ne facture pas au candidat une de ses
+    // simulations gratuites pour une panne qui ne vient pas de lui.
+    toast("Mode démo : l'API n'a pas répondu, questions et correction générées localement. Cette simulation ne décompte pas votre quota gratuit.");
+  } else {
+    consommerSimulation();
+  }
   $('#total-questions').textContent = etat.questions.length;
   $('#segments').innerHTML = etat.questions.map(() => '<span class="h-1.5 flex-1 rounded-full bg-line"></span>').join('');
   $('#btn-pause').classList.toggle('hidden', etat.modeReel);
@@ -398,11 +420,20 @@ function demarrer() {
   brancherDepot({ idInput: 'fichier-B', idZone: 'depot-B', idEtat: 'etat-fichier-B', idCible: 'champB' });
 
   brancherMicroSimulation();
+  brancherTheme();
+  brancherCookies();
+  brancherAge();
   brancherPaywall();
   brancherHistorique();
   brancherAvis();
   brancherLegal();
   initCoach();
+
+  $('#btn-essai')?.addEventListener('click', () => {
+    allerVue('simulateur');
+    allerEcran('accueil');
+    $('#configurer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   $('#mode-reel').addEventListener('change', e => {
     etat.modeReel = e.target.checked;
@@ -417,6 +448,8 @@ function demarrer() {
   initAuth().then(() => {
     surChangementCompte(() => { majJauge(); verifierFormulaire(); });
     chargerDepuisServeur();
+    chargerAvisPublies();
+    chargerAgeProfil();
   });
 
   allerVue('simulateur');

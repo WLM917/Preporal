@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG, typeParId } from './config.js';
-import { $, stock, echappe, toast, couleurNote } from './ui.js';
+import { $, stock, echappe, toast, couleurNote, jeton } from './ui.js';
 import { supabase, session } from './auth.js';
 
 const MAX = 60;
@@ -104,6 +104,9 @@ function courbe(points) {
     return `<p class="rounded-xl border border-line bg-ink/40 p-4 text-sm text-muted">
       Une deuxième simulation et votre courbe de progression s'affichera ici.</p>`;
   }
+  const iris = jeton('--iris', 'rgb(124 92 255)');
+  const iris2 = jeton('--iris2', 'rgb(167 139 255)');
+  const ligneCouleur = jeton('--line', 'rgb(38 35 54)');
   const L = 640, H = 160, pad = 24;
   const n = points.length;
   const x = i => pad + (i * (L - pad * 2)) / (n - 1);
@@ -112,7 +115,7 @@ function courbe(points) {
   const ligne = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.score).toFixed(1)}`).join(' ');
   const aire = `${ligne} L${x(n - 1).toFixed(1)},${H - pad} L${x(0).toFixed(1)},${H - pad} Z`;
   const cercles = points.map((p, i) =>
-    `<circle cx="${x(i).toFixed(1)}" cy="${y(p.score).toFixed(1)}" r="4" fill="${couleurNote(p.score)}" stroke="#191527" stroke-width="2"><title>${p.score}/100</title></circle>`).join('');
+    `<circle cx="${x(i).toFixed(1)}" cy="${y(p.score).toFixed(1)}" r="4" fill="${couleurNote(p.score)}" stroke="${jeton('--surface', 'rgb(17 16 24)')}" stroke-width="2"><title>${p.score}/100</title></circle>`).join('');
 
   const dernier = points[n - 1].score, premier = points[0].score;
   const ecart = dernier - premier;
@@ -121,18 +124,18 @@ function courbe(points) {
   <div class="rounded-xl border border-line bg-ink/40 p-4">
     <div class="flex items-baseline justify-between">
       <p class="text-sm text-muted">Progression sur ${n} simulations</p>
-      <p class="font-display text-sm font-bold" style="color:${ecart >= 0 ? '#3DDC97' : '#FF5D6C'}">${ecart >= 0 ? '+' : ''}${ecart} pts</p>
+      <p class="font-display text-sm font-bold" style="color:${ecart >= 0 ? jeton('--mint', 'rgb(61 220 151)') : jeton('--coral', 'rgb(255 93 108)')}">${ecart >= 0 ? '+' : ''}${ecart} pts</p>
     </div>
     <svg viewBox="0 0 ${L} ${H}" class="mt-3 w-full" role="img" aria-label="Courbe de progression des notes">
       <defs>
         <linearGradient id="remplissage" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#7C5CFF" stop-opacity=".35"/>
-          <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0"/>
+          <stop offset="0%" stop-color="${iris}" stop-opacity=".35"/>
+          <stop offset="100%" stop-color="${iris}" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <line x1="${pad}" y1="${y(50)}" x2="${L - pad}" y2="${y(50)}" stroke="#312A4A" stroke-dasharray="4 6"/>
+      <line x1="${pad}" y1="${y(50)}" x2="${L - pad}" y2="${y(50)}" stroke="${ligneCouleur}" stroke-dasharray="4 6"/>
       <path d="${aire}" fill="url(#remplissage)"/>
-      <path d="${ligne}" fill="none" stroke="#B48CFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="${ligne}" fill="none" stroke="${iris2}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       ${cercles}
     </svg>
   </div>`;

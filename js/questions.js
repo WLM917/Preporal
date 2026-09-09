@@ -6,8 +6,14 @@ import { CONFIG, typeParId } from './config.js';
 
 export let modeDemo = false;
 
+/** Levée quand le serveur refuse la simulation (quota épuisé, connexion requise). */
+export class ErreurQuota extends Error {
+  constructor(message, code) { super(message); this.code = code; }
+}
+
 /**
  * @returns {Promise<Array<{categorie:string, texte:string}>>}
+ * @throws {ErreurQuota} si le serveur refuse l'accès
  */
 export async function genererQuestions({ typeId, sousChoix, champA, champB, nbQuestions, niveau, jeton }) {
   try {
@@ -19,13 +25,24 @@ export async function genererQuestions({ typeId, sousChoix, champA, champB, nbQu
       },
       body: JSON.stringify({ typeId, sousChoix, champA, champB, nbQuestions, niveau })
     });
+
+    /* 402 = quota épuisé ou connexion requise. Ce n'est PAS une panne :
+       il ne faut surtout pas retomber sur les questions hors ligne, sinon
+       le paywall ne bloque plus rien. On remonte l'erreur telle quelle. */
+    if (r.status === 402) {
+      const data = await r.json().catch(() => ({}));
+      throw new ErreurQuota(data.erreur || 'Quota épuisé.', data.code || 'quota');
+    }
+
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     const q = (data.questions || []).filter(x => x && x.texte);
     if (!q.length) throw new Error('réponse vide');
     modeDemo = false;
     return q.slice(0, nbQuestions);
-  } catch {
+  } catch (e) {
+    if (e instanceof ErreurQuota) throw e;
+    // Panne réelle (réseau, modèle indisponible) : on dépanne hors ligne.
     modeDemo = true;
     return questionsDeSecours({ typeId, sousChoix, champA, champB, nbQuestions, niveau });
   }

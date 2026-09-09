@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Modération des avis — PrepOral</title>
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/tailwind.css">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem('prepOral.theme');
+      if (t !== 'clair' && t !== 'sombre') t = matchMedia('(prefers-color-scheme: light)').matches ? 'clair' : 'sombre';
+      document.documentElement.dataset.theme = t;
+    } catch (e) { document.documentElement.dataset.theme = 'sombre'; }
+  })();
+</script>
+<style>
+  :root[data-theme="sombre"] {
+    color-scheme: dark;
+    --ink:8 7 12; --surface:17 16 24; --raised:24 22 34; --line:38 35 54;
+    --muted:156 150 180; --soft:244 242 250; --inverse:255 255 255; --sur-inverse:10 9 16;
+    --iris:124 92 255; --iris2:167 139 255; --mint:61 220 151; --amber:245 165 36; --coral:255 93 108;
+    --ombre: rgba(0,0,0,.9);
+  }
+  :root[data-theme="clair"] {
+    color-scheme: light;
+    --ink:255 255 255; --surface:247 246 251; --raised:239 237 246; --line:225 222 237;
+    --muted:95 89 128; --soft:20 18 28; --inverse:20 18 28; --sur-inverse:255 255 255;
+    --iris:106 69 245; --iris2:90 52 232; --mint:18 163 102; --amber:178 106 0; --coral:217 48 68;
+    --ombre: rgba(28,20,60,.16);
+  }
+  body { background-color: rgb(var(--ink)); color: rgb(var(--soft)); }
+  :focus-visible { outline:2px solid rgb(var(--iris2)); outline-offset:3px; border-radius:6px; }
+</style>
+</head>
+<body class="min-h-full font-sans antialiased">
+
+<div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+
+  <header class="flex items-center justify-between gap-4">
+    <div class="flex items-center gap-2.5">
+      <img src="assets/logo.svg" alt="" width="28" height="28" class="h-7 w-7 rounded-lg">
+      <span class="font-display text-lg font-extrabold tracking-tight">Modération des avis</span>
+    </div>
+    <a href="/" class="text-sm text-muted underline-offset-4 hover:underline">Retour au site</a>
+  </header>
+
+  <div class="mt-5 rounded-xl border border-amber/40 bg-amber/10 p-4 text-sm leading-relaxed text-amber">
+    <strong>Ne publiez que des avis authentiques.</strong> Publier un avis inventé — ou ne
+    retenir que les avis élogieux sans l'indiquer — est une pratique commerciale trompeuse
+    (art. L121-2 et L111-7-2 du code de la consommation). Rejetez ce qui est illisible,
+    injurieux ou hors sujet ; ne rejetez pas un avis parce qu'il est négatif.
+  </div>
+
+  <!-- Connexion -->
+  <section id="bloc-cle" class="mt-6 rounded-2xl border border-line bg-surface p-5">
+    <label for="cle" class="text-sm font-medium">Clé de modération</label>
+    <p class="mt-1 text-xs text-muted">
+      La valeur de <code>CLE_MODERATION</code> définie dans vos variables d'environnement Vercel.
+      Elle reste dans cet onglet et n'est pas enregistrée.
+    </p>
+    <div class="mt-3 flex gap-2">
+      <input id="cle" type="password" autocomplete="off"
+        class="flex-1 rounded-xl border border-line bg-ink px-4 py-3 text-sm focus:border-iris focus:outline-none">
+      <button id="btn-entrer" type="button"
+        class="rounded-xl bg-inverse px-5 py-3 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90">
+        Entrer
+      </button>
+    </div>
+    <p id="message" class="mt-3 text-sm text-coral"></p>
+  </section>
+
+  <!-- Console -->
+  <section id="bloc-console" class="mt-6 hidden">
+    <div class="flex items-center gap-2">
+      <button data-onglet="attente" class="onglet rounded-lg border border-line px-4 py-2 text-sm">En attente</button>
+      <button data-onglet="publies" class="onglet rounded-lg border border-line px-4 py-2 text-sm">Publiés</button>
+      <button id="btn-rafraichir" type="button" class="ml-auto rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:text-soft">Rafraîchir</button>
+    </div>
+    <div id="liste" class="mt-5 space-y-3"></div>
+  </section>
+</div>
+
+<div id="toasts" class="fixed bottom-4 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 flex-col gap-2"></div>
+
+<script type="module">
+  const $ = s => document.querySelector(s);
+  const echappe = t => String(t ?? '').replace(/[&<>"']/g,
+    c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+  let cle = '';
+  let onglet = 'attente';
+
+  const toast = (msg, ton = 'info') => {
+    const el = document.createElement('div');
+    el.className = 'rounded-xl border px-4 py-3 text-sm bg-surface ' +
+      (ton === 'erreur' ? 'border-coral/60 text-coral' : ton === 'succes' ? 'border-mint/60 text-mint' : 'border-line');
+    el.textContent = msg;
+    $('#toasts').appendChild(el);
+    setTimeout(() => el.remove(), 3600);
+  };
+
+  const appel = (chemin, options = {}) =>
+    fetch('/api/moderation' + chemin, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cle, ...(options.headers || {}) }
+    });
+
+  const etoiles = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+
+  function rendre(avis) {
+    if (!avis.length) {
+      $('#liste').innerHTML =
+        `<p class="rounded-2xl border border-dashed border-line bg-surface/50 p-8 text-center text-sm text-muted">
+           Aucun avis ${onglet === 'attente' ? 'en attente' : 'publié'}.
+         </p>`;
+      return;
+    }
+    $('#liste').innerHTML = avis.map(a => `
+      <article class="rounded-2xl border border-line bg-surface p-5">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <span class="font-medium">${echappe(a.nom)}</span>
+            <span class="text-xs text-muted"> · ${echappe(a.statut || '—')}</span>
+          </div>
+          <span class="text-amber">${etoiles(a.note)}</span>
+        </div>
+        <blockquote class="mt-3 text-sm leading-relaxed text-muted">« ${echappe(a.texte)} »</blockquote>
+        <div class="mt-4 flex items-center gap-2">
+          <span class="text-xs text-muted">${new Date(a.cree_le).toLocaleString('fr-FR')}</span>
+          <div class="ml-auto flex gap-2">
+            ${a.publie ? '' : `<button data-action="publier" data-id="${a.id}"
+              class="rounded-lg bg-mint/15 px-3 py-1.5 text-sm font-medium text-mint transition hover:bg-mint/25">Publier</button>`}
+            <button data-action="rejeter" data-id="${a.id}"
+              class="rounded-lg border border-line px-3 py-1.5 text-sm text-muted transition hover:border-coral/60 hover:text-coral">
+              ${a.publie ? 'Retirer' : 'Rejeter'}
+            </button>
+          </div>
+        </div>
+      </article>`).join('');
+  }
+
+  async function charger() {
+    try {
+      const r = await appel('?etat=' + onglet);
+      if (r.status === 401) { toast('Clé refusée.', 'erreur'); return false; }
+      if (!r.ok) { toast((await r.json().catch(() => ({}))).erreur || 'Erreur serveur.', 'erreur'); return false; }
+      rendre((await r.json()).avis || []);
+      return true;
+    } catch { toast('Serveur injoignable.', 'erreur'); return false; }
+  }
+
+  $('#btn-entrer').addEventListener('click', async () => {
+    cle = $('#cle').value.trim();
+    if (!cle) return;
+    $('#message').textContent = '';
+    const r = await appel('?etat=attente');
+    if (r.status === 401) { $('#message').textContent = 'Clé refusée.'; return; }
+    if (r.status === 503) { $('#message').textContent = "CLE_MODERATION n'est pas définie côté serveur."; return; }
+    if (!r.ok) { $('#message').textContent = 'Serveur indisponible.'; return; }
+    $('#bloc-cle').classList.add('hidden');
+    $('#bloc-console').classList.remove('hidden');
+    majOnglets();
+    charger();
+  });
+  $('#cle').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btn-entrer').click(); });
+
+  function majOnglets() {
+    document.querySelectorAll('[data-onglet]').forEach(b => {
+      const actif = b.dataset.onglet === onglet;
+      b.classList.toggle('bg-iris', actif);
+      b.classList.toggle('text-white', actif);
+      b.classList.toggle('text-muted', !actif);
+    });
+  }
+
+  document.querySelectorAll('[data-onglet]').forEach(b =>
+    b.addEventListener('click', () => { onglet = b.dataset.onglet; majOnglets(); charger(); }));
+  $('#btn-rafraichir').addEventListener('click', charger);
+
+  $('#liste').addEventListener('click', async e => {
+    const b = e.target.closest('[data-action]');
+    if (!b) return;
+    const { action, id } = b.dataset;
+    if (action === 'rejeter' && !confirm('Supprimer définitivement cet avis ?')) return;
+    b.disabled = true;
+    const r = await appel('', { method: 'POST', body: JSON.stringify({ id, action }) });
+    if (r.ok) { toast(action === 'publier' ? 'Avis publié.' : 'Avis supprimé.', 'succes'); charger(); }
+    else { toast('Action impossible.', 'erreur'); b.disabled = false; }
+  });
+</script>
+</body>
+</html>

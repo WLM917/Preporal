@@ -6,18 +6,24 @@
    valeur de conseil juridique.
    ═══════════════════════════════════════════════════════════ */
 
-import { $, $$, ouvrirModale } from './ui.js';
+import { CONFIG, editeurComplet } from './config.js';
+import { $, $$, ouvrirModale, echappe } from './ui.js';
 
-const E = '[À COMPLÉTER]';
+/* Les mentions manquantes sont signalées en clair plutôt que
+   remplacées par un texte vraisemblable : une mention légale
+   inventée est pire que l'absence de mention. */
+const E = '<span class="rounded bg-amber/15 px-1.5 py-0.5 text-amber">[À COMPLÉTER]</span>';
+const ou = v => (String(v || '').trim() ? echappe(String(v).trim()) : E);
 
 export const EDITEUR = {
-  nom: E,                       // ex. « PrepOral SAS » ou « William X., entrepreneur individuel »
-  statut: E,                    // SAS, EI, auto-entrepreneur…
-  siret: E,
-  tva: E,                       // n° TVA intracommunautaire, ou mention de franchise en base
-  adresse: E,
-  email: E,
-  directeur: E,
+  nom: ou(CONFIG.editeur.nom),
+  statut: ou(CONFIG.editeur.statut),
+  siret: ou(CONFIG.editeur.siret),
+  tva: ou(CONFIG.editeur.tva),
+  adresse: ou(CONFIG.editeur.adresse),
+  email: ou(CONFIG.editeur.email),
+  directeur: ou(CONFIG.editeur.directeur),
+  mediateur: ou(CONFIG.editeur.mediateur),
   hebergeur: 'Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis',
   hebergeurDonnees: 'Supabase (région UE) — base de données et authentification',
   paiement: 'Stripe Payments Europe, Ltd., 1 Grand Canal Street Lower, Dublin 2, Irlande'
@@ -36,7 +42,7 @@ export const TEXTES = {
       ${bloc('Paiement', `<p>Les paiements sont opérés par ${EDITEUR.paiement}. Aucune donnée de carte bancaire ne transite ni n'est stockée sur les serveurs de PrepOral.</p>`)}
       ${bloc('Propriété intellectuelle', `<p>L'ensemble des éléments du site (marque, logo, interface, textes, code) est protégé. Toute reproduction sans autorisation écrite est interdite. Les contenus que vous déposez restent votre propriété.</p>`)}
       ${bloc('Limites du service', `<p>PrepOral est un outil d'entraînement assisté par intelligence artificielle. Les questions, notes et conseils sont générés automatiquement, peuvent comporter des erreurs et ne constituent ni une évaluation officielle, ni une garantie de réussite à un examen, un concours ou un entretien.</p>`)}
-      ${bloc('Médiation de la consommation', `<p>En cas de litige non résolu, le consommateur peut saisir gratuitement un médiateur de la consommation : ${E}. Plateforme européenne de règlement en ligne des litiges : ec.europa.eu/consumers/odr.</p>`)}
+      ${bloc('Médiation de la consommation', `<p>En cas de litige non résolu, le consommateur peut saisir gratuitement un médiateur de la consommation : ${EDITEUR.mediateur}. Plateforme européenne de règlement en ligne des litiges : ec.europa.eu/consumers/odr.</p>`)}
     `
   },
 
@@ -56,7 +62,11 @@ export const TEXTES = {
         <p>En souscrivant, vous demandez expressément l'exécution immédiate du service et reconnaissez perdre votre droit de rétractation une fois le service pleinement exécuté (art. L221-28 13°). Pour l'abonnement mensuel, la rétractation reste possible tant qu'aucune simulation payante n'a été lancée.</p>`)}
       ${bloc('6. Disponibilité', `<p>Le service est fourni « en l'état ». ${EDITEUR.nom} met en œuvre les moyens raisonnables pour assurer sa disponibilité mais ne garantit pas une continuité absolue (maintenance, incident d'un prestataire tiers, indisponibilité du fournisseur de modèle d'IA).</p>`)}
       ${bloc('7. Responsabilité', `<p>PrepOral est un outil d'entraînement. Aucune obligation de résultat n'est due quant à la réussite d'un examen, d'un concours ou d'un recrutement.</p>`)}
-      ${bloc('8. Droit applicable', `<p>Droit français. À défaut d'accord amiable, les tribunaux français sont compétents.</p>`)}
+      ${bloc('8. Souscription par un mineur', `
+        <p>Le service s'adresse notamment à des collégiens et lycéens. Conformément aux articles 1145 et suivants du code civil, un mineur non émancipé ne peut pas souscrire seul un abonnement payant : la souscription doit être effectuée par le titulaire de l'autorité parentale, ou avec son accord exprès.</p>
+        <p>L'utilisation gratuite du service reste ouverte. Pour les moins de 15 ans, la création d'un compte requiert l'accord du titulaire de l'autorité parentale (art. 45 de la loi Informatique et Libertés).</p>
+        <p>${EDITEUR.nom} peut demander une confirmation à tout moment et annuler, sans frais, un abonnement souscrit par un mineur sans cet accord.</p>`)}
+      ${bloc('9. Droit applicable', `<p>Droit français. À défaut d'accord amiable, les tribunaux français sont compétents.</p>`)}
     `
   },
 
@@ -90,7 +100,28 @@ export const TEXTES = {
   }
 };
 
+/* Tant que l'identité de l'éditeur n'est pas renseignée, le site
+   ne peut pas légalement vendre : on le signale sans ambiguïté. */
+export function verifierMentions() {
+  const alerte = $('#alerte-editeur');
+  if (!alerte) return;
+  if (editeurComplet()) { alerte.classList.add('hidden'); return; }
+
+  const manquantes = Object.entries(CONFIG.editeur)
+    .filter(([, v]) => !String(v || '').trim())
+    .map(([k]) => k);
+
+  alerte.classList.remove('hidden');
+  alerte.innerHTML =
+    '<strong>Configuration incomplète — ne pas mettre en vente en l\'état.</strong> ' +
+    'Les mentions légales obligatoires suivantes ne sont pas renseignées : ' +
+    echappe(manquantes.join(', ')) + '. ' +
+    'Complétez le bloc <code>window.PREPORAL_ENV</code> dans <code>index.html</code>. ' +
+    'Vendre sans ces mentions expose à des sanctions (art. L111-1 s. du code de la consommation).';
+}
+
 export function brancherLegal() {
+  verifierMentions();
   $$('[data-legal]').forEach(btn => {
     btn.addEventListener('click', () => {
       const t = TEXTES[btn.dataset.legal];
