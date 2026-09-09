@@ -225,11 +225,16 @@ Stripe et ne confirme que si la session est réellement payée. Le webhook
 Un avis déposé arrive en base avec `publie = false`. Il n'apparaît nulle part
 tant qu'il n'a pas été validé.
 
-1. Générez un jeton et placez-le dans `CLE_MODERATION` (variables Vercel) :
+1. Générez un jeton et placez-le dans `CLE_MODERATION` :
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+   - **En production** : Vercel → Settings → Environment Variables → ajoutez
+     `CLE_MODERATION`, puis **redéployez** (les variables ne sont lues qu'au
+     déploiement).
+   - **En local** : la clé est déjà dans `.env.local`, ignoré par git.
 
 2. Ouvrez `https://votre-domaine.fr/moderation.html` et saisissez ce jeton.
    La page liste les avis en attente et permet de les publier ou de les
@@ -354,8 +359,19 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    manquante. Le médiateur de la consommation est obligatoire dès la première
    vente à un consommateur. **Faites relire par un juriste** : les textes
    fournis sont un modèle, pas un conseil juridique.
-2. **Domaine.** Remplacez `https://preporal.fr` dans `index.html` (canonique
-   et balises de partage), `robots.txt` et `sitemap.xml`.
+2. **Domaine.** Le site est déclaré sur `https://preporal.vercel.app`, l'URL
+   que sert réellement ce dépôt. Pour passer à un domaine personnalisé,
+   remplacez-le aux trois endroits — `index.html` (canonique, Open Graph,
+   carte Twitter), `robots.txt` et `sitemap.xml` — puis lancez `npm test` :
+   un test vérifie que les trois restent d'accord.
+
+   > **`preporal.com` sert un autre site.** Il répond, il est hébergé par
+   > Vercel, mais son contenu n'est pas celui de ce dépôt (titre différent,
+   > aucune trace de la feuille de styles générée). Il n'a donc **pas** été
+   > déclaré comme domaine canonique : une balise canonique pointant vers un
+   > autre site revient à demander aux moteurs de recherche de désindexer
+   > celui-ci. Si `preporal.com` doit devenir la vitrine de ce projet,
+   > faites-le pointer vers ce projet Vercel *avant* de changer le domaine ici.
 3. **Vérification du consentement parental.** L'adresse du responsable légal
    est collectée sous 15 ans, mais aucun message ne lui est envoyé : le
    consentement reste déclaratif.
