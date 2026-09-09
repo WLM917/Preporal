@@ -46,7 +46,8 @@ export default async function handler(req, res) {
       systeme: SYSTEME,
       messages: propres,
       maxTokens: 700,
-      effort: 'low'
+      effort: 'low',
+      etiquette: 'coach'
     });
 
     res.setHeader('Cache-Control', 'no-store');

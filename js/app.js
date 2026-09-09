@@ -16,6 +16,7 @@ import { brancherAvis, chargerAvisPublies } from './reviews.js';
 import { initCoach, arreterCoach } from './coach.js';
 import { brancherLegal } from './legal.js';
 import { brancherTheme, brancherCookies } from './theme.js';
+import { brancherAge, chargerAgeProfil, demanderAgeSiNecessaire } from './age.js';
 
 const CIRCONFERENCE = 326.73;
 
@@ -158,6 +159,8 @@ function verifierFormulaire() {
 
 /* ═══ Lancement ═══ */
 $('#btn-lancer').addEventListener('click', async () => {
+  // Première simulation : on demande la tranche d'âge avant de commencer.
+  if (demanderAgeSiNecessaire()) return;
   if (!peutLancer()) { ouvrirPaywall('quota'); return; }
 
   etat.index = 0;
@@ -419,6 +422,7 @@ function demarrer() {
   brancherMicroSimulation();
   brancherTheme();
   brancherCookies();
+  brancherAge();
   brancherPaywall();
   brancherHistorique();
   brancherAvis();
@@ -445,6 +449,7 @@ function demarrer() {
     surChangementCompte(() => { majJauge(); verifierFormulaire(); });
     chargerDepuisServeur();
     chargerAvisPublies();
+    chargerAgeProfil();
   });
 
   allerVue('simulateur');

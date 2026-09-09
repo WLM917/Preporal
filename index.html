@@ -6,6 +6,50 @@
 <title>PrepOral — Réussis ton oral du premier coup</title>
 <meta name="description" content="Entretien, Grand Oral, brevet, concours, pitch ou certification de langue : PrepOral pose les questions à voix haute, te chronomètre, t'écoute et corrige le fond et la forme.">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/logo.svg">
+
+<!-- Adressez ces deux valeurs à votre domaine définitif. -->
+<link rel="canonical" href="https://preporal.fr/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#08070C" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+
+<!-- Partage sur les réseaux et messageries -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PrepOral">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:url" content="https://preporal.fr/">
+<meta property="og:title" content="PrepOral — Réussis ton oral du premier coup">
+<meta property="og:description" content="Entraîne-toi en conditions réelles : l'examinateur pose ses questions à voix haute, te chronomètre, puis corrige le fond et la forme. Deux simulations offertes.">
+<meta property="og:image" content="https://preporal.fr/assets/partage.svg">
+<meta property="og:image:alt" content="PrepOral, simulateur d'oraux assisté par IA">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PrepOral — Réussis ton oral du premier coup">
+<meta name="twitter:description" content="Entretien, Grand Oral, brevet, concours, pitch, certification de langue. Deux simulations offertes, sans carte bancaire.">
+<meta name="twitter:image" content="https://preporal.fr/assets/partage.svg">
+
+<!-- Données structurées. Aucune note agrégée n'est déclarée : en publier
+     une sans avis réels serait une pratique commerciale trompeuse. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PrepOral",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "fr-FR",
+  "url": "https://preporal.fr/",
+  "description": "Simulateur d'oraux assisté par IA : entretien, Grand Oral, brevet, concours, pitch et certifications de langue. Les questions sont posées à voix haute, la prestation est chronométrée puis corrigée.",
+  "offers": [
+    { "@type": "Offer", "name": "Offre gratuite", "price": "0", "priceCurrency": "EUR",
+      "description": "2 simulations complètes, sans compte ni carte bancaire" },
+    { "@type": "Offer", "name": "PrepOral Premium", "price": "9.99", "priceCurrency": "EUR",
+      "description": "Simulations illimitées, sans engagement" },
+    { "@type": "Offer", "name": "Pass 48 heures", "price": "4.99", "priceCurrency": "EUR",
+      "description": "Accès complet pendant 48 heures" }
+  ]
+}
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -844,7 +888,7 @@
       <div id="carte-premium" class="rounded-2xl border border-iris/40 bg-iris/10 p-5">
         <p class="font-display font-bold">PrepOral Premium</p>
         <p id="texte-premium" class="mt-1 text-sm text-muted">Simulations illimitées, rapports détaillés et coach IA sans limite.</p>
-        <button id="btn-premium" type="button" class="mt-4 w-full rounded-xl bg-white/95 px-4 py-3 font-display font-bold text-ink transition hover:bg-white">Voir les offres</button>
+        <button id="btn-premium" type="button" class="mt-4 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90">Voir les offres</button>
       </div>
     </aside>
   </div>
@@ -941,8 +985,10 @@
       </button>
     </div>
 
+    <p id="avis-mineur" class="mt-5 hidden rounded-xl border border-amber/40 bg-amber/10 p-3.5 text-xs leading-relaxed text-amber"></p>
+
     <!-- Un mineur ne peut pas souscrire seul un abonnement payant (art. 1145 s. du code civil). -->
-    <label class="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-ink/40 p-3.5">
+    <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-ink/40 p-3.5">
       <input id="confirmation-age" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0 accent-[#7C5CFF]">
       <span class="text-xs leading-relaxed text-muted">
         Je déclare avoir 18 ans ou plus, ou disposer de l'accord de mon représentant légal
@@ -1030,7 +1076,38 @@
   </div>
 </div>
 
+<!-- Déclaration d'âge (art. 45 loi Informatique et Libertés) -->
+<div id="modal-age" class="modale fixed inset-0 z-[55] grid place-items-center bg-ink/85 p-4 backdrop-blur" hidden>
+  <div class="entree w-full max-w-md rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-7" role="dialog" aria-modal="true" aria-labelledby="age-titre">
+    <h2 id="age-titre" class="font-display text-xl font-extrabold tracking-tight">Quel âge avez-vous ?</h2>
+    <p class="mt-2 text-sm leading-relaxed text-muted">
+      PrepOral s'adresse aussi à des collégiens et lycéens. La loi française fixe des règles
+      différentes selon l'âge : nous demandons une tranche, jamais votre date de naissance.
+    </p>
+
+    <div id="choix-age" class="mt-5 grid gap-2"></div>
+
+    <div id="bloc-parent" class="mt-4 hidden">
+      <label for="email-parent" class="text-sm font-medium">E-mail de votre parent ou responsable légal</label>
+      <p class="mt-1 text-xs leading-relaxed text-muted">
+        En dessous de 15 ans, son accord est nécessaire pour que nous puissions traiter vos données.
+      </p>
+      <input id="email-parent" type="email" autocomplete="off" placeholder="parent@exemple.fr"
+        class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+    </div>
+
+    <button id="btn-valider-age" type="button" disabled
+      class="mt-6 w-full rounded-xl bg-inverse px-5 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted">
+      Continuer
+    </button>
+    <p class="mt-3 text-center text-xs text-muted">
+      Cette information sert uniquement à appliquer la réglementation. Elle n'est jamais partagée.
+    </p>
+  </div>
+</div>
+
 <!-- Bandeau cookies -->
+
 <div id="banniere-cookies" class="verre fixed inset-x-0 bottom-0 z-[55] hidden border-t border-line">
   <div class="mx-auto flex max-w-contenu flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
     <p class="text-xs leading-relaxed text-muted sm:text-sm">

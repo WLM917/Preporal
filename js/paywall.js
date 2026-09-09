@@ -7,6 +7,7 @@
 import { CONFIG, OFFRES } from './config.js';
 import { $, $$, stock, ouvrirModale, fermerModale, toast } from './ui.js';
 import { session, profil } from './auth.js';
+import { messagePaiement } from './age.js';
 
 export const quotaUtilise = () => Number(stock.lire(CONFIG.cles.quota, 0)) || 0;
 export const quotaRestant = () => Math.max(0, CONFIG.simulationsGratuites - quotaUtilise());
@@ -53,6 +54,14 @@ export function ouvrirPaywall(raison = 'quota') {
     if (sur) sur.textContent = `Vos ${CONFIG.simulationsGratuites} simulations gratuites sont utilisées`;
     if (titre) titre.textContent = 'Continuez à vous entraîner';
   }
+  // Rappel explicite quand l'utilisateur a déclaré être mineur.
+  const avis = $('#avis-mineur');
+  if (avis) {
+    const message = messagePaiement();
+    avis.textContent = message || '';
+    avis.classList.toggle('hidden', !message);
+  }
+
   ouvrirModale('modal-paywall');
 }
 

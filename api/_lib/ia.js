@@ -15,6 +15,30 @@ export class ErreurIA extends Error {
   constructor(message, code = 502) { super(message); this.code = code; }
 }
 
+/* Tarifs publics en dollars par million de jetons, au 2026-06.
+   Vérifiez-les avant de vous appuyer sur les montants journalisés :
+   ils servent d'ordre de grandeur, pas de facturation. */
+const TARIFS = {
+  'claude-opus-5':   { entree: 5.00, sortie: 25.00 },
+  'claude-sonnet-5': { entree: 2.00, sortie: 10.00 },
+  'claude-haiku-4-5': { entree: 1.00, sortie: 5.00 }
+};
+
+/** Coût estimé d'un appel, en dollars. */
+export function estimerCout(modele, usage = {}) {
+  const t = TARIFS[modele];
+  if (!t) return null;
+  const entree = (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0);
+  const sortie = usage.output_tokens || 0;
+  return (entree / 1e6) * t.entree + (sortie / 1e6) * t.sortie;
+}
+
+/* Cumul par instance : donne un ordre de grandeur dans les journaux
+   sans dépendre d'un service externe. Remis à zéro au démarrage à
+   froid — pour un suivi fiable, agrégez les lignes « [cout] ». */
+const cumul = { appels: 0, dollars: 0 };
+export const coutCumule = () => ({ ...cumul });
+
 let client = null;
 function clientIA() {
   if (client) return client;
@@ -34,9 +58,10 @@ function clientIA() {
  * @param {number}  o.maxTokens
  * @param {'low'|'medium'|'high'} [o.effort]  profondeur de réflexion et dépense
  * @param {object}  [o.schema]   schéma JSON attendu — garantit une sortie valide
+ * @param {string}  [o.etiquette] nom de la route, pour la journalisation du coût
  * @returns {Promise<string>}
  */
-export async function appelerModele({ systeme, messages, maxTokens = 1600, effort = 'low', schema = null }) {
+export async function appelerModele({ systeme, messages, maxTokens = 1600, effort = 'low', schema = null, etiquette = 'inconnu' }) {
   const outputConfig = { effort };
   if (schema) outputConfig.format = { type: 'json_schema', schema };
 
@@ -50,6 +75,24 @@ export async function appelerModele({ systeme, messages, maxTokens = 1600, effor
       messages,
       output_config: outputConfig
     });
+
+    /* Coût mesuré, pas estimé au doigt mouillé : le README demande de
+       connaître le coût par simulation avant d'arrêter le prix. Chaque
+       simulation vaut deux appels (questions puis correction). */
+    const usage = reponse.usage || {};
+    const dollars = estimerCout(MODELE, usage);
+    if (dollars !== null) { cumul.appels++; cumul.dollars += dollars; }
+    console.log('[cout]', JSON.stringify({
+      route: etiquette,
+      modele: MODELE,
+      effort,
+      jetons_entree: usage.input_tokens || 0,
+      jetons_cache: usage.cache_read_input_tokens || 0,
+      jetons_sortie: usage.output_tokens || 0,
+      dollars: dollars === null ? null : Number(dollars.toFixed(5)),
+      cumul_appels: cumul.appels,
+      cumul_dollars: Number(cumul.dollars.toFixed(4))
+    }));
 
     // Un refus renvoie un HTTP 200 : il faut le tester avant de lire le contenu.
     if (reponse.stop_reason === 'refusal') {

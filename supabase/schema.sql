@@ -147,3 +147,25 @@ create index if not exists usages_anonymes_maj
 -- service_role via upsert : on garantit la colonne maj_le.
 alter table public.usages
   add column if not exists maj_le timestamptz not null default now();
+
+-- ── Âge déclaré et consentement parental ───────────────────
+-- L'article 45 de la loi Informatique et Libertés fixe à 15 ans
+-- l'âge du consentement numérique en France : en dessous, le
+-- traitement requiert l'accord du titulaire de l'autorité
+-- parentale. Le code civil (art. 1145 s.) interdit par ailleurs
+-- à un mineur non émancipé de souscrire seul un abonnement.
+--
+-- On stocke la tranche d'âge déclarée, pas la date de naissance :
+-- c'est suffisant pour appliquer la règle et cela évite de
+-- collecter une donnée plus précise que nécessaire (minimisation).
+alter table public.profils
+  add column if not exists tranche_age text
+    check (tranche_age in ('moins_15', '15_17', 'majeur')),
+  add column if not exists consentement_parental boolean not null default false,
+  add column if not exists consentement_parental_le timestamptz,
+  add column if not exists email_parent text;
+
+comment on column public.profils.tranche_age is
+  'Tranche déclarée par l''utilisateur : moins_15 | 15_17 | majeur';
+comment on column public.profils.consentement_parental is
+  'Accord du représentant légal, requis sous 15 ans et pour tout paiement par un mineur';

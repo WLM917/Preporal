@@ -2,7 +2,7 @@
    Les couleurs pointent vers les variables CSS définies dans index.html,
    ce qui permet aux thèmes clair et sombre de partager les mêmes classes. */
 module.exports = {
-  content: ['./index.html', './js/**/*.js'],
+  content: ['./index.html', './moderation.html', './js/**/*.js'],
   theme: {
     extend: {
       colors: {

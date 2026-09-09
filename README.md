@@ -14,12 +14,16 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 
 1. [Arborescence](#arborescence)
 2. [Démarrage rapide](#démarrage-rapide)
-3. [Configuration Stripe](#configuration-stripe)
-4. [Configuration Supabase](#configuration-supabase)
-5. [Mise en production](#mise-en-production)
-6. [Fonctionnement du paywall](#fonctionnement-du-paywall)
-7. [Compatibilité navigateurs](#compatibilité-navigateurs)
-8. [À faire avant de vendre](#à-faire-avant-de-vendre)
+3. [Tests](#tests)
+4. [Configuration Stripe](#configuration-stripe)
+5. [Configuration Supabase](#configuration-supabase)
+6. [Mise en production](#mise-en-production)
+7. [Fonctionnement du paywall](#fonctionnement-du-paywall)
+8. [Modération des avis](#modération-des-avis)
+9. [Âge et consentement parental](#âge-et-consentement-parental)
+10. [Coût par simulation](#coût-par-simulation)
+11. [Compatibilité navigateurs](#compatibilité-navigateurs)
+12. [À faire avant de vendre](#à-faire-avant-de-vendre)
 
 ---
 
@@ -28,6 +32,8 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 ```
 prepOral/
 ├── index.html                     interface complète
+├── moderation.html                console de modération des avis
+├── robots.txt · sitemap.xml       référencement
 ├── package.json
 ├── vercel.json                    runtime, cache, en-têtes de sécurité (CSP)
 ├── tailwind.config.cjs            configuration des styles
@@ -52,18 +58,26 @@ prepOral/
 │   ├── reviews.js                 témoignages et dépôt d'avis
 │   ├── coach.js                   onglet Coach IA (chat écrit et vocal)
 │   ├── theme.js                   bascule clair / sombre, bandeau cookies
+│   ├── age.js                     déclaration d'âge et consentement parental
 │   └── legal.js                   mentions légales, CGV, RGPD, cookies
 ├── api/
 │   ├── _lib/ia.js                 appel au modèle + limitation de débit
 │   ├── _lib/quota.js              quota des simulations, côté serveur
 │   ├── _lib/supabaseAdmin.js      client service_role
 │   ├── verifier-session.js        POST — contrôle réel du paiement Stripe
+│   ├── moderation.js              GET/POST — publier ou rejeter un avis
 │   ├── questions.js               POST /api/questions
 │   ├── feedback.js                POST /api/feedback
 │   ├── coach.js                   POST /api/coach
 │   ├── create-checkout-session.js POST — redirige vers Stripe Checkout
 │   ├── create-portal-session.js   POST — portail d'abonnement Stripe
 │   └── webhook.js                 POST — évènements Stripe (source de vérité)
+├── tests/                         suite de tests (npm test)
+│   ├── csp.test.mjs               la CSP autorise ce que le front charge
+│   ├── interface.test.mjs         contrat DOM et promesses commerciales
+│   ├── quota.test.mjs             quota serveur contre un faux Supabase
+│   ├── moderation.test.mjs        authentification de la modération
+│   └── cout.test.mjs              calcul du coût par simulation
 └── supabase/
     └── schema.sql                 tables profils / simulations / avis /
                                    usages / usages_anonymes + RLS
@@ -95,6 +109,25 @@ badge affiché). Utile pour travailler le design sans consommer d'API.
 > Ouvrir `index.html` par un double-clic ne fonctionne pas : les modules ES et le
 > micro exigent `http://localhost` ou `https://`. Utilisez `npx vercel dev` ou
 > `npm run statique`.
+
+---
+
+## Tests
+
+```bash
+npm test          # 34 tests, sans réseau ni clé d'API
+npm run verifier  # régénère la feuille de styles puis lance les tests
+```
+
+La suite couvre ce qui casse en silence :
+
+| Fichier | Ce qu'il empêche |
+|---|---|
+| `csp.test.mjs` | qu'une directive de sécurité bloque une bibliothèque que le front charge — c'est arrivé : la CSP avait cassé l'import de PDF, de DOCX et la lecture optique sans qu'aucun build n'échoue |
+| `interface.test.mjs` | qu'une refonte de la page casse le JavaScript (identifiants manquants ou dupliqués), et que de faux avis ou une clé secrète réapparaissent dans le HTML livré |
+| `quota.test.mjs` | que le quota gratuit devienne contournable |
+| `moderation.test.mjs` | qu'un avis puisse être publié sans le jeton de modération |
+| `cout.test.mjs` | qu'une erreur de calcul fausse la décision de prix |
 
 ---
 
@@ -187,6 +220,77 @@ Le front envoie le `session_id` à `/api/verifier-session`, qui interroge
 Stripe et ne confirme que si la session est réellement payée. Le webhook
 (`api/webhook.js`) reste la source de vérité durable en base.
 
+## Modération des avis
+
+Un avis déposé arrive en base avec `publie = false`. Il n'apparaît nulle part
+tant qu'il n'a pas été validé.
+
+1. Générez un jeton et placez-le dans `CLE_MODERATION` (variables Vercel) :
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+2. Ouvrez `https://votre-domaine.fr/moderation.html` et saisissez ce jeton.
+   La page liste les avis en attente et permet de les publier ou de les
+   supprimer. Elle est en `noindex` et exclue par `robots.txt`.
+
+Sans `CLE_MODERATION`, la route renvoie 503 et aucun avis ne peut être publié.
+
+> **Ne triez pas les avis pour ne garder que les bons.** Publier uniquement les
+> avis positifs sans l'indiquer est une pratique commerciale trompeuse, au même
+> titre qu'un faux avis (art. L111-7-2 du code de la consommation). Rejetez ce
+> qui est illisible, injurieux ou hors sujet — pas ce qui est négatif.
+
+---
+
+## Âge et consentement parental
+
+Deux règles distinctes, toutes deux implémentées :
+
+| Situation | Règle | Où |
+|---|---|---|
+| Moins de 15 ans | accord du représentant légal requis pour le traitement des données (art. 45, loi Informatique et Libertés) | modale de déclaration d'âge, au lancement de la première simulation |
+| Tout mineur | ne peut pas souscrire seul un abonnement payant (art. 1145 s. du code civil) | case de confirmation dans la modale d'offre, plus un rappel si l'utilisateur s'est déclaré mineur |
+
+On demande une **tranche d'âge**, jamais une date de naissance : c'est le
+minimum nécessaire pour appliquer la règle (minimisation RGPD). La tranche est
+stockée dans `profils.tranche_age`.
+
+**Ce qui reste à faire** : sous 15 ans, l'adresse du responsable légal est
+collectée mais aucun message ne lui est encore envoyé. Le consentement est donc
+déclaratif, pas vérifié. Branchez un envoi d'e-mail avec lien de confirmation
+(Resend, Postmark, Supabase Edge Function) pour fermer complètement ce point.
+
+---
+
+## Coût par simulation
+
+Chaque simulation vaut **deux appels** au modèle : génération des questions,
+puis correction. Chaque appel journalise une ligne `[cout]` avec le détail des
+jetons et une estimation en dollars :
+
+```json
+{"route":"questions","modele":"claude-opus-5","jetons_entree":13842,
+ "jetons_sortie":870,"dollars":0.09096,"cumul_appels":2,"cumul_dollars":0.1861}
+```
+
+Ordres de grandeur, sur la base d'une simulation de cinq questions avec un CV
+et une offre d'emploi (~23 000 jetons d'entrée, ~2 900 de sortie au total) :
+
+| Modèle | Coût par simulation | Simulations couvertes par un abonnement à 9,99 € |
+|---|---|---|
+| `claude-opus-5` (défaut) | ~0,19 $ soit ~0,17 € | ~57 |
+| `claude-sonnet-5` | ~0,08 $ soit ~0,07 € | ~144 |
+
+Un abonné qui enchaîne plus d'une cinquantaine de simulations par mois coûte
+donc plus qu'il ne rapporte sur Opus. Trois leviers, dans l'ordre :
+`MODELE_IA=claude-sonnet-5`, une limite d'usage « équitable » dans les CGV, ou
+un prix plus élevé. Mesurez sur vos vrais documents avant de trancher : les
+chiffres ci-dessus dépendent directement de la longueur des CV déposés.
+
+---
+
 ## Compatibilité navigateurs
 
 | Fonction | Chrome / Edge | Safari | Firefox |
@@ -229,6 +333,17 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 - **Coût maîtrisé** : `effort: 'low'` pour la génération des questions,
   `'medium'` pour la correction ; sortie contrainte par schéma JSON.
 
+### Traité depuis
+
+- **Modération des avis** : console `/moderation.html` + route protégée.
+- **Consentement parental** : déclaration d'âge et clause dans les CGV
+  (l'envoi du message au responsable légal reste à brancher — voir plus haut).
+- **Coût mesuré** : chaque appel journalise ses jetons et son coût estimé.
+- **Référencement et partage** : Open Graph, carte Twitter, JSON-LD,
+  `robots.txt`, `sitemap.xml`, image de partage.
+- **Suite de tests** : 34 tests, dont un qui aurait évité que la politique de
+  sécurité casse l'import de documents.
+
 ### À votre charge
 
 1. **Mentions légales.** Renseignez le bloc `window.PREPORAL_ENV` dans
@@ -239,19 +354,18 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    manquante. Le médiateur de la consommation est obligatoire dès la première
    vente à un consommateur. **Faites relire par un juriste** : les textes
    fournis sont un modèle, pas un conseil juridique.
-2. **Consentement parental sous 15 ans.** La clause figure dans les CGV et la
-   politique de confidentialité, mais aucun recueil effectif n'est implémenté.
-   Si vous visez réellement les collégiens, c'est le chantier suivant.
-3. **Modération des avis.** Les avis arrivent avec `publie = false`. Il n'y a
-   pas encore d'interface d'administration : passez-les à `true` depuis
-   Supabase après vérification.
-4. **Coût par simulation.** Chaque simulation = 2 appels au modèle. Mesurez le
-   coût réel sur `claude-opus-5` avant d'arrêter le prix ; `MODELE_IA=claude-sonnet-5`
-   divise la facture par ~2,5 si la qualité de correction reste suffisante pour
-   votre usage. À 9,99 €, un abonné qui enchaîne les simulations doit rester
-   rentable.
-5. **Quota anonyme contournable.** Voir l'encadré de la section paywall :
-   `EXIGER_CONNEXION=true` est le seul réglage réellement étanche.
+2. **Domaine.** Remplacez `https://preporal.fr` dans `index.html` (canonique
+   et balises de partage), `robots.txt` et `sitemap.xml`.
+3. **Vérification du consentement parental.** L'adresse du responsable légal
+   est collectée sous 15 ans, mais aucun message ne lui est envoyé : le
+   consentement reste déclaratif.
+4. **Quota anonyme contournable.** L'empreinte IP + navigateur relève le seuil
+   sans l'étanchéifier (un VPN suffit). `EXIGER_CONNEXION=true` rend le blocage
+   réel, au prix d'un compte obligatoire dès la première simulation.
+5. **Prix.** Voir « Coût par simulation » : à 9,99 € sur `claude-opus-5`, un
+   abonné devient déficitaire au-delà d'une cinquantaine de simulations par
+   mois. Décidez entre un modèle moins cher, une limite d'usage équitable
+   inscrite aux CGV, ou un tarif plus élevé.
 6. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
    `usages_anonymes` inactives depuis plus de 6 mois (minimisation RGPD) ;
    la requête est en commentaire dans `supabase/schema.sql`.

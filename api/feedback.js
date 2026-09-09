@@ -116,7 +116,8 @@ Corrige cette prestation.`;
       systeme,
       messages: [{ role: 'user', content: message }],
       maxTokens: 2600,
-      effort: 'medium',   // la correction demande du jugement, pas la génération de questions
+      effort: 'medium',        // la correction demande du jugement, pas la génération de questions
+      etiquette: 'feedback',
       schema
     });
 

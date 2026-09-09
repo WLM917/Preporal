@@ -91,6 +91,7 @@ Produis les ${n} questions.`;
       messages: [{ role: 'user', content: message }],
       maxTokens: 1400,
       effort: 'low',
+      etiquette: 'questions',
       schema
     });
 
