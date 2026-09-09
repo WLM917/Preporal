@@ -5,6 +5,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { appelerModele, extraireJSON, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
+import { verifierQuota, consommerQuota, refuserQuota } from './_lib/quota.js';
 
 const CONSIGNES = {
   entretien: "Tu es un recruteur expérimenté qui fait passer un entretien d'embauche ou de stage en France.",
@@ -24,9 +25,15 @@ const TONS = {
 
 export default async function handler(req, res) {
   if (!verifierMethode(req, res)) return;
-  if (!limiter(req, res, { max: 20 })) return;
+  if (!await limiter(req, res, { max: 20, prefixe: 'questions' })) return;
 
   try {
+    /* Le quota se décide ici, pas dans le navigateur : sans ce contrôle,
+       n'importe qui peut appeler la route en boucle et faire tourner la
+       clé du modèle à nos frais. */
+    const verdict = await verifierQuota(req);
+    if (!verdict.autorise) return refuserQuota(res, verdict);
+
     const { typeId = 'entretien', sousChoix = '', champA = '', champB = '', nbQuestions = 5, niveau = 'standard' } = req.body || {};
     const n = Math.max(1, Math.min(10, Number(nbQuestions) || 5));
 
@@ -55,11 +62,36 @@ ${tronquer(champB, 6000) || '(vide)'}
 
 Produis les ${n} questions.`;
 
+    /* Le schéma garantit un JSON exploitable : sans lui, une réponse
+       mal formée renvoyait l'utilisateur en « mode démo » sans qu'il
+       comprenne pourquoi. */
+    const schema = {
+      type: 'object',
+      properties: {
+        questions: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              categorie: { type: 'string' },
+              texte: { type: 'string' }
+            },
+            required: ['categorie', 'texte'],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ['questions'],
+      additionalProperties: false
+    };
+
     const brut = await appelerModele({
       systeme,
       messages: [{ role: 'user', content: message }],
       maxTokens: 1400,
-      temperature: 0.8
+      effort: 'low',
+      schema
     });
 
     const data = extraireJSON(brut);
@@ -70,8 +102,14 @@ Produis les ${n} questions.`;
 
     if (!questions.length) throw new ErreurIA('Aucune question exploitable.');
 
+    // Décompté seulement maintenant : une panne ne coûte rien au candidat.
+    await consommerQuota(verdict);
+
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ questions });
+    return res.status(200).json({
+      questions,
+      quota: { premium: verdict.premium, restant: verdict.premium ? null : Math.max(0, verdict.restant - 1) }
+    });
   } catch (e) {
     console.error('api/questions', e);
     return res.status(e.code || 500).json({ erreur: e.message || 'Erreur serveur.' });

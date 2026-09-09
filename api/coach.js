@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { appelerModele, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
+import { verifierQuota, refuserQuota } from './_lib/quota.js';
 
 const SYSTEME = `Tu es le coach d'oral de PrepOral. Tu accompagnes des élèves, des étudiants et des candidats francophones qui préparent un entretien, un Grand Oral, un oral de brevet, un concours, un pitch ou une certification de langue.
 
@@ -19,9 +20,13 @@ Ta manière de travailler :
 
 export default async function handler(req, res) {
   if (!verifierMethode(req, res)) return;
-  if (!limiter(req, res, { max: 40 })) return;
+  if (!await limiter(req, res, { max: 40, prefixe: 'coach' })) return;
 
   try {
+    // Le coach consomme lui aussi des appels au modèle : même porte d'entrée.
+    const verdict = await verifierQuota(req);
+    if (!verdict.autorise && verdict.code === 'connexion') return refuserQuota(res, verdict);
+
     const { messages = [] } = req.body || {};
     if (!Array.isArray(messages) || !messages.length) throw new ErreurIA('Message manquant.', 400);
 
@@ -41,7 +46,7 @@ export default async function handler(req, res) {
       systeme: SYSTEME,
       messages: propres,
       maxTokens: 700,
-      temperature: 0.7
+      effort: 'low'
     });
 
     res.setHeader('Cache-Control', 'no-store');

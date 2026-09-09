@@ -1,46 +1,85 @@
 /*
-  api/_lib/ia.js - appel au modèle, côté serveur uniquement.
+  api/_lib/ia.js — appel au modèle, côté serveur uniquement.
   La clé API ne quitte jamais le serveur.
 */
 
-const URL_API = 'https://api.anthropic.com/v1/messages';
-const MODELE = process.env.MODELE_IA || 'claude-3-5-sonnet-20240620';
+import Anthropic from '@anthropic-ai/sdk';
+
+/* claude-opus-5 par défaut. Surchargez MODELE_IA pour arbitrer le coût :
+   claude-sonnet-5 coûte environ 2,5 fois moins cher en entrée comme en
+   sortie, pour un travail de correction qui reste bon. Mesurez avant de
+   trancher — voir la section « Coût par simulation » du README. */
+const MODELE = process.env.MODELE_IA || 'claude-opus-5';
 
 export class ErreurIA extends Error {
   constructor(message, code = 502) { super(message); this.code = code; }
 }
 
-/**
- * @param {object} o
- * @param {string} o.systeme       consigne système
- * @param {Array}  o.messages      [{role:'user'|'assistant', content:string}]
- * @param {number} o.maxTokens
- * @returns {Promise<string>} texte concaténé de la réponse
- */
-export async function appelerModele({ systeme, messages, maxTokens = 1600, temperature = 0.7 }) {
+let client = null;
+function clientIA() {
+  if (client) return client;
   const cle = process.env.ANTHROPIC_API_KEY;
   if (!cle) throw new ErreurIA("Clé ANTHROPIC_API_KEY absente côté serveur.", 500);
-
-  const reponse = await fetch(URL_API, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': cle,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({ model: MODELE, max_tokens: maxTokens, temperature, system: systeme, messages })
-  });
-
-  if (!reponse.ok) {
-    const detail = await reponse.text().catch(() => '');
-    throw new ErreurIA(`Modèle indisponible (${reponse.status}). ${detail.slice(0, 200)}`, 502);
-  }
-
-  const data = await reponse.json();
-  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  // Le SDK réessaie tout seul les 429 et les 5xx.
+  client = new Anthropic({ apiKey: cle, maxRetries: 3, timeout: 120_000 });
+  return client;
 }
 
-/** Extrait un objet JSON même si le modèle l'a entouré de texte ou de balises. */
+/**
+ * Appelle le modèle et renvoie le texte concaténé.
+ *
+ * @param {object}  o
+ * @param {string}  o.systeme    consigne système
+ * @param {Array}   o.messages   [{ role:'user'|'assistant', content:string }]
+ * @param {number}  o.maxTokens
+ * @param {'low'|'medium'|'high'} [o.effort]  profondeur de réflexion et dépense
+ * @param {object}  [o.schema]   schéma JSON attendu — garantit une sortie valide
+ * @returns {Promise<string>}
+ */
+export async function appelerModele({ systeme, messages, maxTokens = 1600, effort = 'low', schema = null }) {
+  const outputConfig = { effort };
+  if (schema) outputConfig.format = { type: 'json_schema', schema };
+
+  try {
+    /* Pas de `temperature` : les modèles actuels la refusent (erreur 400).
+       La variabilité se règle par la consigne et par `effort`. */
+    const reponse = await clientIA().messages.create({
+      model: MODELE,
+      max_tokens: maxTokens,
+      system: systeme,
+      messages,
+      output_config: outputConfig
+    });
+
+    // Un refus renvoie un HTTP 200 : il faut le tester avant de lire le contenu.
+    if (reponse.stop_reason === 'refusal') {
+      throw new ErreurIA("Le modèle a décliné cette demande. Reformulez votre document.", 422);
+    }
+
+    return (reponse.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n')
+      .trim();
+
+  } catch (e) {
+    if (e instanceof ErreurIA) throw e;
+    if (e instanceof Anthropic.RateLimitError) {
+      throw new ErreurIA('Service momentanément saturé, réessayez dans un instant.', 429);
+    }
+    if (e instanceof Anthropic.AuthenticationError) {
+      throw new ErreurIA('Configuration du modèle invalide côté serveur.', 500);
+    }
+    if (e instanceof Anthropic.APIError) {
+      throw new ErreurIA(`Modèle indisponible (${e.status}).`, 502);
+    }
+    throw new ErreurIA('Modèle injoignable.', 502);
+  }
+}
+
+/** Extrait un objet JSON même si le modèle l'a entouré de texte ou de balises.
+    Avec `schema`, la sortie est déjà du JSON valide ; ce filet reste utile
+    pour les appels qui n'imposent pas de schéma. */
 export function extraireJSON(texte) {
   if (!texte) throw new ErreurIA('Réponse vide du modèle.');
   const nettoye = texte.replace(/^```(?:json)?/gm, '').replace(/```$/gm, '').trim();
@@ -65,13 +104,48 @@ export function verifierMethode(req, res, methode = 'POST') {
   return true;
 }
 
-/* — Limitation de débit très simple (mémoire de l'instance) —
-   Pour une vraie protection multi-instances, branchez Upstash
-   Redis ou le rate limiting de Vercel.
-*/
+/* ── Limitation de débit ───────────────────────────────────────
+   Avec UPSTASH_REDIS_REST_URL et UPSTASH_REDIS_REST_TOKEN, le
+   compteur est partagé entre toutes les instances. Sans ces clés,
+   on retombe sur un compteur en mémoire : utile en local, mais il
+   se remet à zéro à chaque démarrage à froid et ne protège pas
+   réellement en production.
+   ──────────────────────────────────────────────────────────── */
 const compteurs = new Map();
-export function limiter(req, res, { max = 30, fenetreMs = 60_000 } = {}) {
-  const ip = (req.headers['x-forwarded-for'] || 'inconnu').split(',')[0].trim();
+
+export const ipDe = req =>
+  (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'inconnu').split(',')[0].trim();
+
+async function limiterRedis(cle, max, fenetreSecondes) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const jeton = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !jeton) return null;
+
+  try {
+    // INCR puis EXPIRE au premier passage : fenêtre glissante par tranche.
+    const r = await fetch(`${url}/pipeline`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json' },
+      body: JSON.stringify([['INCR', cle], ['EXPIRE', cle, fenetreSecondes, 'NX']])
+    });
+    if (!r.ok) return null;
+    const [incr] = await r.json();
+    return Number(incr?.result) <= max;
+  } catch {
+    return null;   // Redis injoignable : on ne bloque pas le service
+  }
+}
+
+export async function limiter(req, res, { max = 30, fenetreMs = 60_000, prefixe = 'ia' } = {}) {
+  const ip = ipDe(req);
+  const cle = `debit:${prefixe}:${ip}`;
+
+  const viaRedis = await limiterRedis(cle, max, Math.ceil(fenetreMs / 1000));
+  if (viaRedis !== null) {
+    if (!viaRedis) { res.status(429).json({ erreur: 'Trop de requêtes, réessayez dans une minute.' }); return false; }
+    return true;
+  }
+
   const maintenant = Date.now();
   const entree = compteurs.get(ip) || { debut: maintenant, n: 0 };
   if (maintenant - entree.debut > fenetreMs) { entree.debut = maintenant; entree.n = 0; }

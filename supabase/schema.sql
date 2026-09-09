@@ -116,3 +116,34 @@ alter table public.usages enable row level security;
 drop policy if exists "usage visible par son proprietaire" on public.usages;
 create policy "usage visible par son proprietaire"
   on public.usages for select using (auth.uid() = utilisateur_id);
+
+-- ── Quota des visiteurs anonymes ───────────────────────────
+-- Les deux simulations offertes sont accordées avant toute
+-- création de compte : il faut donc pouvoir les compter sans
+-- utilisateur. L'empreinte est un condensé (IP + navigateur +
+-- langue + sel serveur) : elle n'est pas réversible et ne
+-- constitue pas une donnée directement identifiante.
+--
+-- Cette table n'est jamais lue depuis le navigateur : seule la
+-- clé service_role y accède. Aucune politique RLS n'est donc
+-- ouverte, ce qui la rend inaccessible via la clé « anon ».
+create table if not exists public.usages_anonymes (
+  empreinte    text primary key,
+  simulations  int not null default 0,
+  maj_le       timestamptz not null default now()
+);
+
+alter table public.usages_anonymes enable row level security;
+-- Aucune policy : personne n'y accède avec la clé anon.
+
+create index if not exists usages_anonymes_maj
+  on public.usages_anonymes (maj_le);
+
+-- Purge conseillée : supprimez les empreintes inactives depuis
+-- plus de 6 mois (minimisation RGPD). À planifier via pg_cron.
+--   delete from public.usages_anonymes where maj_le < now() - interval '6 months';
+
+-- La table « usages » doit accepter l'écriture par la clé
+-- service_role via upsert : on garantit la colonne maj_le.
+alter table public.usages
+  add column if not exists maj_le timestamptz not null default now();

@@ -27,13 +27,16 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 
 ```
 prepOral/
-├── index.html                     interface complète (Tailwind CDN)
+├── index.html                     interface complète
 ├── package.json
-├── vercel.json                    runtime, cache, en-têtes de sécurité
+├── vercel.json                    runtime, cache, en-têtes de sécurité (CSP)
+├── tailwind.config.cjs            configuration des styles
+├── styles/entree.css              source Tailwind
 ├── .env.example                   modèle de variables d'environnement
 ├── .gitignore
 ├── assets/
-│   └── logo.svg                   logo de marque (bulle + onde sonore)
+│   ├── logo.svg                   logo de marque (bulle + onde sonore)
+│   └── tailwind.css               feuille générée (npm run styles)
 ├── js/
 │   ├── app.js                     orchestrateur : vues, écrans, déroulé
 │   ├── config.js                  catalogue des 7 épreuves, tarifs, quotas
@@ -48,10 +51,13 @@ prepOral/
 │   ├── history.js                 « Mes simulations » + courbe de progression
 │   ├── reviews.js                 témoignages et dépôt d'avis
 │   ├── coach.js                   onglet Coach IA (chat écrit et vocal)
+│   ├── theme.js                   bascule clair / sombre, bandeau cookies
 │   └── legal.js                   mentions légales, CGV, RGPD, cookies
 ├── api/
 │   ├── _lib/ia.js                 appel au modèle + limitation de débit
+│   ├── _lib/quota.js              quota des simulations, côté serveur
 │   ├── _lib/supabaseAdmin.js      client service_role
+│   ├── verifier-session.js        POST — contrôle réel du paiement Stripe
 │   ├── questions.js               POST /api/questions
 │   ├── feedback.js                POST /api/feedback
 │   ├── coach.js                   POST /api/coach
@@ -59,10 +65,18 @@ prepOral/
 │   ├── create-portal-session.js   POST — portail d'abonnement Stripe
 │   └── webhook.js                 POST — évènements Stripe (source de vérité)
 └── supabase/
-    └── schema.sql                 tables profils / simulations / avis + RLS
+    └── schema.sql                 tables profils / simulations / avis /
+                                   usages / usages_anonymes + RLS
 ```
 
-Aucune étape de build : le front est du HTML et des modules ES natifs.
+Le front reste du HTML et des modules ES natifs. Seule la feuille de styles
+est générée : `npm run styles` après avoir ajouté ou modifié des classes
+Tailwind (`npm run styles:watch` pendant le développement).
+
+> Le CDN « play » de Tailwind a été retiré : il est réservé au développement,
+> pèse plusieurs centaines de kilo-octets, recompile le CSS à chaque
+> chargement de page et impose `'unsafe-eval'` dans la politique de sécurité.
+> `assets/tailwind.css` fait 21 ko et est servi en statique.
 
 ---
 
@@ -141,18 +155,37 @@ Puis, dans Vercel → Settings → Environment Variables, ajoutez toutes les cl�
 | Simulations 1 et 2 | gratuites, sans compte ni carte |
 | Fin de la 1re simulation | modale d'offre, fermable (« Plus tard ») |
 | Lancement de la 3e | modale bloquante : Premium 9,99 €/mois ou Pass 48 h 4,99 € |
-| Après paiement | retour sur `/?paiement=ok` → accès débloqué immédiatement |
+| Après paiement | retour sur `/?paiement=ok&session_id=…`, **vérifié auprès de Stripe** |
 | Résiliation | bouton « Gérer mon abonnement » → portail client Stripe |
 
-Le compteur local (`localStorage`) est un **confort d'affichage**, pas une
-sécurité : il suffit de vider le navigateur pour le remettre à zéro. La vérité est
-le champ `premium` de la table `profils`, écrit par `api/webhook.js`.
+Le quota est désormais **appliqué côté serveur** (`api/_lib/quota.js`), et non
+plus seulement affiché dans le navigateur :
 
-**Pour un blocage réel**, exigez la connexion avant la première simulation et
-vérifiez le quota côté serveur dans `api/questions.js` (table `usages`, déjà
-présente dans le schéma). C'est le principal chantier restant côté sécurité.
+- **Premium** (abonnement actif ou pass 48 h valide) → illimité ;
+- **connecté sans premium** → compteur dans la table `usages` ;
+- **anonyme** → compteur dans `usages_anonymes`, indexé par une empreinte
+  non réversible (IP + navigateur + langue + sel serveur).
 
----
+Le compteur `localStorage` ne sert plus qu'à l'affichage. `/api/questions`,
+`/api/feedback` et `/api/coach` refusent la requête avec un **402** quand le
+quota est épuisé ; le front ouvre alors la modale d'offre.
+
+> **Point d'attention.** L'empreinte anonyme se contourne avec un VPN, une
+> navigation privée ou un autre appareil. Elle relève le seuil, elle ne
+> l'étanchéifie pas. Pour un blocage strict, passez `EXIGER_CONNEXION=true` :
+> un compte gratuit devient obligatoire dès la première simulation, et le
+> quota est alors rattaché à un identifiant stable. C'est un arbitrage
+> commercial (friction à l'entrée) autant que technique.
+
+Le quota n'est décompté **qu'après une génération réussie** : une panne du
+modèle ne coûte plus une simulation au candidat.
+
+### Vérification du paiement
+
+`traiterRetourPaiement()` n'accorde plus rien sur la foi de `?paiement=ok`.
+Le front envoie le `session_id` à `/api/verifier-session`, qui interroge
+Stripe et ne confirme que si la session est réellement payée. Le webhook
+(`api/webhook.js`) reste la source de vérité durable en base.
 
 ## Compatibilité navigateurs
 
@@ -172,33 +205,56 @@ Le micro exige **HTTPS** (ou `localhost`).
 
 ## À faire avant de vendre
 
-Points de conformité et de sécurité à traiter — ils ne sont pas optionnels.
+Ce qui a été traité, et ce qui reste **à votre charge**.
 
-1. **Témoignages et note moyenne.** Les six avis de `js/reviews.js` et la mention
-   « 4,9/5 sur +1 200 oraux » d'`index.html` sont des **exemples de mise en page**.
-   Publier de faux avis ou une note inventée constitue une pratique commerciale
-   trompeuse (art. L121-2 et suivants du code de la consommation, jusqu'à 2 ans
-   d'emprisonnement et 300 000 € d'amende, portés à 10 % du chiffre d'affaires).
-   Remplacez-les par de vrais retours, ou retirez le bandeau tant que vous n'en
-   avez pas. Affichez ensuite la note réellement calculée et la date de collecte.
-2. **Mentions légales et CGV.** `js/legal.js` est un modèle : toutes les mentions
-   `[À COMPLÉTER]` (identité, SIRET, TVA, adresse, médiateur de la consommation)
-   sont obligatoires. Le médiateur est requis dès la première vente à un
-   consommateur. Faites relire par un juriste.
-3. **Mineurs.** Le produit vise notamment des collégiens et lycéens : prévoyez le
-   recueil du consentement parental sous 15 ans, et sachez qu'un mineur ne peut
-   pas souscrire seul un abonnement payant.
-4. **Quota côté serveur** (voir plus haut) et limitation de débit partagée
-   (Upstash Redis plutôt que le compteur en mémoire d'`api/_lib/ia.js`, qui se
-   remet à zéro à chaque instance froide).
-5. **Coût par simulation.** Chaque simulation = 2 appels au modèle. Mesurez le
-   coût réel avant d'arrêter le prix : à 9,99 €, un abonné qui enchaîne les
-   simulations doit rester rentable. Le champ `tronquer()` d'`api/_lib/ia.js`
-   plafonne déjà la taille des documents envoyés.
-6. **Vérification du paiement au retour.** `traiterRetourPaiement()` débloque
-   l'accès dès `?paiement=ok`, ce qui est falsifiable à la main. Pour un contrôle
-   strict, interrogez `session_id` via une route `/api/verifier-session` avant de
-   marquer l'accès comme actif.
+### Traité
+
+- **Faux avis retirés.** Les six témoignages d'exemple et la note « 4,9/5 sur
+  +1 200 oraux » ont été supprimés. `js/reviews.js` n'affiche que des avis
+  réellement déposés et publiés (`avis.publie = true`), et la note moyenne est
+  calculée à partir de ces avis seulement — avec la date de collecte, comme
+  l'exige l'art. L111-7-2. Sans avis publié, le bloc affiche un état vide
+  honnête plutôt qu'une note inventée. **Ne réintroduisez pas d'avis
+  d'exemple** : c'est une pratique commerciale trompeuse (art. L121-2, jusqu'à
+  2 ans d'emprisonnement et 300 000 € d'amende, portés à 10 % du CA).
+- **Quota appliqué côté serveur** et vérification réelle du paiement Stripe
+  (voir « Fonctionnement du paywall »).
+- **Limitation de débit partagée** via Upstash Redis quand
+  `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN` sont renseignés ;
+  repli en mémoire sinon.
+- **Mineurs.** Clause dédiée dans les CGV (art. 1145 s. du code civil) et
+  confirmation d'âge obligatoire avant tout paiement.
+- **En-têtes de sécurité** : `vercel.json` pose CSP, HSTS, `X-Frame-Options`,
+  `Referrer-Policy` et `Permissions-Policy`.
+- **Coût maîtrisé** : `effort: 'low'` pour la génération des questions,
+  `'medium'` pour la correction ; sortie contrainte par schéma JSON.
+
+### À votre charge
+
+1. **Mentions légales.** Renseignez le bloc `window.PREPORAL_ENV` dans
+   `index.html` : `EDITEUR_NOM`, `EDITEUR_STATUT`, `EDITEUR_SIRET`,
+   `EDITEUR_TVA`, `EDITEUR_ADRESSE`, `EDITEUR_EMAIL`, `EDITEUR_DIRECTEUR`,
+   `EDITEUR_MEDIATEUR`. Tant que c'est incomplet, un bandeau d'avertissement
+   s'affiche en pied de page et les textes légaux signalent chaque mention
+   manquante. Le médiateur de la consommation est obligatoire dès la première
+   vente à un consommateur. **Faites relire par un juriste** : les textes
+   fournis sont un modèle, pas un conseil juridique.
+2. **Consentement parental sous 15 ans.** La clause figure dans les CGV et la
+   politique de confidentialité, mais aucun recueil effectif n'est implémenté.
+   Si vous visez réellement les collégiens, c'est le chantier suivant.
+3. **Modération des avis.** Les avis arrivent avec `publie = false`. Il n'y a
+   pas encore d'interface d'administration : passez-les à `true` depuis
+   Supabase après vérification.
+4. **Coût par simulation.** Chaque simulation = 2 appels au modèle. Mesurez le
+   coût réel sur `claude-opus-5` avant d'arrêter le prix ; `MODELE_IA=claude-sonnet-5`
+   divise la facture par ~2,5 si la qualité de correction reste suffisante pour
+   votre usage. À 9,99 €, un abonné qui enchaîne les simulations doit rester
+   rentable.
+5. **Quota anonyme contournable.** Voir l'encadré de la section paywall :
+   `EXIGER_CONNEXION=true` est le seul réglage réellement étanche.
+6. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
+   `usages_anonymes` inactives depuis plus de 6 mois (minimisation RGPD) ;
+   la requête est en commentaire dans `supabase/schema.sql`.
 
 ---
 

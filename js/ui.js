@@ -17,7 +17,17 @@ export function formaterTemps(s) {
 
 export const compterMots = txt => (txt || '').trim() ? txt.trim().split(/\s+/).length : 0;
 
-export const couleurNote = n => (n >= 70 ? '#3DDC97' : n >= 45 ? '#F5A524' : '#FF5D6C');
+/* Les teintes de note suivent le thème : on lit les variables CSS
+   plutôt que de figer des hexadécimaux (voir index.html). */
+export const jeton = (nom, repli) => {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(nom).trim();
+  return v ? `rgb(${v})` : repli;   // les variables stockent des canaux RVB
+};
+
+export const couleurNote = n =>
+  n >= 70 ? jeton('--mint', 'rgb(61 220 151)')
+  : n >= 45 ? jeton('--amber', 'rgb(245 165 36)')
+  : jeton('--coral', 'rgb(255 93 108)');
 
 /* ── Modales ───────────────────────────────────────────────── */
 let derniereFocus = null;

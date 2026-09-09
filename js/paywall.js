@@ -60,6 +60,14 @@ export function ouvrirPaywall(raison = 'quota') {
 export async function lancerCheckout(planId) {
   const offre = OFFRES[planId];
   if (!offre) return;
+
+  // Un mineur non émancipé ne peut pas souscrire seul (art. 1145 s. du code civil).
+  if (!$('#confirmation-age')?.checked) {
+    toast(`Confirmez d'abord avoir ${CONFIG.ageMinimumAchat} ans ou l'accord de votre représentant légal.`, 'erreur');
+    $('#confirmation-age')?.focus();
+    return;
+  }
+
   const bouton = $(`[data-plan="${planId}"]`);
   const texteInitial = bouton?.innerHTML;
   if (bouton) { bouton.disabled = true; bouton.style.opacity = '.6'; }
@@ -106,30 +114,75 @@ export async function ouvrirPortail() {
   }
 }
 
-/* ── Retour de paiement (?paiement=ok) ─────────────────────── */
-export function traiterRetourPaiement() {
+/* ── Retour de paiement (?paiement=ok) ───────────────────────
+   Le paramètre d'URL ne prouve rien : n'importe qui peut taper
+   /?paiement=ok. On demande donc à Stripe, via /api/verifier-session,
+   si la session a réellement été payée avant de débloquer quoi que
+   ce soit. Le webhook reste la source de vérité durable.
+   ─────────────────────────────────────────────────────────── */
+export async function traiterRetourPaiement() {
   const params = new URLSearchParams(window.location.search);
   const etat = params.get('paiement');
   if (!etat) return;
 
-  if (etat === 'ok') {
-    const plan = params.get('plan');
-    // Confort hors ligne : on débloque tout de suite côté navigateur.
-    const jusquA = plan === 'pass48' ? Date.now() + 48 * 3600 * 1000 : Date.now() + 31 * 24 * 3600 * 1000;
-    stock.ecrire(CONFIG.cles.premiumLocal, { plan, jusquA });
-    toast('Paiement confirmé. Votre accès Premium est actif, bon entraînement.', 'succes');
-  } else if (etat === 'annule') {
+  const sessionId = params.get('session_id');
+
+  // On nettoie l'URL tout de suite, en préservant les autres paramètres.
+  params.delete('paiement'); params.delete('plan'); params.delete('session_id');
+  const reste = params.toString();
+  history.replaceState({}, '', window.location.pathname + (reste ? '?' + reste : ''));
+
+  if (etat === 'annule') {
     toast('Paiement annulé. Vos simulations gratuites restent disponibles.');
+    majJauge();
+    return;
   }
-  history.replaceState({}, '', window.location.pathname);
+  if (etat !== 'ok') return;
+
+  if (!sessionId) {
+    toast("Paiement reçu. Votre accès s'activera d'ici quelques secondes.");
+    majJauge();
+    return;
+  }
+
+  try {
+    const r = await fetch(`${CONFIG.api}/verifier-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session.jeton ? { Authorization: 'Bearer ' + session.jeton } : {})
+      },
+      body: JSON.stringify({ sessionId })
+    });
+    const data = await r.json().catch(() => ({}));
+
+    if (data.paye) {
+      // Confort d'affichage uniquement : la vérité reste le champ premium en base.
+      stock.ecrire(CONFIG.cles.premiumLocal, {
+        plan: data.plan,
+        jusquA: data.jusquA || Date.now() + 31 * 24 * 3600 * 1000
+      });
+      toast('Paiement confirmé. Votre accès Premium est actif, bon entraînement.', 'succes');
+    } else {
+      toast("Nous n'avons pas pu confirmer ce paiement. Si vous avez été débité, contactez-nous.", 'erreur');
+    }
+  } catch {
+    toast("Vérification du paiement impossible pour l'instant. Rechargez la page dans un instant.");
+  }
+
   majJauge();
 }
 
 export function brancherPaywall() {
   $$('[data-plan]').forEach(b => b.addEventListener('click', () => lancerCheckout(b.dataset.plan)));
+
+  const confirmation = $('#confirmation-age');
+  const majOffres = () => $$('[data-plan]').forEach(b => { b.disabled = !confirmation?.checked; });
+  confirmation?.addEventListener('change', majOffres);
+  majOffres();
   $('#btn-premium')?.addEventListener('click', () => ouvrirPaywall('fin'));
   $('#btn-portail')?.addEventListener('click', ouvrirPortail);
-  traiterRetourPaiement();
+  traiterRetourPaiement();   // asynchrone : n'immobilise pas le démarrage
   majJauge();
 }
 
