@@ -6,6 +6,13 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
+  "offre.essai": "{n} days free",
+  "coach.repli": "The coach cannot be reached right now (the API is not configured, or the network dropped). Meanwhile, a method that almost always works: an opening line, three ideas announced, one dated and quantified example per idea, then a conclusion that answers the question asked.",
+  "coach.limite_atteinte": "You have used today's exchanges with the coach.",
+  "coach.raison_compte": "Create your free account to talk to the coach: a few exchanges a day are on the house.",
+  "coach.echanges_restants": "{n} free exchanges left today",
+  "coach.echange_restant": "{n} free exchange left today",
+  "coach.dernier_echange": "Last free exchange of the day.",
   "compte.titre_anonyme": "Sign in to manage your account",
   "compte.intro_anonyme": "Your details, your subscription and your free sessions are waiting behind your account.",
   "compte.intro": "Your identity, your subscription and your payment methods. None of it is visible to other candidates.",
@@ -134,9 +141,9 @@ export default {
   "offre.pass48.accroche": "The night before",
   "offre.pass48.detail": "Full access for 48 hours. One-off payment, no renewal.",
   "offre.mensuel.accroche": "Most flexible",
-  "offre.mensuel.detail": "Unlimited sessions, full reports, AI coach. No commitment, cancel in one click.",
+  "offre.mensuel.detail": "Unlimited sessions, full reports, unlimited AI coach. No commitment, cancel in one click.",
   "offre.extra.accroche": "A whole school year",
-  "offre.extra.detail": "Six months of full access, paid once. Made for several deadlines in a row.",
+  "offre.extra.detail": "Six months of full access and unlimited AI coach. One week free, then renews every six months, cancel any time.",
   "offre.periode.une_fois": "one-off",
   "offre.periode.par_mois": "per month",
   "offre.periode.pour_6_mois": "for 6 months",

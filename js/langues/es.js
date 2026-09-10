@@ -6,6 +6,13 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
+  "offre.essai": "{n} días gratis",
+  "coach.repli": "No se puede contactar con el coach ahora mismo (la API no está configurada o se ha cortado la red). Mientras tanto, un método que casi siempre funciona: una frase de entrada, tres ideas anunciadas, un ejemplo fechado y con cifras por idea, y una conclusión que responda a la pregunta.",
+  "coach.limite_atteinte": "Has usado tus intercambios de hoy con el coach.",
+  "coach.raison_compte": "Crea tu cuenta gratuita para hablar con el coach: unos cuantos intercambios al día van de regalo.",
+  "coach.echanges_restants": "{n} intercambios gratuitos hoy",
+  "coach.echange_restant": "{n} intercambio gratuito hoy",
+  "coach.dernier_echange": "Último intercambio gratuito del día.",
   "compte.titre_anonyme": "Inicia sesión para gestionar tu cuenta",
   "compte.intro_anonyme": "Tus datos, tu suscripción y tus simulaciones gratuitas te esperan detrás de tu cuenta.",
   "compte.intro": "Tu identidad, tu suscripción y tus métodos de pago. Nada de esto lo ven los demás candidatos.",
@@ -134,9 +141,9 @@ export default {
   "offre.pass48.accroche": "La víspera de un oral",
   "offre.pass48.detail": "Acceso completo durante 48 horas. Pago único, sin renovación.",
   "offre.mensuel.accroche": "El más flexible",
-  "offre.mensuel.detail": "Simulaciones ilimitadas, informes completos, coach IA. Sin compromiso, cancelable en un clic.",
+  "offre.mensuel.detail": "Simulaciones ilimitadas, informes completos, coach de IA sin límite. Sin compromiso, cancelable con un clic.",
   "offre.extra.accroche": "Todo un curso escolar",
-  "offre.extra.detail": "Seis meses de acceso completo, pagados una sola vez. Pensado para varias convocatorias.",
+  "offre.extra.detail": "Seis meses de acceso completo y coach de IA sin límite. Una semana gratis y luego renovación cada seis meses, cancelable cuando quieras.",
   "offre.periode.une_fois": "pago único",
   "offre.periode.par_mois": "al mes",
   "offre.periode.pour_6_mois": "por 6 meses",

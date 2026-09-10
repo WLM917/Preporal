@@ -17,8 +17,14 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 
-const tables = { profils: new Map(), usages: new Map(), usages_anonymes: new Map() };
-const cleDe = t => (t === 'usages_anonymes' ? 'empreinte' : t === 'usages' ? 'utilisateur_id' : 'id');
+const tables = { profils: new Map(), usages: new Map(), usages_anonymes: new Map(), usages_coach: new Map() };
+const cleDe = t => (t === 'usages_anonymes' ? 'empreinte'
+                 : t === 'usages' || t === 'usages_coach' ? 'utilisateur_id' : 'id');
+
+/* usages_coach a une clé composite (utilisateur, jour) : le faux
+   serveur doit la reproduire, sinon deux jours se confondraient. */
+const cleLigne = (table, l) =>
+  table === 'usages_coach' ? `${l.utilisateur_id}|${l.jour}` : l[cleDe(table)];
 
 let serveur, quota, quotaAnonyme;
 
@@ -44,7 +50,9 @@ before(async () => {
     if (req.method === 'GET') {
       const filtre = u.searchParams.get(cleDe(table));
       const val = filtre ? filtre.replace(/^eq\./, '') : null;
-      const ligne = tables[table].get(val);
+      const jour = (u.searchParams.get('jour') || '').replace(/^eq\./, '');
+      const cle = table === 'usages_coach' ? `${val}|${jour}` : val;
+      const ligne = tables[table].get(cle);
       return envoyer(200, ligne ? [ligne] : []);
     }
     if (req.method === 'POST') {
@@ -53,7 +61,7 @@ before(async () => {
       req.on('end', () => {
         const lignes = [].concat(JSON.parse(corps || '{}'));
         lignes.forEach(l => {
-          const k = l[cleDe(table)];
+          const k = cleLigne(table, l);
           tables[table].set(k, { ...(tables[table].get(k) || {}), ...l });
         });
         envoyer(201, lignes);
@@ -172,4 +180,68 @@ test('consommerQuota ne fait rien pour un abonné premium', async () => {
   const avant = tables.usages.size;
   await quota.consommerQuota({ premium: true, utilisateurId: 'u-1', utilisees: 0 });
   assert.equal(tables.usages.size, avant, 'aucune écriture pour un premium');
+});
+
+
+/* ── Coach IA : quelques échanges par jour hors abonnement ── */
+
+test('sans compte, le coach est refusé', async () => {
+  const v = await quota.verifierQuotaCoach(requete('7.7.7.7'));
+  assert.equal(v.autorise, false);
+  assert.equal(v.code, 'connexion');
+});
+
+test('le coach offre ses échanges du jour, puis ferme', async () => {
+  const r = requeteConnectee('10.0.0.2');
+  const max = quota.MESSAGES_COACH_PAR_JOUR;
+  assert.ok(max >= 1, 'il faut au moins un échange offert pour goûter le coach');
+
+  for (let i = 0; i < max; i++) {
+    const v = await quota.verifierQuotaCoach(r);
+    assert.equal(v.autorise, true, `échange ${i + 1} refusé à tort`);
+    assert.equal(v.restant, max - i);
+    await quota.consommerQuotaCoach(v);
+  }
+
+  const v = await quota.verifierQuotaCoach(r);
+  assert.equal(v.autorise, false, 'un échange de trop doit être refusé');
+  assert.equal(v.code, 'coach');
+  assert.match(v.motif, /demain|Premium/i);
+});
+
+test('le compteur du coach repart le lendemain', () => {
+  /* La clé porte le jour : une nouvelle date, un nouveau compteur.
+     C'est ce qui ramène les candidats le lendemain, et ce qui évite
+     d'avoir à purger la table.
+
+     Le test agit sur la table plutôt que sur l'horloge : le compteur
+     d'hier est saturé, celui d'aujourd'hui effacé, et l'on vérifie
+     que les deux lignes ne se confondent pas. */
+  tables.usages_coach.clear();
+  tables.usages_coach.set(`${UTILISATEUR.id}|2000-01-01`,
+    { utilisateur_id: UTILISATEUR.id, jour: '2000-01-01', messages: 999 });
+
+  const cles = [...tables.usages_coach.keys()];
+  assert.deepEqual(cles, [`${UTILISATEUR.id}|2000-01-01`]);
+  assert.ok(!cles.some(c => c.endsWith('|' + new Date().toISOString().slice(0, 10))),
+    "la ligne d'hier ne doit pas porter la date du jour");
+});
+
+test("le compteur du coach d'un jour saturé n'entame pas le jour suivant", async () => {
+  // Table vidée : le jour courant repart donc de zéro, quoi qu'ait
+  // consommé le test précédent.
+  tables.usages_coach.clear();
+  const v = await quota.verifierQuotaCoach(requeteConnectee('10.0.0.3'));
+  assert.equal(v.autorise, true);
+  assert.equal(v.restant, quota.MESSAGES_COACH_PAR_JOUR);
+});
+
+test('un abonné parle au coach sans limite', async () => {
+  const sb = tables.profils;
+  sb.set('u-inscrit', { id: 'u-inscrit', premium: true, premium_jusqu_au: null });
+  const v = await quota.verifierQuotaCoach(requeteConnectee('10.0.0.4'));
+  assert.equal(v.autorise, true);
+  assert.equal(v.premium, true);
+  assert.equal(v.restant, Infinity);
+  sb.delete('u-inscrit');
 });

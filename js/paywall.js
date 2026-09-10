@@ -74,6 +74,10 @@ export function rendreOffres() {
         <span class="whitespace-nowrap font-display text-2xl font-extrabold">${echappe(o.prix)}</span>
         <span class="ml-1.5 whitespace-nowrap text-xs text-muted">${echappe(t('offre.periode.' + o.periode.replace(/[^a-z0-9]+/gi, '_'), o.periode))}</span>
       </span>
+      ${o.essaiJours
+        ? `<span class="mt-2 inline-flex rounded-full border border-mint/50 bg-mint/10 px-2 py-0.5 text-[11px] font-medium text-mint">${echappe(
+            t('offre.essai', '{n} jours offerts').replace('{n}', o.essaiJours))}</span>`
+        : ''}
       ${o.equivalentMensuel
         ? `<span class="mt-1 block text-xs text-mint">${echappe(
             t('offre.equivalent', '{m} par mois · soit {e} de moins que six mois au tarif mensuel')

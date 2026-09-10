@@ -221,6 +221,27 @@ comment on column public.avis.type_oral is
   'Identifiant d''épreuve (entretien, grand-oral, brevet, concours, pitch, matiere, langue)';
 
 
+-- ── Échanges avec le coach, par jour ───────────────────────
+-- Hors abonnement, le coach s'essaie : quelques échanges par
+-- jour, comptés ici. La clé porte le jour, le compteur repart
+-- donc seul le lendemain, sans tâche de nettoyage.
+create table if not exists public.usages_coach (
+  utilisateur_id  uuid not null references auth.users(id) on delete cascade,
+  jour            date not null,
+  messages        integer not null default 0,
+  maj_le          timestamptz not null default now(),
+  primary key (utilisateur_id, jour)
+);
+
+alter table public.usages_coach enable row level security;
+
+drop policy if exists "usage coach visible par son proprietaire" on public.usages_coach;
+create policy "usage coach visible par son proprietaire"
+  on public.usages_coach for select using (auth.uid() = utilisateur_id);
+
+-- L'écriture passe par la clé de service : le compteur ne doit pas
+-- être modifiable depuis le navigateur.
+
 -- ── Photos de profil ───────────────────────────────────────
 -- Un compartiment public en lecture (l'URL d'une photo n'a rien de
 -- secret), mais où chacun n'écrit que dans son propre dossier :

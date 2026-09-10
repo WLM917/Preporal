@@ -316,6 +316,49 @@ test('les deux champs de documents acceptent la dictée', () => {
   }
 });
 
+test('les CGV décrivent les offres réellement vendues', async () => {
+  /* Les tarifs et les conditions de reconduction étaient recopiés à la
+     main dans les CGV. L'offre six mois y est restée « paiement unique,
+     sans reconduction » alors qu'elle était devenue un abonnement —
+     c'est le genre d'écart qui relève de l'art. L121-2. */
+  const src = modules.find(m => m.nom === 'legal.js').source;
+
+  assert.match(src, /OFFRES/, 'les CGV doivent lire les offres, pas les recopier');
+  const tarif = /\b\d{1,3},\d{2}\s*€/g;
+  const enDur = [...src.matchAll(tarif)].map(m => m[0]);
+  assert.deepEqual(enDur, [], `tarifs recopiés dans les CGV : ${enDur.join(', ')}`);
+
+  // Toute offre reconduite doit l'annoncer, et rappeler l'art. L215-1.
+  globalThis.window = globalThis.window || { PREPORAL_ENV: {} };
+  const { OFFRES } = await import('../js/config.js');
+  const reconduits = Object.values(OFFRES).filter(o => o.mode === 'subscription');
+  assert.ok(reconduits.length, 'au moins une offre est un abonnement');
+  assert.match(src, /reconduit automatiquement/,
+    'une offre reconduite doit annoncer sa reconduction');
+  assert.match(src, /L215-1/,
+    "l'information avant reconduction est une obligation légale, elle doit figurer aux CGV");
+
+  // Une offre à essai doit dire ce qu'il advient pendant l'essai.
+  if (reconduits.some(o => o.essaiJours > 0)) {
+    assert.match(src, /essai/, "les CGV doivent décrire la période d'essai");
+  }
+});
+
+test("le plan d'un abonnement se lit sur son tarif", () => {
+  /* Écrit en dur, « mensuel » étiquetait tout abonné six mois comme
+     mensuel dès son premier changement de formule dans le portail. */
+  const webhook = readFileSync(join(RACINE, 'api', 'webhook.js'), 'utf8');
+
+  /* On vérifie l'appel, pas l'import : retirer l'appel en laissant
+     l'import laissait le test au vert — constaté en cassant le code. */
+  assert.match(webhook, /planDeLAbonnement\s*\(/,
+    'le plan doit être déduit du tarif souscrit, pas écrit en dur');
+  assert.ok(!/\bplan\s*[:=]\s*'mensuel'/.test(webhook),
+    'un plan « mensuel » écrit en dur étiquette mal tout abonné six mois');
+  assert.match(webhook, /customer\.subscription\.created/,
+    "l'abonnement ouvert en essai arrive par « created »");
+});
+
 test('aucune page ne promet des simulations « sans compte »', async () => {
   /* Un compte est exigé avant la première simulation (EXIGER_CONNEXION,
      exigerCompte()). Promettre le contraire sur la page de vente serait

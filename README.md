@@ -578,6 +578,55 @@ d'inscription si le refus porte le code `connexion`.
 Le quota n'est décompté **qu'après une génération réussie** : une panne du
 modèle ne coûte plus une simulation au candidat.
 
+### Le coach IA s'essaie avant de s'acheter
+
+`/api/coach` compte les échanges par jour et par compte
+(`MESSAGES_COACH_PAR_JOUR`, 5 par défaut), dans la table `usages_coach` dont la
+clé porte la date : le compteur repart seul le lendemain, sans tâche de purge.
+
+- **Abonné** → illimité.
+- **Connecté sans abonnement** → 5 échanges par jour, puis la modale d'offre.
+- **Sans compte** → refusé (`code: 'connexion'`), la modale d'inscription s'ouvre.
+
+Le front affichait jusqu'ici une réponse hors ligne pour *toute* réponse non-OK,
+402 compris : la limite qu'on venait de poser était donc contournée par le
+message d'erreur lui-même. Un 402 est désormais traité comme un refus, pas comme
+une panne.
+
+### L'offre six mois est devenue un abonnement
+
+Elle était un paiement unique. Deux exigences l'ont fait basculer :
+
+1. **La semaine d'essai.** `trial_period_days` n'existe chez Stripe que sur un
+   abonnement. Pendant l'essai, l'abonnement est en statut `trialing`, que le
+   webhook traite déjà comme actif : l'accès est complet, et Stripe ne débite
+   qu'à la fin.
+2. **Le changement de formule.** Le portail client sait échanger un abonnement
+   contre un autre ; il ne sait pas transformer un paiement unique en
+   abonnement. Passer de mensuel à six mois, ou l'inverse, exigeait donc deux
+   abonnements.
+
+> **Reconduction tacite : une obligation vous incombe.** Un abonnement
+> semestriel reconduit automatiquement relève de l'art. L215-1 du code de la
+> consommation : vous devez informer le client de sa faculté de ne pas
+> reconduire, **au plus tôt trois mois et au plus tard un mois** avant
+> l'échéance. À défaut, il peut résilier à tout moment et se faire rembourser
+> les sommes prélevées après l'échéance. Stripe ne le fait pas pour vous —
+> programmez cet envoi, ou renoncez à la reconduction. Les CGV annoncent la
+> reconduction ; c'est le rappel avant échéance qui reste à brancher.
+
+Deux corrections liées, trouvées en faisant ce changement :
+
+- `customer.subscription.updated` écrivait `plan: 'mensuel'` en dur. Avec deux
+  abonnements, tout abonné Extra aurait été étiqueté « mensuel » dès son premier
+  changement de formule. Le plan se lit désormais sur le tarif souscrit
+  (`api/_lib/plans.js`).
+- `customer.subscription.created` n'était pas écouté. C'est pourtant l'évènement
+  qui annonce un abonnement ouvert en essai.
+- `DUREES.extra` posait une échéance figée à 183 jours au moment du paiement.
+  Sur un abonnement, l'échéance vient de `current_period_end` : la laisser
+  aurait maintenu l'accès six mois même après une résiliation.
+
 ### Vérification du paiement
 
 `traiterRetourPaiement()` n'accorde plus rien sur la foi de `?paiement=ok`.
@@ -781,15 +830,29 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 
 ### À votre charge
 
-1. **Modèles d'e-mail Supabase.** Les messages d'authentification partent en
+1. **Rappel avant reconduction (offre six mois).** L'art. L215-1 du code de la
+   consommation impose d'informer le client de sa faculté de ne pas reconduire,
+   entre trois mois et un mois avant l'échéance. Stripe ne l'envoie pas. Sans ce
+   rappel, l'abonné peut résilier à tout moment et se faire rembourser les
+   sommes prélevées après l'échéance.
+2. **Tarif Stripe de l'offre six mois.** `STRIPE_PRICE_EXTRA` doit désormais
+   pointer sur un tarif **récurrent de six mois**, et non plus sur un paiement
+   unique. Créez-le dans Stripe avant le déploiement, sinon la souscription
+   échoue.
+3. **Portail client Stripe.** Pour que le changement de formule fonctionne :
+   Stripe → Settings → Billing → Customer portal → autorisez la mise à jour
+   d'abonnement et listez-y les deux tarifs (mensuel et six mois).
+4. **Compartiment `avatars`.** Créé par `supabase/schema.sql` : relancez le
+   script pour que les photos de profil fonctionnent.
+5. **Modèles d'e-mail Supabase.** Les messages d'authentification partent en
    anglais tant que vous n'avez pas collé les modèles multilingues, et le SMTP
    intégré est limité aux tests. Voir *Configuration Supabase → Des e-mails
    dans la langue du candidat*. C'est le premier contact d'un nouvel inscrit
    avec le service : il ne peut pas rester en anglais sur un site français.
-2. **URL de redirection Supabase.** Ajoutez chaque environnement dans
+6. **URL de redirection Supabase.** Ajoutez chaque environnement dans
    *Authentication → URL Configuration*, sinon la connexion aboutit sur un
    autre domaine que celui où se trouvait le candidat.
-3. **Mentions légales.** Renseignez le bloc `window.PREPORAL_ENV` dans
+7. **Mentions légales.** Renseignez le bloc `window.PREPORAL_ENV` dans
    `index.html` : `EDITEUR_NOM`, `EDITEUR_STATUT`, `EDITEUR_SIRET`,
    `EDITEUR_TVA`, `EDITEUR_ADRESSE`, `EDITEUR_EMAIL`, `EDITEUR_DIRECTEUR`,
    `EDITEUR_MEDIATEUR`. Tant que c'est incomplet, un bandeau d'avertissement
@@ -797,7 +860,7 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    manquante. Le médiateur de la consommation est obligatoire dès la première
    vente à un consommateur. **Faites relire par un juriste** : les textes
    fournis sont un modèle, pas un conseil juridique.
-4. **Domaine.** Le site est déclaré sur `https://preporal.vercel.app`, l'URL
+8. **Domaine.** Le site est déclaré sur `https://preporal.vercel.app`, l'URL
    que sert réellement ce dépôt. Pour passer à un domaine personnalisé,
    remplacez-le aux trois endroits — `index.html` (canonique, Open Graph,
    carte Twitter), `robots.txt` et `sitemap.xml` — puis lancez `npm test` :
@@ -810,18 +873,18 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    > autre site revient à demander aux moteurs de recherche de désindexer
    > celui-ci. Si `preporal.com` doit devenir la vitrine de ce projet,
    > faites-le pointer vers ce projet Vercel *avant* de changer le domaine ici.
-5. **Vérification du consentement parental.** L'adresse du responsable légal
+9. **Vérification du consentement parental.** L'adresse du responsable légal
    est collectée sous 15 ans, mais aucun message ne lui est envoyé : le
    consentement reste déclaratif.
-6. **Friction à l'inscription.** `EXIGER_CONNEXION` vaut désormais `true` par
+10. **Friction à l'inscription.** `EXIGER_CONNEXION` vaut désormais `true` par
    défaut : le quota gratuit est étanche, mais un compte est demandé avant la
    première simulation. Surveillez le taux d'abandon sur cette étape ; le
    repli `EXIGER_CONNEXION=false` existe, au prix d'un quota contournable.
-7. **Prix.** Voir « Coût par simulation » : à 9,90 € sur `claude-opus-5`, un
+11. **Prix.** Voir « Coût par simulation » : à 9,90 € sur `claude-opus-5`, un
    abonné devient déficitaire au-delà d'une cinquantaine de simulations par
    mois. Décidez entre un modèle moins cher, une limite d'usage équitable
    inscrite aux CGV, ou un tarif plus élevé.
-8. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
+12. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
    `usages_anonymes` inactives depuis plus de 6 mois (minimisation RGPD) ;
    la requête est en commentaire dans `supabase/schema.sql`.
 

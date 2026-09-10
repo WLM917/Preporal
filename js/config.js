@@ -64,13 +64,20 @@ export const OFFRES = {
     id: 'mensuel', nom: 'PrepOral Premium', prix: '9,90 €', periode: 'par mois',
     mode: 'subscription',
     accroche: 'Le plus souple',
-    detail: 'Simulations illimitées, rapports complets, coach IA. Sans engagement, résiliable en un clic.'
+    detail: 'Simulations illimitées, rapports complets, coach IA sans limite. Sans engagement, résiliable en un clic.'
   },
   extra: {
     id: 'extra', nom: 'PrepOral Extra', prix: '54,90 €', periode: 'pour 6 mois',
-    mode: 'payment', dureeJours: 183,
+    /* Abonnement semestriel, et non plus paiement unique : une semaine
+       d'essai n'existe chez Stripe que sur un abonnement, et seuls deux
+       abonnements peuvent s'échanger l'un pour l'autre dans le portail
+       client. La reconduction est donc tacite — elle doit être annoncée
+       ici, et rappelée avant chaque échéance (art. L215-1 du code de la
+       consommation). */
+    mode: 'subscription',
+    essaiJours: 7,
     accroche: 'Toute une année scolaire',
-    detail: "Six mois d'accès complet, payés une seule fois. Pensé pour préparer plusieurs échéances.",
+    detail: "Six mois d'accès complet et de coach IA sans limite. Une semaine d'essai, puis reconduction tous les six mois, résiliable à tout moment.",
     // Repère honnête : 54,90 / 6 mois contre 9,90 par mois.
     // Montants séparés de leur libellé : la traduction ne touche pas aux euros.
     equivalentMensuel: '9,15 €',
