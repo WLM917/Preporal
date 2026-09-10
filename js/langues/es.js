@@ -6,6 +6,10 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
+  "sim.dicter": "Dictar",
+  "sim.arreter_dictee": "Parar",
+  "sim.a_l_ecoute": "Escuchando…",
+  "sim.dictee_indisponible": "El dictado no está disponible en este navegador.",
   "auth.afficher_mot_de_passe": "Mostrar la contraseña",
   "auth.masquer_mot_de_passe": "Ocultar la contraseña",
   "auth.deja_inscrit": "Esta dirección ya tiene una cuenta. Inicia sesión o usa «¿Olvidaste tu contraseña?».",

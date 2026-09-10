@@ -12,7 +12,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -280,6 +280,38 @@ test('chaque champ de mot de passe peut être révélé', () => {
       assert.ok(balise, `${id} absent de ${fichier}`);
       assert.match(balise[0], /type="password"/, `${id} n'est pas un champ mot de passe dans ${fichier}`);
     }
+  }
+});
+
+test("les bibliothèques de lecture de documents sont servies par le site", () => {
+  /* Elles venaient d'un CDN : injoignable, l'import de PDF et de DOCX
+     restait bloqué sur « Lecture de… » indéfiniment, sans message.
+     Reproduit dans un navigateur avant correction. */
+  const src = modules.find(m => m.nom === 'upload.js').source;
+  for (const fichier of ['pdf.min.js', 'pdf.worker.min.js', 'mammoth.browser.min.js']) {
+    assert.ok(existsSync(join(RACINE, 'assets', 'vendor', fichier)),
+      `assets/vendor/${fichier} manquant`);
+    assert.ok(src.includes(`assets/vendor/${fichier}`),
+      `upload.js ne pointe pas sur assets/vendor/${fichier}`);
+  }
+  assert.ok(!/cdnjs\.cloudflare\.com/.test(src),
+    'pdf.js et mammoth ne doivent plus dépendre de cdnjs');
+
+  // Et le chargement doit rester borné, sinon on retrouve le blocage.
+  assert.match(src, /DELAI_SCRIPT/, 'le délai de garde du chargement a disparu');
+  assert.match(src, /scriptsCharges\.delete/,
+    'un échec mémorisé condamnerait l\'import jusqu\'au rechargement');
+});
+
+test('les deux champs de documents acceptent la dictée', () => {
+  const src = modules.find(m => m.nom === 'upload.js').source;
+  assert.match(src, /brancherDicteeChamp/, 'la dictée des champs a disparu');
+  assert.match(src, /dicteeSupportee/,
+    'un navigateur sans reconnaissance vocale doit être prévenu, pas laissé avec un bouton mort');
+  // brancherDepot est appelé pour les deux champs : la dictée suit.
+  const sim = modules.find(m => m.nom === 'simulateur.js').source;
+  for (const champ of ['champA', 'champB']) {
+    assert.ok(sim.includes(`idCible: '${champ}'`), `${champ} n'est plus branché`);
   }
 });
 
