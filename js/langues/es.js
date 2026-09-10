@@ -6,6 +6,15 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
+  "auth.afficher_mot_de_passe": "Mostrar la contraseña",
+  "auth.masquer_mot_de_passe": "Ocultar la contraseña",
+  "auth.deja_inscrit": "Esta dirección ya tiene una cuenta. Inicia sesión o usa «¿Olvidaste tu contraseña?».",
+  "auth.erreur_otp_expired": "Este enlace ha caducado o ya se ha usado. Un enlace de acceso solo funciona una vez. Pide otro o entra con tu contraseña.",
+  "auth.erreur_access_denied": "Este enlace ya no es válido. Pide otro o entra con tu contraseña.",
+  "auth.erreur_otp_disabled": "El acceso por enlace está desactivado en este proyecto.",
+  "auth.erreur_email_link_invalid": "Este enlace no es válido. Pide otro.",
+  "auth.erreur_server_error": "El servicio de autenticación no ha respondido. Inténtalo dentro de un momento.",
+  "auth.erreur_validation_failed": "El enlace recibido está incompleto. Pide otro.",
   "titre.auth_volet": "Una cuenta, y<br>el tribunal puede esperar.",
   "auth.se_connecter": "Iniciar sesión",
   "auth.inscription": "Registrarse",
@@ -39,7 +48,7 @@ export default {
   "auth.creation_en_cours": "Creando la cuenta…",
   "auth.bienvenue": "Ya estás dentro.",
   "auth.compte_cree": "Cuenta creada. Tus dos simulaciones gratuitas te esperan.",
-  "auth.confirmez_boite_mail": "Cuenta creada. Abre tu correo y pulsa el enlace para activarla.",
+  "auth.confirmez_boite_mail": "Cuenta creada. Abre tu correo y pulsa el enlace para activarla. Mira también en la carpeta de spam.",
   "auth.lien_envoye": "Enlace enviado. Abre tu correo para iniciar sesión.",
   "auth.deconnecte": "Has cerrado sesión.",
   "compte.mon_compte": "Mi cuenta",
