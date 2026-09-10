@@ -39,8 +39,15 @@ const autorise = (directive, hote) => {
 
 /* Hôtes réellement référencés dans le code du front. */
 function hotesReferences() {
-  const fichiers = [join(RACINE, 'index.html'),
-    ...readdirSync(join(RACINE, 'js')).map(f => join(RACINE, 'js', f))];
+  // js/ contient désormais un sous-dossier langues/ : on ne lit que les fichiers.
+  const modules = readdirSync(join(RACINE, 'js'), { withFileTypes: true })
+    .filter(e => e.isFile() && e.name.endsWith('.js'))
+    .map(e => join(RACINE, 'js', e.name));
+  const traductions = readdirSync(join(RACINE, 'js', 'langues'), { withFileTypes: true })
+    .filter(e => e.isFile() && e.name.endsWith('.js'))
+    .map(e => join(RACINE, 'js', 'langues', e.name));
+  const fichiers = [join(RACINE, 'index.html'), join(RACINE, 'simulateur.html'),
+    join(RACINE, 'temoignages.html'), ...modules, ...traductions];
   const hotes = new Set();
   for (const f of fichiers) {
     for (const m of readFileSync(f, 'utf8').matchAll(/https:\/\/([a-zA-Z0-9.-]+)/g)) {

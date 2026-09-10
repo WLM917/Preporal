@@ -12,6 +12,15 @@ export function lireHistorique() {
   return stock.lire(CONFIG.cles.historique, []) || [];
 }
 
+/** Retrouve une simulation par identifiant, avec tout son détail. */
+export function lireSimulation(id) {
+  return lireHistorique().find(s => s.id === id) || null;
+}
+
+/** Une simulation ne peut être rouverte que si son détail a été conservé. */
+export const estRelisible = s =>
+  Boolean(s && Array.isArray(s.reponses) && s.reponses.length);
+
 export async function enregistrerSimulation(entree) {
   const ligne = {
     id: 'sim_' + Date.now(),
@@ -22,7 +31,24 @@ export async function enregistrerSimulation(entree) {
     eloquence: entree.eloquence ?? null,
     nbQuestions: entree.nbQuestions || 0,
     criteres: entree.criteres || {},
-    details: entree.details || []
+    details: entree.details || [],
+
+    /* Questions posées, réponses données et correction complète.
+       Conservés dans ce navigateur uniquement : c'est ce qui permet
+       de rouvrir une simulation passée et de tout relire. Rien de
+       tout cela ne part sur le serveur — la synchronisation
+       n'envoie que des métadonnées de progression, conformément à
+       la politique de confidentialité. */
+    reponses: (entree.reponses || []).map(r => ({
+      question: r.question,
+      categorie: r.categorie || '',
+      texte: r.texte || '',
+      duree: r.duree || 0,
+      dureeParole: r.dureeParole || 0
+    })),
+    eloquenceDetail: entree.eloquenceDetail || null,
+    tempsTotal: entree.tempsTotal || 0,
+    verdict: entree.verdict || ''
   };
 
   const liste = [ligne, ...lireHistorique()].slice(0, MAX);
@@ -88,13 +114,18 @@ export function rendreHistorique() {
   zone.innerHTML = liste.map(s => {
     const type = typeParId(s.typeId);
     const d = new Date(s.date);
-    return `<div class="flex items-center justify-between gap-4 rounded-xl border border-line bg-ink/40 p-4">
+    const relisible = estRelisible(s);
+    return `<button type="button" data-relire="${s.id}"
+      class="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-ink/40 p-4 text-left transition hover:border-iris/60">
       <div class="min-w-0">
         <p class="truncate font-medium">${type.emoji} ${echappe(type.court)}${s.sousChoix ? ' · ' + echappe(s.sousChoix) : ''}</p>
         <p class="text-xs text-muted">${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · ${s.nbQuestions} question${s.nbQuestions > 1 ? 's' : ''}${s.eloquence != null ? ' · éloquence ' + s.eloquence + '/20' : ''}</p>
+        <p class="mt-1 text-xs ${relisible ? 'text-iris2' : 'text-muted'}">
+          ${relisible ? 'Relire les questions et la correction →' : 'Détail non conservé'}
+        </p>
       </div>
       <span class="shrink-0 font-display text-xl font-extrabold tabular-nums" style="color:${couleurNote(s.score)}">${s.score}</span>
-    </div>`;
+    </button>`;
   }).join('');
 }
 

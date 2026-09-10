@@ -4,8 +4,9 @@
 
 import { CONFIG } from './config.js';
 import { $, echappe, toast } from './ui.js';
-import { Voix, Dictee, dicteeSupportee } from './speech.js';
+import { Voix, Dictee, dicteeSupportee, boutonEcoute, arreterEcoute } from './speech.js';
 import { session } from './auth.js';
+import { langue, t } from './i18n.js';
 
 const historique = [];
 let lectureAuto = true;
@@ -14,18 +15,33 @@ let occupe = false;
 
 const ACCUEIL = "Bonjour, je suis votre coach PrepOral. Dites-moi quel oral vous préparez, ou collez votre plan, votre texte ou votre sujet : je vous aide à structurer, reformuler et anticiper les questions du jury.";
 
-function bulle(role, texte, id) {
+function bulle(role, texte, id, { ecoutable = true } = {}) {
   const fil = $('#fil-coach');
   const el = document.createElement('div');
-  el.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
+  el.className = role === 'user' ? 'flex justify-end' : 'flex flex-col items-start gap-1.5';
   if (id) el.id = id;
+
   el.innerHTML = role === 'user'
     ? `<div class="max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-r from-iris to-iris2 px-4 py-3 text-sm text-white shadow-glow">${echappe(texte)}</div>`
     : `<div class="max-w-[90%] rounded-2xl rounded-bl-md border border-line bg-ink/50 px-4 py-3 text-sm leading-relaxed text-soft">${formater(texte)}</div>`;
+
+  /* Bouton d'écoute sous chaque réponse du coach : la lecture
+     automatique est globale, celui-ci vise un message précis et se
+     réécoute autant de fois qu'on veut. */
+  if (role === 'assistant' && ecoutable) {
+    const b = boutonEcoute({ texte: () => texte, langue: langueVoix,
+      libelle: t('ecoute.ecouter', 'Écouter'), libelleArret: t('ecoute.arreter', 'Arrêter') });
+    if (b) { b.classList.add('ml-1'); el.appendChild(b); }
+  }
+
   fil.appendChild(el);
   fil.scrollTop = fil.scrollHeight;
   return el;
 }
+
+/* Langue de la voix du coach : suit la langue d'interface. */
+let langueVoix = 'fr-FR';
+export const reglerLangueCoach = l => { langueVoix = l; };
 
 /** Markdown minimal : gras, listes, sauts de ligne. Tout est échappé avant. */
 function formater(texte) {
@@ -45,13 +61,13 @@ async function envoyer(texteSaisi) {
   bulle('user', texte);
   historique.push({ role: 'user', content: texte });
 
-  const attente = bulle('assistant', '…', 'bulle-attente');
+  const attente = bulle('assistant', '…', 'bulle-attente', { ecoutable: false });
 
   try {
     const r = await fetch(`${CONFIG.api}/coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(session.jeton ? { Authorization: 'Bearer ' + session.jeton } : {}) },
-      body: JSON.stringify({ messages: historique.slice(-16) })
+      body: JSON.stringify({ messages: historique.slice(-16), langue: langue() })
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
@@ -61,12 +77,12 @@ async function envoyer(texteSaisi) {
     attente.remove();
     bulle('assistant', reponse);
     historique.push({ role: 'assistant', content: reponse });
-    if (lectureAuto) Voix.parler(reponse.replace(/[*#•]/g, ''), { debit: 1 });
+    if (lectureAuto) Voix.parler(reponse.replace(/[*#•]/g, ''), { langue: langueVoix, debit: 1 });
   } catch {
     attente.remove();
     const repli = "Le coach n'est pas joignable pour le moment (l'API n'est pas configurée ou le réseau a coupé). En attendant, une méthode qui marche presque toujours : une phrase d'accroche, trois idées annoncées, un exemple daté et chiffré par idée, puis une conclusion qui répond à la question posée.";
     bulle('assistant', repli);
-    if (lectureAuto) Voix.parler(repli);
+    if (lectureAuto) Voix.parler(repli, { langue: langueVoix });
   } finally {
     occupe = false;
   }
@@ -138,4 +154,4 @@ export function initCoach() {
   brancherMicro();
 }
 
-export const arreterCoach = () => { Voix.stop(); dictee?.arreter(); };
+export const arreterCoach = () => { arreterEcoute(); dictee?.arreter(); };

@@ -14,16 +14,18 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 
 1. [Arborescence](#arborescence)
 2. [Démarrage rapide](#démarrage-rapide)
-3. [Tests](#tests)
-4. [Configuration Stripe](#configuration-stripe)
-5. [Configuration Supabase](#configuration-supabase)
-6. [Mise en production](#mise-en-production)
-7. [Fonctionnement du paywall](#fonctionnement-du-paywall)
-8. [Modération des avis](#modération-des-avis)
-9. [Âge et consentement parental](#âge-et-consentement-parental)
-10. [Coût par simulation](#coût-par-simulation)
-11. [Compatibilité navigateurs](#compatibilité-navigateurs)
-12. [À faire avant de vendre](#à-faire-avant-de-vendre)
+3. [Les pages](#les-pages)
+4. [Tests](#tests)
+5. [Configuration Stripe](#configuration-stripe)
+6. [Configuration Supabase](#configuration-supabase)
+7. [Mise en production](#mise-en-production)
+8. [Fonctionnement du paywall](#fonctionnement-du-paywall)
+9. [Modération des avis](#modération-des-avis)
+10. [Âge et consentement parental](#âge-et-consentement-parental)
+11. [Coût par simulation](#coût-par-simulation)
+12. [Langues et accessibilité](#langues-et-accessibilité)
+13. [Compatibilité navigateurs](#compatibilité-navigateurs)
+14. [À faire avant de vendre](#à-faire-avant-de-vendre)
 
 ---
 
@@ -31,7 +33,9 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 
 ```
 prepOral/
-├── index.html                     interface complète
+├── index.html                     accueil, coach IA, Mon espace
+├── simulateur.html                le simulateur (« Ton oral en trois étapes »)
+├── temoignages.html               retours d'utilisateurs, par épreuve
 ├── moderation.html                console de modération des avis
 ├── robots.txt · sitemap.xml       référencement
 ├── package.json
@@ -44,7 +48,12 @@ prepOral/
 │   ├── logo.svg                   logo de marque (bulle + onde sonore)
 │   └── tailwind.css               feuille générée (npm run styles)
 ├── js/
-│   ├── app.js                     orchestrateur : vues, écrans, déroulé
+│   ├── app.js                     entrée de l'accueil : vues et navigation
+│   ├── simulateur.js              entrée du simulateur : déroulé complet
+│   ├── temoignages.js             entrée de la page témoignages
+│   ├── nav.js                     en-tête partagé par toutes les pages
+│   ├── chargement.js              écran d'attente par étapes
+│   ├── relecture.js               rouvrir une simulation passée
 │   ├── config.js                  catalogue des 7 épreuves, tarifs, quotas
 │   ├── ui.js                      sélecteurs, modales, toasts, stockage local
 │   ├── upload.js                  PDF / DOCX / image (OCR) / texte → zone de texte
@@ -58,6 +67,8 @@ prepOral/
 │   ├── reviews.js                 témoignages et dépôt d'avis
 │   ├── coach.js                   onglet Coach IA (chat écrit et vocal)
 │   ├── theme.js                   bascule clair / sombre, bandeau cookies
+│   ├── i18n.js                    langue de l'interface
+│   ├── langues/en.js · es.js      traductions anglaise et espagnole
 │   ├── age.js                     déclaration d'âge et consentement parental
 │   └── legal.js                   mentions légales, CGV, RGPD, cookies
 ├── api/
@@ -112,6 +123,27 @@ badge affiché). Utile pour travailler le design sans consommer d'API.
 
 ---
 
+## Les pages
+
+| Page | Rôle |
+|---|---|
+| `index.html` | présentation, coach IA et Mon espace (trois vues, `?vue=…`) |
+| `simulateur.html` | « Ton oral en trois étapes » : configuration, chargement, simulation, rapport |
+| `temoignages.html` | retours d'utilisateurs, filtrables par épreuve, et dépôt d'avis |
+| `moderation.html` | publication ou rejet des avis déposés (jeton requis) |
+
+« Essayer gratuitement » mène au simulateur. À la fin d'une simulation, un bouton
+renvoie vers **Mes simulations passées**, qui reste dans Mon espace : chaque ligne
+s'y rouvre avec les questions posées, les réponses données et la correction
+complète de l'examinateur.
+
+Ce détail est conservé **dans le navigateur uniquement**. La synchronisation
+Supabase ne transporte que des métadonnées de progression (type d'oral, date,
+notes), conformément à la politique de confidentialité : ni les réponses, ni les
+documents déposés ne quittent l'appareil.
+
+---
+
 ## Tests
 
 ```bash
@@ -133,11 +165,23 @@ La suite couvre ce qui casse en silence :
 
 ## Configuration Stripe
 
-1. Créez deux produits dans le tableau de bord Stripe :
-   - **PrepOral Premium** — tarif récurrent, 9,99 € TTC / mois
-   - **Pass 48 heures** — tarif ponctuel, 4,99 € TTC
-2. Copiez les identifiants de tarif (`price_…`) dans `STRIPE_PRICE_MENSUEL` et
-   `STRIPE_PRICE_PASS48`.
+1. Créez trois produits dans le tableau de bord Stripe :
+
+   | Produit | Type de tarif | Montant | Variable |
+   |---|---|---|---|
+   | **Pass 48 heures** | ponctuel | 4,90 € TTC | `STRIPE_PRICE_PASS48` |
+   | **PrepOral Premium** | récurrent mensuel | 9,90 € TTC | `STRIPE_PRICE_MENSUEL` |
+   | **PrepOral Extra** | ponctuel | 54,90 € TTC | `STRIPE_PRICE_EXTRA` |
+
+   L'offre Extra est un **paiement unique** couvrant six mois, pas un abonnement :
+   rien n'est reconduit et l'échéance est posée par `api/webhook.js`.
+
+2. Copiez les identifiants de tarif (`price_…`) dans les variables correspondantes.
+
+> Les prix affichés viennent uniquement de `js/config.js`, et la modale d'offre
+> est rendue à partir de là. Un test refuse tout tarif écrit en dur dans une
+> page : un prix affiché qui diffère de celui facturé est une pratique
+> commerciale trompeuse.
 3. Développeurs → Webhooks → *Add endpoint* :
    - URL : `https://votre-domaine.fr/api/webhook`
    - Évènements : `checkout.session.completed`, `customer.subscription.updated`,
@@ -187,7 +231,7 @@ Puis, dans Vercel → Settings → Environment Variables, ajoutez toutes les cl�
 |---|---|
 | Simulations 1 et 2 | gratuites, sans compte ni carte |
 | Fin de la 1re simulation | modale d'offre, fermable (« Plus tard ») |
-| Lancement de la 3e | modale bloquante : Premium 9,99 €/mois ou Pass 48 h 4,99 € |
+| Lancement de la 3e | modale bloquante : Pass 48 h, Premium mensuel ou Extra 6 mois |
 | Après paiement | retour sur `/?paiement=ok&session_id=…`, **vérifié auprès de Stripe** |
 | Résiliation | bouton « Gérer mon abonnement » → portail client Stripe |
 
@@ -249,6 +293,28 @@ Sans `CLE_MODERATION`, la route renvoie 503 et aucun avis ne peut être publié.
 
 ---
 
+## Remplir la page Témoignages
+
+La page est vide au départ, et c'est volontaire : elle n'affiche que des avis
+réellement déposés puis vérifiés. **N'y ajoutez pas de témoignages écrits par
+vos soins** — publier un faux avis est une pratique commerciale trompeuse
+(art. L121-2 du code de la consommation, jusqu'à 2 ans d'emprisonnement et
+300 000 € d'amende, portés à 10 % du chiffre d'affaires), et l'art. L111-7-2
+impose d'indiquer si les avis sont vérifiés et à quelle date.
+
+Le chemin honnête pour la remplir est déjà en place :
+
+1. À la fin de chaque simulation, un encart invite le candidat à laisser un avis.
+2. Le formulaire de `temoignages.html` enregistre l'avis avec `publie = false`
+   et l'épreuve concernée.
+3. Vous le publiez en un clic depuis `/moderation.html`.
+
+Dès qu'un avis est publié, la note moyenne réellement calculée apparaît sur
+l'accueil et sur la page Témoignages, avec la date de collecte. Tant qu'il n'y
+en a aucun, aucune note n'est affichée.
+
+---
+
 ## Âge et consentement parental
 
 Deux règles distinctes, toutes deux implémentées :
@@ -293,6 +359,44 @@ donc plus qu'il ne rapporte sur Opus. Trois leviers, dans l'ordre :
 `MODELE_IA=claude-sonnet-5`, une limite d'usage « équitable » dans les CGV, ou
 un prix plus élevé. Mesurez sur vos vrais documents avant de trancher : les
 chiffres ci-dessus dépendent directement de la longueur des CV déposés.
+
+---
+
+## Langues et accessibilité
+
+Le site s'affiche en **français, anglais et espagnol**. Le sélecteur est dans
+l'en-tête ; le choix est mémorisé, et à défaut la langue du navigateur est
+suivie.
+
+Le français reste la langue de référence : il est écrit directement dans le
+HTML, les autres langues sont des dictionnaires (`js/langues/`). Une clé sans
+traduction retombe donc sur le français plutôt que d'afficher une clé brute —
+et un test refuse qu'une clé du balisage manque à un dictionnaire, pour éviter
+les pages moitié françaises moitié anglaises.
+
+Trois points comptent pour l'accessibilité, et sont vérifiés par les tests :
+
+- l'attribut `lang` de `<html>` suit la langue choisie, sans quoi un lecteur
+  d'écran prononce l'anglais avec un accent français ;
+- la **synthèse vocale** utilise le code de voix de la langue (`fr-FR`,
+  `en-US`, `es-ES`) ;
+- le coach et la correction sont **rédigés** dans la langue choisie : elle est
+  transmise à `/api/coach` et `/api/feedback`.
+
+Chaque réponse du coach, le bilan de simulation et chaque correction question
+par question portent un bouton **Écouter** : la lecture se déclenche à la
+demande, s'arrête d'un second clic, et une seule lecture tourne à la fois.
+C'est utile pour préparer un oral — et nécessaire pour qui ne peut pas lire
+l'écran.
+
+> **Les textes légaux restent en français.** Mentions légales, CGV et politique
+> de confidentialité sont des documents de droit français : une traduction
+> approximative y ferait plus de mal que de bien. Faites-les traduire par un
+> juriste si vous vendez hors de France.
+
+**Ajouter une langue** : créez `js/langues/<code>.js` sur le modèle de `en.js`,
+puis déclarez le code dans `LANGUES` (`js/i18n.js`) avec son étiquette, son
+drapeau et son code de voix.
 
 ---
 
@@ -346,8 +450,10 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 - **Coût mesuré** : chaque appel journalise ses jetons et son coût estimé.
 - **Référencement et partage** : Open Graph, carte Twitter, JSON-LD,
   `robots.txt`, `sitemap.xml`, image de partage.
-- **Suite de tests** : 34 tests, dont un qui aurait évité que la politique de
+- **Suite de tests** : 44 tests, dont un qui aurait évité que la politique de
   sécurité casse l'import de documents.
+- **Trois langues** (français, anglais, espagnol) avec voix et rédaction de l'IA
+  qui suivent le choix, et lecture à voix haute de chaque réponse et correction.
 
 ### À votre charge
 

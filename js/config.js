@@ -54,9 +54,35 @@ export const editeurComplet = () =>
   Object.values(CONFIG.editeur).every(v => String(v).trim().length > 0);
 
 export const OFFRES = {
-  mensuel: { id: 'mensuel', nom: 'PrepOral Premium', prix: '9,99 €', periode: 'par mois', mode: 'subscription' },
-  pass48:  { id: 'pass48',  nom: 'Pass 48 heures',   prix: '4,99 €', periode: 'une fois',  mode: 'payment' }
+  pass48: {
+    id: 'pass48', nom: 'Pass 48 heures', prix: '4,90 €', periode: 'une fois',
+    mode: 'payment', dureeJours: 2,
+    accroche: "La veille d'un oral",
+    detail: 'Accès complet pendant 48 heures. Paiement unique, aucune reconduction.'
+  },
+  mensuel: {
+    id: 'mensuel', nom: 'PrepOral Premium', prix: '9,90 €', periode: 'par mois',
+    mode: 'subscription',
+    accroche: 'Le plus souple',
+    detail: 'Simulations illimitées, rapports complets, coach IA. Sans engagement, résiliable en un clic.'
+  },
+  extra: {
+    id: 'extra', nom: 'PrepOral Extra', prix: '54,90 €', periode: 'pour 6 mois',
+    mode: 'payment', dureeJours: 183,
+    accroche: 'Toute une année scolaire',
+    detail: "Six mois d'accès complet, payés une seule fois. Pensé pour préparer plusieurs échéances.",
+    // Repère honnête : 54,90 / 6 mois contre 9,90 par mois.
+    // Montants séparés de leur libellé : la traduction ne touche pas aux euros.
+    equivalentMensuel: '9,15 €',
+    economie: '4,50 €'
+  }
 };
+
+/** Ordre d'affichage dans la modale d'offre. */
+export const ORDRE_OFFRES = ['pass48', 'mensuel', 'extra'];
+
+/** Offre mise en avant. */
+export const OFFRE_RECOMMANDEE = 'mensuel';
 
 /* ─────────────────────────────────────────────────────────────
    Catalogue des épreuves.

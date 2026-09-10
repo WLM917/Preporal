@@ -4,10 +4,61 @@
 
 import { typeParId } from './config.js';
 import { $, echappe, formaterTemps, compterMots, couleurNote } from './ui.js';
+import { t } from './i18n.js';
+import { boutonEcoute, arreterEcoute } from './speech.js';
 
 const CIRCONFERENCE = 326.73;   // 2πr, r = 52
 
+/* Le rapport était entièrement muet : seule la question posée pouvait
+   être entendue. Un candidat qui prépare un oral gagne à écouter sa
+   correction plutôt qu'à la lire — et c'est indispensable pour qui ne
+   peut pas lire l'écran. */
+function placerEcouteBilan(score, bilan) {
+  const zone = $('#ecoute-bilan');
+  if (!zone) return;
+  zone.innerHTML = '';
+
+  const b = boutonEcoute({
+    libelle: t('ecoute.bilan', 'Écouter le bilan'),
+    libelleArret: t('ecoute.arreter', 'Arrêter'),
+    classes: 'px-3 py-1.5',
+    texte: () => {
+      const criteres = Object.entries(bilan.criteres || {})
+        .map(([nom, val]) => `${nom} : ${val} sur 100.`).join(' ');
+      const conseils = (bilan.eloquence?.conseils || []).join(' ');
+      return `Votre note globale est de ${score} sur 100. `
+        + `${$('#verdict')?.textContent || ''}. `
+        + `${$('#verdict-detail')?.textContent || ''} `
+        + (criteres ? `Détail par critère. ${criteres} ` : '')
+        + (conseils ? `Conseils d'éloquence. ${conseils}` : '');
+    }
+  });
+  if (b) zone.appendChild(b);
+}
+
+/** Bouton d'écoute placé sur chaque correction question par question. */
+function placerEcouteReponses(reponses, bilan) {
+  $('#detail-reponses').querySelectorAll('[data-ecoute-reponse]').forEach(zone => {
+    const i = Number(zone.dataset.ecouteReponse);
+    const r = reponses[i];
+    const d = (bilan.details || [])[i] || {};
+    const b = boutonEcoute({
+      libelle: t('ecoute.ecouter', 'Écouter la correction'),
+      libelleArret: t('ecoute.arreter', 'Arrêter'),
+      texte: () => [
+        `Question ${i + 1}. ${r.question}`,
+        `Note : ${d.note} sur 20.`,
+        d.forts?.length ? `Ce qui fonctionne : ${d.forts.join('. ')}.` : '',
+        d.axes?.length ? `À renforcer : ${d.axes.join('. ')}.` : '',
+        d.reecriture ? `Réponse réécrite : ${d.reecriture}` : ''
+      ].filter(Boolean).join(' ')
+    });
+    if (b) zone.appendChild(b);
+  });
+}
+
 export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
+  arreterEcoute();
   const type = typeParId(contexte.typeId);
   const score = Math.round(bilan.global || 0);
 
@@ -19,6 +70,8 @@ export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
   requestAnimationFrame(() => arc.setAttribute('stroke-dashoffset', CIRCONFERENCE * (1 - score / 100)));
 
   $('#verdict').textContent = score >= 70 ? 'Vous êtes prêt' : score >= 45 ? 'Bonne base, à resserrer' : 'À retravailler avant le jour J';
+  placerEcouteBilan(score, bilan);
+
   $('#verdict-detail').textContent = score >= 70
     ? "Vos réponses sont structurées et appuyées sur des faits. Reprenez seulement les questions les plus faibles ci-dessous, puis refaites une passe en conditions réelles."
     : "Travaillez d'abord les axes signalés question par question, puis relancez une simulation : c'est la répétition qui installe les réflexes.";
@@ -74,6 +127,7 @@ export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
         <span class="shrink-0 font-display text-lg font-extrabold tabular-nums ${teinte}">${d.note}<span class="text-xs text-muted"> / 20</span></span>
       </summary>
       <div class="space-y-5 border-t border-line/70 p-5">
+        <div data-ecoute-reponse="${i}" class="sans-impression"></div>
         <div>
           <p class="text-xs text-muted">Ce que vous avez répondu${r.dureeParole ? ` · ${Math.round(r.dureeParole)} s de parole` : ''}</p>
           <p class="mt-1 text-sm leading-relaxed text-soft/90">${r.texte ? echappe(r.texte) : '<span class="text-muted">Question passée.</span>'}</p>
@@ -93,6 +147,8 @@ export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
       </div>
     </details>`;
   }).join('');
+
+  placerEcouteReponses(reponses, bilan);
 }
 
 /** Export PDF : on ouvre tous les blocs puis on laisse le navigateur imprimer. */

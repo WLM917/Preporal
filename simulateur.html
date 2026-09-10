@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PrepOral — Réussis ton oral du premier coup</title>
-<meta name="description" content="Entretien, Grand Oral, brevet, concours, pitch ou certification de langue : PrepOral pose les questions à voix haute, te chronomètre, t'écoute et corrige le fond et la forme.">
+<title>Ton oral en trois étapes — PrepOral</title>
+<meta name="description" content="Choisissez votre épreuve, déposez vos documents, réglez le format : PrepOral pose les questions à voix haute, vous chronomètre et corrige votre prestation.">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/logo.svg">
 
 <!-- Adressez ces deux valeurs à votre domaine définitif. -->
-<link rel="canonical" href="https://preporal.vercel.app/">
+<link rel="canonical" href="https://preporal.vercel.app/simulateur.html">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#08070C" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
@@ -18,8 +18,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PrepOral">
 <meta property="og:locale" content="fr_FR">
-<meta property="og:url" content="https://preporal.vercel.app/">
-<meta property="og:title" content="PrepOral — Réussis ton oral du premier coup">
+<meta property="og:url" content="https://preporal.vercel.app/simulateur.html">
+<meta property="og:title" content="Ton oral en trois étapes — PrepOral">
 <meta property="og:description" content="Entraîne-toi en conditions réelles : l'examinateur pose ses questions à voix haute, te chronomètre, puis corrige le fond et la forme. Deux simulations offertes.">
 <meta property="og:image" content="https://preporal.vercel.app/assets/partage.svg">
 <meta property="og:image:alt" content="PrepOral, simulateur d'oraux assisté par IA">
@@ -30,26 +30,6 @@
 
 <!-- Données structurées. Aucune note agrégée n'est déclarée : en publier
      une sans avis réels serait une pratique commerciale trompeuse. -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "PrepOral",
-  "applicationCategory": "EducationalApplication",
-  "operatingSystem": "Web",
-  "inLanguage": "fr-FR",
-  "url": "https://preporal.vercel.app/",
-  "description": "Simulateur d'oraux assisté par IA : entretien, Grand Oral, brevet, concours, pitch et certifications de langue. Les questions sont posées à voix haute, la prestation est chronométrée puis corrigée.",
-  "offers": [
-    { "@type": "Offer", "name": "Offre gratuite", "price": "0", "priceCurrency": "EUR",
-      "description": "2 simulations complètes, sans compte ni carte bancaire" },
-    { "@type": "Offer", "name": "PrepOral Premium", "price": "9.99", "priceCurrency": "EUR",
-      "description": "Simulations illimitées, sans engagement" },
-    { "@type": "Offer", "name": "Pass 48 heures", "price": "4.99", "priceCurrency": "EUR",
-      "description": "Accès complet pendant 48 heures" }
-  ]
-}
-</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -198,7 +178,7 @@
   @media print {
     body { background:#fff !important; color:#111 !important; }
     header, footer, nav, .modale, #vue-coach, #vue-compte, #banniere-cookies,
-    #vue-accueil, .sans-impression { display:none !important; }
+    #ecran-accueil, #ecran-simulation, #ecran-chargement, .sans-impression { display:none !important; }
     #ecran-rapport { display:block !important; padding:0 }
     #ecran-rapport * { color:#111 !important; border-color:#d8d5e4 !important; box-shadow:none !important; background:#fff !important; }
     #ecran-rapport details { break-inside: avoid; }
@@ -269,352 +249,346 @@
 
 <main id="contenu" class="mx-auto max-w-contenu px-4 pb-24 sm:px-6">
 
-<!-- ══════════════════════════════════════════════════════════
-     VUE 1 · ACCUEIL
-     ══════════════════════════════════════════════════════════ -->
-<section id="vue-accueil">
-  <div class="entree">
+<section id="vue-simulateur">
+  <div id="ecran-accueil" class="entree">
 
-    <!-- ── Héros ── -->
-    <div class="pt-14 text-center sm:pt-20">
-      <h1 class="titre-geant mx-auto max-w-3xl" data-i18n="titre.hero_accueil">
-        Réussis ton oral<br>du <span class="marqueur">premier coup</span>.
+    <div class="pt-10 text-center sm:pt-14">
+      <h1 class="titre-geant mx-auto max-w-3xl" data-i18n="titre.hero_simulateur">
+        Ton oral en <span class="marqueur">trois étapes</span>.
       </h1>
-      <p class="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted sm:text-lg" data-i18n="accueil.arrete_de_repeter_dans_le_vide_entraine_toi_en_condi">
-        Arrête de répéter dans le vide. Entraîne-toi en conditions réelles, vois exactement
-        où tu perds des points, et corrige chaque réponse grâce à une correction détaillée.
+      <p class="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted" data-i18n="sim.choisis_ton_epreuve_depose_tes_documents_regle_le_fo">
+        Choisis ton épreuve, dépose tes documents, règle le format.
+        La première question tombe trente secondes plus tard.
       </p>
-
-      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <a href="./simulateur.html" class="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-inverse px-7 py-4 font-display text-base font-bold text-sur-inverse transition hover:opacity-90 sm:w-auto">
-          <span data-i18n="accueil.essayer_gratuitement">Essayer gratuitement</span>
-          <span class="transition-transform group-hover:translate-x-1">→</span>
-        </a>
-        <a href="./index.html?vue=coach" data-vue-lien="coach" class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line px-7 py-4 font-display text-base font-bold transition hover:border-iris/60 sm:w-auto" data-i18n="accueil.parler_au_coach_ia">
-          Parler au coach IA
-        </a>
-      </div>
-
-      <!-- Bandeau de réassurance : uniquement des faits vérifiables. -->
-      <div class="mx-auto mt-10 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted">
+      <div class="mx-auto mt-7 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted">
         <span class="flex items-center gap-1.5">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
-          <span data-i18n="accueil.documents_lus_puis_supprimes">Documents lus puis supprimés, jamais revendus</span>
-        </span>
-        <span class="flex items-center gap-1.5">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          <span data-i18n="accueil.paiement_securise_stripe">Paiement sécurisé par Stripe</span>
+          <span data-i18n="sim.documents_lus_navigateur">Documents lus dans votre navigateur, jamais stockés</span>
         </span>
         <span id="jauge-quota" class="rounded-md bg-raised px-2 py-1 tabular-nums"></span>
       </div>
     </div>
+    <!-- ══ Le configurateur ══ -->
+    <div id="configurer" class="mt-10 scroll-mt-24">
+      <div class="mt-10 rounded-3xl border border-line bg-surface p-5 shadow-carte sm:p-8">
 
-    <!-- ── Ce que fait le produit, en trois lignes ── -->
-    <div class="mx-auto mt-16 max-w-3xl divide-y divide-line border-y border-line sm:mt-20">
-      <div class="flex items-baseline gap-5 py-5">
-        <span class="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">7</span>
-        <span class="text-sm leading-relaxed text-muted" data-i18n="accueil.types_d_oraux_couverts_entretien_grand_oral_brevet_c">types d'oraux couverts : entretien, Grand Oral, brevet, concours, pitch, oral de matière, certification de langue</span>
-      </div>
-      <div class="flex items-baseline gap-5 py-5">
-        <span class="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">2</span>
-        <span class="text-sm leading-relaxed text-muted" data-i18n="accueil.simulations_completes_offertes_sans_compte_ni_carte_">simulations complètes offertes, sans compte ni carte bancaire</span>
-      </div>
-      <div class="flex items-baseline gap-5 py-5">
-        <span class="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">4</span>
-        <span class="text-sm leading-relaxed text-muted" data-i18n="accueil.axes_notes_a_chaque_passage_contenu_structure_eloque">axes notés à chaque passage : contenu, structure, éloquence et débit de parole</span>
-      </div>
-    </div>
-    <!-- ══ Ce que fait la plateforme ══ -->
-    <section class="mt-24 sm:mt-32">
-      <h2 class="titre-section text-center" data-i18n="titre.plateforme">
-        Ta plateforme <span class="marqueur">tout-en-un</span><br class="hidden sm:block"> pour préparer ton oral.
-      </h2>
-
-      <!-- Bloc 1 -->
-      <div class="mt-14 grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+        <!-- ── Étape 1 ── -->
         <div>
-          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl" data-i18n="titre.examinateur_parle">L'examinateur<br>te parle vraiment</h3>
-          <p class="mt-5 leading-relaxed text-muted" data-i18n="accueil.les_questions_sont_generees_a_partir_de_tes_propres_">
-            Les questions sont générées à partir de tes propres documents, puis lues à voix haute.
-            Tu réponds au micro, le chrono tourne. C'est la seule façon de savoir si ta réponse
-            tient debout à l'oral et pas seulement sur le papier.
-          </p>
-        </div>
-        <div class="rounded-2xl border border-line bg-surface p-4 shadow-carte sm:p-6">
-          <div class="flex items-center gap-2 border-b border-line pb-3">
-            <span class="h-2.5 w-2.5 rounded-full bg-coral/70"></span>
-            <span class="h-2.5 w-2.5 rounded-full bg-amber/70"></span>
-            <span class="h-2.5 w-2.5 rounded-full bg-mint/70"></span>
-            <span class="ml-2 text-xs text-muted" data-i18n="accueil.question_3_5_mise_en_situation">Question 3 / 5 · Mise en situation</span>
+          <div class="flex items-center gap-3">
+            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">1</span>
+            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.quel_oral_prepares_tu">Quel oral prépares-tu ?</h3>
           </div>
-          <p class="mt-5 font-display text-lg font-bold leading-snug" data-i18n="accueil.votre_premiere_semaine_porte_sur_un_dossier_que_vous">
-            « Votre première semaine porte sur un dossier que vous ne connaissez pas.
-            Par quoi commencez-vous ? »
-          </p>
-          <div class="mt-6 flex items-center gap-4">
-            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-coral/15 text-coral">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/></svg>
-            </span>
-            <div class="min-w-0 flex-1">
-              <div class="h-1.5 w-full overflow-hidden rounded-full bg-line"><i class="block h-full w-2/3 rounded-full bg-iris"></i></div>
-              <p class="mt-2 text-xs text-muted" data-i18n="accueil.1_19_restantes_78_mots_dictes">1:19 restantes · 78 mots dictés</p>
-            </div>
-          </div>
-        </div>
-      </div>
+          <div id="grille-types" class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
 
-      <!-- Bloc 2 (inversé) -->
-      <div class="mt-16 grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
-        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte lg:order-1 sm:p-6">
-          <p class="text-xs text-muted" data-i18n="accueil.criteres_notes">Critères notés</p>
-          <div class="mt-4 space-y-4">
-            <div>
-              <div class="flex items-baseline justify-between"><span class="text-sm font-medium" data-i18n="accueil.structure_de_la_reponse">Structure de la réponse</span><span class="font-display text-sm font-bold tabular-nums text-muted">78<span class="text-xs"> / 100</span></span></div>
-              <div class="mt-2 h-2 overflow-hidden rounded-full bg-line"><i class="block h-full w-[78%] rounded-full bg-mint"></i></div>
-            </div>
-            <div>
-              <div class="flex items-baseline justify-between"><span class="text-sm font-medium" data-i18n="accueil.preuves_et_chiffres">Preuves et chiffres</span><span class="font-display text-sm font-bold tabular-nums text-muted">52<span class="text-xs"> / 100</span></span></div>
-              <div class="mt-2 h-2 overflow-hidden rounded-full bg-line"><i class="block h-full w-[52%] rounded-full bg-amber"></i></div>
-            </div>
-            <div>
-              <div class="flex items-baseline justify-between"><span class="text-sm font-medium" data-i18n="accueil.concision">Concision</span><span class="font-display text-sm font-bold tabular-nums text-muted">41<span class="text-xs"> / 100</span></span></div>
-              <div class="mt-2 h-2 overflow-hidden rounded-full bg-line"><i class="block h-full w-[41%] rounded-full bg-coral"></i></div>
-            </div>
+          <div id="zone-sous-choix" class="mt-4 hidden">
+            <label id="label-sous-choix" for="sous-choix" class="text-sm font-medium" data-i18n="sim.matiere">Matière</label>
+            <select id="sous-choix" class="mt-2 w-full rounded-xl border border-line bg-ink px-4 py-3 text-sm focus:border-iris focus:outline-none sm:max-w-xs"></select>
           </div>
         </div>
-        <div class="lg:order-2">
-          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl" data-i18n="titre.ou_tu_perds">Vois exactement<br>où tu perds des points</h3>
-          <p class="mt-5 leading-relaxed text-muted" data-i18n="accueil.chaque_reponse_est_notee_sur_20_et_decomposee_ce_qui">
-            Chaque réponse est notée sur 20 et décomposée : ce qui fonctionne, ce qui manque,
-            et une réécriture courte de ce que tu aurais pu dire de mieux. Pas de félicitations
-            de politesse — si une réponse est creuse, c'est écrit.
-          </p>
-        </div>
-      </div>
 
-      <!-- Bloc 3 -->
-      <div class="mt-16 grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+        <hr class="my-8 border-line">
+
+        <!-- ── Étape 2 ── -->
         <div>
-          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl" data-i18n="titre.debit_clarte">Ton débit,<br>ta clarté, ton stress</h3>
-          <p class="mt-5 leading-relaxed text-muted" data-i18n="accueil.l_analyse_d_eloquence_mesure_ce_que_tu_n_entends_pas">
-            L'analyse d'éloquence mesure ce que tu n'entends pas toi-même : mots par minute,
-            richesse du vocabulaire, longueur des phrases. La plupart des candidats parlent
-            trop vite sans le savoir.
-          </p>
-        </div>
-        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-6">
-          <div class="grid grid-cols-3 gap-4 text-center">
-            <div class="rounded-xl bg-ink/50 p-4">
-              <p class="font-display text-2xl font-extrabold tabular-nums text-coral">184</p>
-              <p class="mt-1 text-[11px] leading-tight text-muted">mots / min<br>Trop rapide</p>
-            </div>
-            <div class="rounded-xl bg-ink/50 p-4">
-              <p class="font-display text-2xl font-extrabold tabular-nums text-mint">64</p>
-              <p class="mt-1 text-[11px] leading-tight text-muted">richesse<br>Vocabulaire varié</p>
-            </div>
-            <div class="rounded-xl bg-ink/50 p-4">
-              <p class="font-display text-2xl font-extrabold tabular-nums text-amber">27</p>
-              <p class="mt-1 text-[11px] leading-tight text-muted">mots / phrase<br>À raccourcir</p>
-            </div>
+          <div class="flex items-center gap-3">
+            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">2</span>
+            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.tes_documents">Tes documents</h3>
           </div>
-          <p class="mt-4 rounded-xl border border-iris/25 bg-iris/5 p-3 text-xs leading-relaxed text-muted">
-            <span class="font-medium text-iris2">Conseil ·</span> Marque une vraie pause après chaque idée.
-            Ton débit chute naturellement et le jury retient davantage.
-          </p>
-        </div>
-      </div>
-    </section>
-    <!-- ══ Chaque oral a ses codes ══ -->
-    <section class="mt-24 sm:mt-32">
-      <h2 class="titre-section text-center" data-i18n="titre.chaque_oral">
-        Chaque oral a <span class="marqueur">ses codes</span>.
-      </h2>
-      <p class="mx-auto mt-4 max-w-xl text-center text-sm leading-relaxed text-muted" data-i18n="accueil.un_jury_de_brevet_et_un_jury_de_grande_ecole_n_atten">
-        Un jury de brevet et un jury de grande école n'attendent pas la même chose.
-        L'examinateur change de posture, de vocabulaire et de grille selon l'épreuve.
-      </p>
+          <p class="mt-2 text-sm text-muted" data-i18n="sim.pdf_word_image_ou_texte_colle_tes_fichiers_sont_lus_">PDF, Word, image ou texte collé. Tes fichiers sont lus dans ton navigateur, jamais stockés.</p>
 
-      <div class="rail mt-10 -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-3 lg:overflow-visible">
-        <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[-1.2deg]">
-          <span class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-2.5 py-0.5 text-[11px] font-medium text-iris2" data-i18n="accueil.grand_oral">Grand Oral</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.quelqu_un_vous_soutient_exactement_l_inverse_de_votr">« Quelqu'un vous soutient exactement l'inverse de votre conclusion. Que lui répondez-vous ? »</p>
-          <p class="mt-4 text-xs text-muted" data-i18n="accueil.note_sur_la_prise_de_recul_et_le_lien_au_projet_d_or">Noté sur la prise de recul et le lien au projet d'orientation.</p>
-        </article>
-        <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[.8deg]">
-          <span class="inline-flex rounded-full border border-amber/40 bg-amber/10 px-2.5 py-0.5 text-[11px] font-medium text-amber" data-i18n="accueil.entretien">Entretien</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.votre_profil_manque_d_experience_sur_ce_perimetre_po">« Votre profil manque d'expérience sur ce périmètre. Pourquoi vous plutôt qu'un candidat confirmé ? »</p>
-          <p class="mt-4 text-xs text-muted" data-i18n="accueil.note_sur_les_preuves_chiffrees_et_la_concision">Noté sur les preuves chiffrées et la concision.</p>
-        </article>
-        <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[-.6deg]">
-          <span class="inline-flex rounded-full border border-mint/40 bg-mint/10 px-2.5 py-0.5 text-[11px] font-medium text-mint" data-i18n="accueil.brevet_3e">Brevet · 3e</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.decrivez_une_journee_type_de_votre_stage_que_faisiez">« Décrivez une journée type de votre stage : que faisiez-vous concrètement ? »</p>
-          <p class="mt-4 text-xs text-muted" data-i18n="accueil.vocabulaire_adapte_a_l_age_bienveillant_mais_exigean">Vocabulaire adapté à l'âge, bienveillant mais exigeant.</p>
-        </article>
-        <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[.9deg]">
-          <span class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-2.5 py-0.5 text-[11px] font-medium text-iris2" data-i18n="accueil.concours">Concours</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.qu_est_ce_qui_dans_votre_dossier_pourrait_faire_hesi">« Qu'est-ce qui, dans votre dossier, pourrait faire hésiter le jury ? »</p>
-          <p class="mt-4 text-xs text-muted" data-i18n="accueil.note_sur_la_coherence_du_projet_et_la_culture_genera">Noté sur la cohérence du projet et la culture générale.</p>
-        </article>
-        <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[-.9deg]">
-          <span class="inline-flex rounded-full border border-amber/40 bg-amber/10 px-2.5 py-0.5 text-[11px] font-medium text-amber" data-i18n="accueil.pitch">Pitch</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.quelle_est_la_taille_de_votre_marche_et_comment_l_av">« Quelle est la taille de votre marché, et comment l'avez-vous estimée ? »</p>
-          <p class="mt-4 text-xs text-muted" data-i18n="accueil.questions_courtes_concretes_orientees_objection">Questions courtes, concrètes, orientées objection.</p>
-        </article>
-        <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[.5deg]">
-          <span class="inline-flex rounded-full border border-mint/40 bg-mint/10 px-2.5 py-0.5 text-[11px] font-medium text-mint" data-i18n="accueil.certification">Certification</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.some_people_say_studying_abroad_is_essential_do_you_">« Some people say studying abroad is essential. Do you agree? Give reasons and examples. »</p>
-          <p class="mt-4 text-xs text-muted" data-i18n="accueil.pose_dans_la_langue_de_l_epreuve_note_selon_le_cecrl">Posé dans la langue de l'épreuve, noté selon le CECRL.</p>
-        </article>
-      </div>
-    </section>
-    <!-- ══ La méthode ══ -->
-    <section class="mt-24 sm:mt-32">
-      <div class="mx-auto max-w-3xl rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-10">
-        <h2 class="titre-section text-center" data-i18n="accueil.pourquoi_preporal">Pourquoi PrepOral ?</h2>
-        <div class="mt-8 space-y-5 leading-relaxed text-muted">
-          <p>
-            <span class="font-display text-3xl leading-none text-iris2">«</span>
-            La plupart des candidats préparent leur oral en relisant des fiches. Le jour J,
-            ils découvrent qu'ils n'ont jamais prononcé leurs réponses à voix haute une seule fois.
-          </p>
-          <p data-i18n="accueil.repeter_devant_quelqu_un_coute_cher_gene_et_n_est_pa">
-            Répéter devant quelqu'un coûte cher, gêne, et n'est pas répétable dix fois. PrepOral
-            fait exactement l'inverse : l'examinateur pose ses questions à voix haute, il ne se
-            lasse jamais, et il te dit franchement ce qui ne va pas.
-          </p>
-          <p data-i18n="accueil.l_outil_ne_remplace_ni_un_professeur_ni_un_jury_il_t">
-            L'outil ne remplace ni un professeur ni un jury. Il te fait passer l'épreuve
-            une première fois, en privé, pour que le jour J ne soit pas ta première fois.
-          </p>
-        </div>
-        <div class="mt-8 grid gap-3 sm:grid-cols-3">
-          <div class="rounded-xl border border-line bg-ink/40 p-4">
-            <p class="font-display text-sm font-bold" data-i18n="accueil.tes_documents_restent_a_toi">Tes documents restent à toi</p>
-            <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.lus_le_temps_de_la_simulation_jamais_conserves_ni_re">Lus le temps de la simulation, jamais conservés ni revendus.</p>
-          </div>
-          <div class="rounded-xl border border-line bg-ink/40 p-4">
-            <p class="font-display text-sm font-bold" data-i18n="accueil.aucune_promesse_de_note">Aucune promesse de note</p>
-            <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.un_entrainement_pas_une_garantie_de_reussite_c_est_e">Un entraînement, pas une garantie de réussite. C'est écrit dans les CGV.</p>
-          </div>
-          <div class="rounded-xl border border-line bg-ink/40 p-4">
-            <p class="font-display text-sm font-bold" data-i18n="accueil.resiliable_en_un_clic">Résiliable en un clic</p>
-            <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.sans_engagement_depuis_le_portail_client_stripe">Sans engagement, depuis le portail client Stripe.</p>
-          </div>
-        </div>
-      </div>
-    </section>
+          <div class="mt-5 grid gap-4 lg:grid-cols-2">
+            <!-- Champ A -->
+            <div class="champ rounded-2xl border border-line bg-ink/50 p-4 transition sm:p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3">
+                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-iris/15 text-iris2">
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+                  </span>
+                  <div>
+                    <p id="label-A" class="font-display font-bold leading-tight" data-i18n="sim.votre_cv">Votre CV</p>
+                    <p id="aide-A" class="mt-0.5 text-xs text-muted" data-i18n="sim.parcours_missions_resultats">Parcours, missions, résultats</p>
+                  </div>
+                </div>
+                <span id="compteur-A" class="shrink-0 text-xs tabular-nums text-muted">0</span>
+              </div>
 
-    <!-- ══ Aperçu des témoignages ══ -->
-    <section class="mt-24 sm:mt-32">
-      <div class="flex flex-wrap items-end justify-between gap-4">
+              <label id="depot-A" class="depot mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line bg-ink/40 px-4 py-3 text-sm text-muted transition hover:border-iris/60">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                <span id="etat-fichier-A">Importer un fichier ou glissez-le ici</span>
+                <input id="fichier-A" type="file" class="sr-only" accept=".pdf,.txt,.md,.doc,.docx,.rtf,image/*">
+              </label>
+
+              <textarea id="champA" rows="7" class="mt-3 w-full rounded-xl border border-line bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none" placeholder="Collez ou importez votre CV…"></textarea>
+              <p id="min-A" class="mt-2 text-xs text-muted" data-i18n="sim.minimum_200_caracteres">Minimum 200 caractères.</p>
+            </div>
+
+            <!-- Champ B -->
+            <div class="champ rounded-2xl border border-line bg-ink/50 p-4 transition sm:p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3">
+                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-iris/15 text-iris2">
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </span>
+                  <div>
+                    <p id="label-B" class="font-display font-bold leading-tight" data-i18n="sim.l_offre_d_emploi">L'offre d'emploi</p>
+                    <p id="aide-B" class="mt-0.5 text-xs text-muted" data-i18n="sim.intitule_missions_profil_recherche">Intitulé, missions, profil recherché</p>
+                  </div>
+                </div>
+                <span id="compteur-B" class="shrink-0 text-xs tabular-nums text-muted">0</span>
+              </div>
+
+              <label id="depot-B" class="depot mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line bg-ink/40 px-4 py-3 text-sm text-muted transition hover:border-iris/60">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                <span id="etat-fichier-B">Importer un fichier ou glissez-le ici</span>
+                <input id="fichier-B" type="file" class="sr-only" accept=".pdf,.txt,.md,.doc,.docx,.rtf,image/*">
+              </label>
+
+              <textarea id="champB" rows="7" class="mt-3 w-full rounded-xl border border-line bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none" placeholder="Collez l'annonce complète…"></textarea>
+              <p id="min-B" class="mt-2 text-xs text-muted" data-i18n="sim.minimum_150_caracteres">Minimum 150 caractères.</p>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-8 border-line">
+
+        <!-- ── Étape 3 ── -->
         <div>
-          <h2 class="titre-section" data-i18n="titre.ce_que_disent">Ce que disent<br class="hidden sm:block"> nos utilisateurs</h2>
-          <p class="mt-3 text-sm text-muted" data-i18n="accueil.retours_de_candidats_apres_leur_oral_verifies_avant_">Retours de candidats après leur oral, vérifiés avant publication.</p>
+          <div class="flex items-center gap-3">
+            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">3</span>
+            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.le_format_de_l_epreuve">Le format de l'épreuve</h3>
+          </div>
+
+          <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <span class="text-sm font-medium" data-i18n="sim.nombre_de_questions">Nombre de questions</span>
+              <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="nbQuestions">
+                <button type="button" data-valeur="3" class="opt rounded-md px-3 py-1.5 text-sm">3</button>
+                <button type="button" data-valeur="5" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut>5</button>
+                <button type="button" data-valeur="8" class="opt rounded-md px-3 py-1.5 text-sm">8</button>
+              </div>
+            </div>
+            <div>
+              <span class="text-sm font-medium" data-i18n="sim.temps_par_reponse">Temps par réponse</span>
+              <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="duree">
+                <button type="button" data-valeur="60" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.1_min">1 min</button>
+                <button type="button" data-valeur="120" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut data-i18n="sim.2_min">2 min</button>
+                <button type="button" data-valeur="300" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.5_min">5 min</button>
+              </div>
+            </div>
+            <div>
+              <span class="text-sm font-medium" data-i18n="sim.ton_de_l_examinateur">Ton de l'examinateur</span>
+              <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="niveau">
+                <button type="button" data-valeur="bienveillant" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.bienveillant">Bienveillant</button>
+                <button type="button" data-valeur="standard" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut data-i18n="sim.standard">Standard</button>
+                <button type="button" data-valeur="exigeant" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.exigeant">Exigeant</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 grid gap-3 sm:grid-cols-2">
+            <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-ink/40 p-4 transition hover:border-iris/50">
+              <input id="mode-reel" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0 accent-[#7C5CFF]">
+              <span>
+                <span class="block text-sm font-medium">Mode conditions réelles</span>
+                <span class="mt-0.5 block text-xs leading-relaxed text-muted">Chrono strict, pas de pause, passage automatique à la question suivante.</span>
+              </span>
+            </label>
+            <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-ink/40 p-4 transition hover:border-iris/50">
+              <input id="lecture-auto" type="checkbox" checked class="mt-0.5 h-4 w-4 shrink-0 accent-[#7C5CFF]">
+              <span>
+                <span class="block text-sm font-medium">L'examinateur parle</span>
+                <span class="mt-0.5 block text-xs leading-relaxed text-muted">Chaque question est lue à voix haute, comme le jour J.</span>
+              </span>
+            </label>
+          </div>
         </div>
-        <p id="note-moyenne" class="hidden items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm"></p>
-      </div>
 
-      <div id="grille-avis" class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+        <hr class="my-8 border-line">
 
-      <div class="mt-8 text-center">
-        <a href="./temoignages.html" class="group inline-flex items-center gap-2 rounded-xl border border-line bg-raised px-6 py-3.5 font-display font-bold transition hover:border-iris/60">
-          <span data-i18n="cta.tous_temoignages">Voir tous les témoignages</span>
-          <span class="transition-transform group-hover:translate-x-1">→</span>
-        </a>
-      </div>
-    </section>
-    <!-- ══ Appel final ══ -->
-    <section class="mt-24 sm:mt-32">
-      <div class="relative overflow-hidden rounded-3xl border border-line bg-surface px-6 py-16 text-center shadow-carte sm:px-10">
-        <div class="pointer-events-none absolute inset-0" style="background:radial-gradient(600px 300px at 50% 0%, rgba(124,92,255,.22), transparent 70%)"></div>
-        <div class="relative">
-          <h2 class="titre-section mx-auto max-w-2xl" data-i18n="titre.jour_j">
-            Le jour J ne doit pas être <span class="marqueur">ta première fois</span>.
-          </h2>
-          <p class="mx-auto mt-5 max-w-lg leading-relaxed text-muted" data-i18n="accueil.deux_simulations_completes_offertes_sans_compte_ni_c">
-            Deux simulations complètes offertes, sans compte ni carte bancaire.
-            Tu sauras en dix minutes où tu en es.
-          </p>
-          <a href="./simulateur.html" class="group mt-9 inline-flex items-center justify-center gap-2 rounded-xl bg-inverse px-8 py-4 font-display text-base font-bold text-sur-inverse transition hover:opacity-90">
-            <span data-i18n="cta.premiere_simulation">Lancer ma première simulation</span>
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p id="aide-action" class="text-sm text-muted" data-i18n="sim.completez_les_deux_champs_pour_demarrer">Complétez les deux champs pour démarrer.</p>
+          <button id="btn-lancer" type="button" disabled
+            class="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-inverse px-7 py-4 font-display text-base font-bold text-sur-inverse transition enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted sm:w-auto">
+            <span data-i18n="cta.lancer_simulation">Lancer ma simulation</span>
             <span class="transition-transform group-hover:translate-x-1">→</span>
-          </a>
+          </button>
         </div>
       </div>
-    </section>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════
-     VUE 2 · COACH IA
-     ══════════════════════════════════════════════════════════ -->
-<section id="vue-coach" class="hidden pt-10">
-  <h1 class="titre-section" data-i18n="accueil.coach_ia">Coach IA</h1>
-  <p class="mt-2 max-w-2xl text-muted" data-i18n="accueil.collez_votre_plan_votre_texte_ou_votre_sujet_et_disc">
-    Collez votre plan, votre texte ou votre sujet et discutez avant de vous lancer :
-    structuration, reformulation, accroche, questions du jury. À l'écrit ou à la voix.
-  </p>
-
-  <div class="mt-6 rounded-2xl border border-line bg-surface shadow-carte">
-    <div class="flex items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
-      <p class="text-sm text-muted" data-i18n="accueil.discussion_libre">Discussion libre</p>
-      <div class="flex gap-2">
-        <button id="btn-voix-coach" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-iris/60" data-i18n="accueil.lecture_audio_activee">Lecture audio : activée</button>
-        <button id="btn-vider-coach" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-iris/60" data-i18n="accueil.effacer">Effacer</button>
-      </div>
-    </div>
-    <div id="fil-coach" class="h-[46vh] min-h-[300px] space-y-4 overflow-y-auto p-4 sm:p-6"></div>
-    <div class="border-t border-line/70 p-3 sm:p-4">
-      <div class="flex items-end gap-2">
-        <button id="btn-micro-coach" type="button" title="Parler" class="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-line bg-raised transition hover:border-iris/60">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-        </button>
-        <textarea id="saisie-coach" rows="1" placeholder="Posez votre question, ou collez votre texte d'oral…"
-          class="max-h-40 flex-1 rounded-xl border border-line bg-ink/60 p-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none"></textarea>
-        <button id="btn-envoyer-coach" type="button" class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-iris to-iris2 text-white shadow-glow transition hover:brightness-110">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m0 0-6-6m6 6-6 6"/></svg>
-        </button>
-      </div>
-      <p id="etat-micro-coach" class="mt-2 text-xs text-muted" data-i18n="accueil.appuyez_sur_le_micro_pour_parler_a_votre_coach">Appuyez sur le micro pour parler à votre coach.</p>
     </div>
   </div>
-</section>
 
-<!-- ══════════════════════════════════════════════════════════
-     VUE 3 · MON ESPACE
-     ══════════════════════════════════════════════════════════ -->
-<section id="vue-compte" class="hidden pt-10">
-  <h1 class="titre-section" data-i18n="accueil.mon_espace">Mon espace</h1>
+  <!-- ─── Écran chargement ─── -->
+  <div id="ecran-chargement" class="hidden py-16 sm:py-24">
+    <div class="mx-auto max-w-lg rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-8">
 
-  <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_320px]">
-    <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-4">
+        <span class="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-iris/12">
+          <span class="absolute inset-0 rounded-2xl border-2 border-line"></span>
+          <span class="absolute inset-0 animate-spin rounded-2xl border-2 border-transparent border-t-iris2"></span>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-iris2">
+            <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+          </svg>
+        </span>
+        <div class="min-w-0">
+          <p id="titre-chargement" class="font-display text-lg font-bold leading-tight" data-i18n="sim.preparation_de_votre_oral">Préparation de votre oral</p>
+          <p class="mt-0.5 text-sm text-muted" data-i18n="sim.quelques_secondes_l_examinateur_se_prepare">Quelques secondes, l'examinateur se prépare.</p>
+        </div>
+      </div>
+
+      <div class="mt-6 h-1.5 overflow-hidden rounded-full bg-line">
+        <i id="barre-chargement" class="block h-full w-0 rounded-full bg-gradient-to-r from-iris to-iris2 transition-[width] duration-300 ease-out"></i>
+      </div>
+
+      <ul id="etapes-chargement" class="mt-6 space-y-3"></ul>
+
+      <div class="mt-7 rounded-2xl border border-line bg-ink/40 p-4">
+        <p class="text-xs font-medium text-iris2" data-i18n="sim.pendant_que_vous_attendez">Pendant que vous attendez</p>
+        <p id="conseil-chargement" class="mt-1.5 text-sm leading-relaxed text-muted"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="ecran-simulation" class="hidden pt-8">
+    <div class="flex items-center justify-between gap-4">
+      <p class="text-sm text-muted">Question <span id="num-question" class="font-semibold text-soft">1</span> sur <span id="total-questions">5</span></p>
+      <button id="btn-abandon" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="sim.quitter">Quitter</button>
+    </div>
+    <div id="segments" class="mt-3 flex gap-1.5"></div>
+
+    <div class="mt-8 grid gap-4 lg:grid-cols-[1fr_260px]">
+      <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
+        <div class="flex flex-wrap items-center gap-3">
+          <span id="categorie" class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-3 py-1 text-xs font-medium text-iris2" data-i18n="sim.question">Question</span>
+          <button id="btn-relire" type="button" class="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-3 py-1 text-xs transition hover:border-iris/60">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+            Réécouter la question
+          </button>
+        </div>
+        <h2 id="question" class="mt-4 font-display text-2xl font-bold leading-snug sm:text-[28px]">…</h2>
+
+        <div class="mt-8 rounded-2xl border border-line bg-ink/40 p-4 text-center">
+          <button id="btn-micro" type="button"
+            class="mx-auto flex w-full max-w-sm items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-iris to-iris2 px-6 py-5 font-display text-lg font-bold text-white shadow-glow transition hover:brightness-110">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            <span id="libelle-micro">Répondre à l'oral</span>
+          </button>
+          <p id="etat-micro" class="mt-3 text-sm text-muted" data-i18n="sim.parlez_normalement_votre_reponse_s_ecrit_toute_seule">Parlez normalement : votre réponse s'écrit toute seule.</p>
+          <p id="interim" class="mt-2 min-h-[1.25rem] text-sm italic text-iris2"></p>
+        </div>
+
+        <div class="mt-6 flex items-baseline justify-between">
+          <label for="reponse" class="text-sm font-medium" data-i18n="sim.votre_reponse">Votre réponse</label>
+          <span id="compteur-reponse" class="text-xs tabular-nums text-muted" data-i18n="sim.0_mot">0 mot</span>
+        </div>
+        <textarea id="reponse" rows="7"
+          class="mt-2 w-full rounded-xl border border-line/70 bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none"
+          placeholder="Vous pouvez aussi écrire directement ici."></textarea>
+
+        <div class="mt-5 flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
+          <button id="btn-suivant" type="button"
+            class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.valider_et_continuer">
+            Valider et continuer
+          </button>
+          <button id="btn-passer" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="sim.passer_cette_question">Passer cette question</button>
+        </div>
+      </div>
+
+      <aside class="rounded-2xl border border-line bg-surface p-5 text-center shadow-carte">
+        <p class="text-sm text-muted" data-i18n="sim.temps_de_parole">Temps de parole</p>
+        <div class="relative mx-auto mt-4 h-[132px] w-[132px]">
+          <svg viewBox="0 0 120 120" class="anneau h-full w-full">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgb(var(--line))" stroke-width="8"/>
+            <circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="#7C5CFF" stroke-width="8" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="0"/>
+          </svg>
+          <div class="absolute inset-0 grid place-items-center">
+            <span id="chrono" role="timer" class="font-display text-3xl font-extrabold tabular-nums">2:00</span>
+          </div>
+        </div>
+        <p id="etat-chrono" class="mt-4 text-sm text-muted" data-i18n="sim.le_chrono_tourne">Le chrono tourne.</p>
+        <button id="btn-pause" type="button" class="mt-4 w-full rounded-lg border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/50" data-i18n="sim.mettre_en_pause">Mettre en pause</button>
+      </aside>
+    </div>
+  </div>
+  <div id="ecran-rapport" class="hidden pt-12">
+    <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
+      <div class="grid gap-8 sm:grid-cols-[160px_1fr] sm:items-center">
+        <div class="relative mx-auto h-[160px] w-[160px]">
+          <svg viewBox="0 0 120 120" class="anneau h-full w-full">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgb(var(--line))" stroke-width="9"/>
+            <circle id="arc-score" cx="60" cy="60" r="52" fill="none" stroke="#3DDC97" stroke-width="9" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"/>
+          </svg>
+          <div class="absolute inset-0 grid place-items-center text-center">
+            <div>
+              <span id="score-global" class="font-display text-4xl font-extrabold tabular-nums">0</span>
+              <span class="block text-xs text-muted" data-i18n="sim.sur_100">sur 100</span>
+            </div>
+          </div>
+        </div>
         <div>
-          <h2 class="font-display text-lg font-bold" data-i18n="accueil.mes_simulations_passees">Mes simulations passées</h2>
-          <p class="text-sm text-muted" data-i18n="accueil.progression_de_vos_notes_de_la_plus_ancienne_a_la_pl">Progression de vos notes, de la plus ancienne à la plus récente.</p>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p id="type-rapport" class="text-sm text-muted" data-i18n="sim.simulation">Simulation</p>
+            <div id="ecoute-bilan" class="sans-impression"></div>
+          </div>
+          <h2 id="verdict" class="mt-1 font-display text-3xl font-extrabold tracking-tight" data-i18n="sim.rapport_de_simulation">Rapport de simulation</h2>
+          <p id="verdict-detail" class="mt-2 max-w-lg leading-relaxed text-muted">…</p>
+          <dl class="mt-6 grid grid-cols-3 gap-3 text-center">
+            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.questions">Questions</dt><dd id="stat-questions" class="font-display text-xl font-bold tabular-nums">0</dd></div>
+            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.temps_de_parole">Temps de parole</dt><dd id="stat-temps" class="font-display text-xl font-bold tabular-nums">0:00</dd></div>
+            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.mots_reponse">Mots / réponse</dt><dd id="stat-mots" class="font-display text-xl font-bold tabular-nums">0</dd></div>
+          </dl>
         </div>
-        <button id="btn-vider-historique" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-coral/60" data-i18n="accueil.tout_effacer">Tout effacer</button>
       </div>
-      <div id="graphique-progression" class="mt-5"></div>
-      <div id="liste-historique" class="mt-6 space-y-3"></div>
+      <div id="criteres" class="mt-8 grid gap-x-8 gap-y-5 border-t border-line/70 pt-8 sm:grid-cols-2"></div>
     </div>
 
-    <aside class="space-y-4">
-      <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte">
-        <h2 class="font-display text-lg font-bold" data-i18n="accueil.compte">Compte</h2>
-        <p id="etat-compte" class="mt-2 text-sm text-muted" data-i18n="accueil.vous_n_etes_pas_connecte">Vous n'êtes pas connecté.</p>
-        <div class="mt-4 space-y-2">
-          <button id="btn-connexion-2" type="button" class="w-full rounded-xl bg-gradient-to-r from-iris to-iris2 px-4 py-3 font-medium text-white shadow-glow transition hover:brightness-110" data-i18n="accueil.connexion_inscription">Connexion / Inscription</button>
-          <button id="btn-portail" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-iris/50" data-i18n="accueil.gerer_mon_abonnement">Gérer mon abonnement</button>
-          <button id="btn-deconnexion" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-coral/50" data-i18n="accueil.se_deconnecter">Se déconnecter</button>
-        </div>
+    <!-- Éloquence -->
+    <div class="mt-6 rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h3 class="font-display text-xl font-bold" data-i18n="sim.eloquence_et_voix">Éloquence et voix</h3>
+        <span id="eloq-note" class="rounded-full border border-line bg-raised px-3 py-1 font-display text-sm font-bold tabular-nums">– / 20</span>
       </div>
-      <div id="carte-premium" class="rounded-2xl border border-iris/40 bg-iris/10 p-5">
-        <p class="font-display font-bold" data-i18n="accueil.preporal_premium">PrepOral Premium</p>
-        <p id="texte-premium" class="mt-1 text-sm text-muted" data-i18n="accueil.simulations_illimitees_rapports_detailles_et_coach_i">Simulations illimitées, rapports détaillés et coach IA sans limite.</p>
-        <button id="btn-premium" type="button" class="mt-4 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.voir_les_offres">Voir les offres</button>
+      <div class="mt-5 grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.debit_de_parole">Débit de parole</p><p id="eloq-debit" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-debit-note" class="text-xs text-muted"></p></div>
+        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.richesse_du_vocabulaire">Richesse du vocabulaire</p><p id="eloq-richesse" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-richesse-note" class="text-xs text-muted"></p></div>
+        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.clarte">Clarté</p><p id="eloq-clarte" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-clarte-note" class="text-xs text-muted"></p></div>
       </div>
-    </aside>
+      <ul id="eloq-conseils" class="mt-5 space-y-2 text-sm text-muted"></ul>
+    </div>
+
+    <h3 class="mt-12 font-display text-xl font-bold" data-i18n="sim.reponse_par_reponse">Réponse par réponse</h3>
+    <div id="detail-reponses" class="mt-4 space-y-4"></div>
+
+    <!-- Fin de simulation : on renvoie vers l'historique, où tout se relit. -->
+    <div class="sans-impression mt-10 rounded-2xl border border-iris/30 bg-iris/5 p-5 sm:p-6">
+      <h3 class="font-display text-lg font-bold" data-i18n="sim.ce_bilan_est_enregistre">Ce bilan est enregistré</h3>
+      <p class="mt-1.5 text-sm leading-relaxed text-muted" data-i18n="sim.retrouvez_le_quand_vous_voulez_dans_mes_simulations_">
+        Retrouvez-le quand vous voulez dans « Mes simulations passées », avec les questions
+        posées, vos réponses et la correction complète de l'examinateur.
+      </p>
+      <a id="btn-mes-simulations" href="./index.html?vue=compte"
+        class="group mt-4 inline-flex items-center gap-2 rounded-xl bg-inverse px-6 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90">
+        <span data-i18n="cta.mes_simulations">Voir mes simulations passées</span>
+        <span class="transition-transform group-hover:translate-x-1">→</span>
+      </a>
+    </div>
+
+    <div class="sans-impression mt-6 flex flex-col gap-3 sm:flex-row">
+      <button id="btn-rejouer" type="button" class="rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.refaire_une_simulation">Refaire une simulation</button>
+      <button id="btn-pdf" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50" data-i18n="sim.telecharger_le_bilan_en_pdf">Télécharger le bilan en PDF</button>
+      <button id="btn-modifier" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50" data-i18n="sim.modifier_mes_documents">Modifier mes documents</button>
+    </div>
+
+    <!-- Invitation à déposer un avis : c'est ainsi que la page Témoignages se remplit. -->
+    <div id="invite-avis" class="sans-impression mt-6 hidden rounded-2xl border border-line bg-surface p-5 sm:p-6">
+      <h3 class="font-display font-bold" data-i18n="sim.ca_vous_a_servi">Ça vous a servi ?</h3>
+      <p class="mt-1.5 text-sm leading-relaxed text-muted" data-i18n="sim.votre_retour_aide_les_prochains_candidats_a_se_lance">
+        Votre retour aide les prochains candidats à se lancer. Il est vérifié avant publication.
+      </p>
+      <a href="./temoignages.html#deposer"
+        class="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-raised px-5 py-3 text-sm font-medium transition hover:border-iris/60" data-i18n="sim.laisser_un_avis">
+        Laisser un avis
+      </a>
+    </div>
   </div>
 </section>
 
@@ -822,25 +796,9 @@
     </div>
   </div>
 </div>
-<!-- Relecture d'une simulation passée -->
-<div id="modal-relecture" class="modale fixed inset-0 z-50 grid place-items-center bg-ink/85 p-4 backdrop-blur" hidden>
-  <div class="entree flex max-h-[88vh] w-full max-w-3xl flex-col rounded-3xl border border-line bg-surface shadow-carte" role="dialog" aria-modal="true" aria-labelledby="relecture-titre">
-    <div class="flex items-start justify-between gap-4 border-b border-line/70 p-5 sm:p-6">
-      <div>
-        <p class="text-xs text-muted" data-i18n="accueil.simulation_passee">Simulation passée</p>
-        <h2 id="relecture-titre" class="mt-0.5 font-display text-xl font-extrabold" data-i18n="accueil.relecture">Relecture</h2>
-      </div>
-      <button type="button" data-fermer class="shrink-0 rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
-      </button>
-    </div>
-    <div id="relecture-contenu" class="space-y-4 overflow-y-auto p-5 sm:p-6"></div>
-  </div>
-</div>
-
 <div id="toasts" class="fixed bottom-24 left-1/2 z-[60] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 flex-col gap-2"></div>
 
 
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/simulateur.js"></script>
 </body>
 </html>

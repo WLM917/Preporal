@@ -14,6 +14,7 @@
 
 import { CONFIG } from './config.js';
 import { $, stock, echappe, toast } from './ui.js';
+import { t, surChangementLangue } from './i18n.js';
 import { supabase, session } from './auth.js';
 
 const etoiles = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
@@ -31,10 +32,10 @@ export async function chargerAvisPublies() {
   try {
     const { data } = await supabase
       .from('avis')
-      .select('nom, statut, note, texte, cree_le')
+      .select('nom, statut, note, texte, type_oral, cree_le')
       .eq('publie', true)
       .order('cree_le', { ascending: false })
-      .limit(12);
+      .limit(6);   // l'accueil n'affiche qu'un aperçu
     avisPublies = data || [];
   } catch (e) {
     console.warn('Avis publiés indisponibles', e);
@@ -91,6 +92,8 @@ const carte = (a, enAttente = false) => `
     </figcaption>
   </figure>`;
 
+surChangementLangue(() => rendreAvis());
+
 export function rendreAvis() {
   rendreNoteMoyenne();
 
@@ -102,10 +105,10 @@ export function rendreAvis() {
   if (!avisPublies.length && !locaux.length) {
     zone.innerHTML = `
       <div class="rounded-2xl border border-dashed border-line bg-surface/50 p-8 text-center sm:col-span-2 lg:col-span-3">
-        <p class="font-display font-bold">Pas encore d'avis publié.</p>
+        <p class="font-display font-bold">${echappe(t('avis.vide_titre', "Pas encore d'avis publié."))}</p>
         <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-          Les retours affichés ici seront ceux de vraies personnes ayant passé une simulation,
-          vérifiés avant publication. Vous venez de terminer un oral ? Votre avis peut être le premier.
+          ${echappe(t('avis.vide_texte', 'Les retours affichés ici seront ceux de vraies personnes ayant passé une simulation, vérifiés avant publication. Vous venez de terminer un oral ?'))}
+          <a href="./temoignages.html#deposer" class="text-iris2 underline underline-offset-2">${echappe(t('avis.vide_lien', 'Votre avis peut être le premier.'))}</a>
         </p>
       </div>`;
     return;
@@ -117,63 +120,5 @@ export function rendreAvis() {
   ].join('');
 }
 
-export function brancherAvis() {
-  const zoneNote = $('#avis-note');
-  let noteChoisie = 5;
-
-  if (zoneNote) {
-    const dessiner = () => {
-      zoneNote.innerHTML = [1, 2, 3, 4, 5].map(i =>
-        `<button type="button" role="radio" aria-checked="${i === noteChoisie}" aria-label="${i} étoile${i > 1 ? 's' : ''}"
-           data-note="${i}" class="text-2xl leading-none transition ${i <= noteChoisie ? 'text-amber' : 'text-line hover:text-amber/60'}">★</button>`
-      ).join('');
-    };
-    dessiner();
-    zoneNote.addEventListener('click', e => {
-      const b = e.target.closest('[data-note]');
-      if (!b) return;
-      noteChoisie = Number(b.dataset.note);
-      dessiner();
-    });
-  }
-
-  $('#btn-avis')?.addEventListener('click', async () => {
-    const brut = ($('#avis-nom')?.value || '').trim();
-    const texte = ($('#avis-texte')?.value || '').trim();
-    if (brut.length < 2) return toast('Indiquez au moins votre prénom.', 'erreur');
-    if (texte.length < 20) return toast('Votre retour est un peu court : quelques mots de plus ?', 'erreur');
-
-    const [nom, ...reste] = brut.split(',');
-    const avis = {
-      nom: nom.trim(),
-      statut: reste.join(',').trim() || 'Utilisateur de PrepOral',
-      note: noteChoisie,
-      texte,
-      date: new Date().toISOString()
-    };
-
-    stock.ecrire(CONFIG.cles.avis, [avis, ...lireAvisLocaux()].slice(0, 20));
-
-    let enregistre = false;
-    if (supabase) {
-      try {
-        const { error } = await supabase.from('avis').insert({
-          utilisateur_id: session.id || null,
-          nom: avis.nom, statut: avis.statut, note: avis.note, texte: avis.texte,
-          publie: false          // la modération est faite côté administration
-        });
-        enregistre = !error;
-      } catch (e) { console.warn('Avis non synchronisé', e); }
-    }
-
-    $('#avis-texte').value = '';
-    rendreAvis();
-    toast(enregistre
-      ? 'Merci ! Votre avis sera publié après vérification.'
-      : "Merci ! Votre avis est enregistré sur cet appareil ; il sera publié après vérification.",
-      'succes');
-    $('#grille-avis')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
-  rendreAvis();
-}
+/* Le dépôt d'un avis se fait sur la page Témoignages : ce module
+   ne s'occupe plus que de l'aperçu affiché sur l'accueil. */

@@ -9,7 +9,10 @@ import { utilisateurDepuisJeton } from './_lib/supabaseAdmin.js';
 
 const PLANS = {
   mensuel: { env: 'STRIPE_PRICE_MENSUEL', mode: 'subscription', nom: 'PrepOral Premium' },
-  pass48:  { env: 'STRIPE_PRICE_PASS48',  mode: 'payment',      nom: 'Pass 48 heures' }
+  pass48:  { env: 'STRIPE_PRICE_PASS48',  mode: 'payment',      nom: 'Pass 48 heures' },
+  // Paiement unique couvrant six mois : ce n'est pas un abonnement,
+  // rien n'est reconduit et l'échéance est posée par le webhook.
+  extra:   { env: 'STRIPE_PRICE_EXTRA',   mode: 'payment',      nom: 'PrepOral Extra' }
 };
 
 export default async function handler(req, res) {

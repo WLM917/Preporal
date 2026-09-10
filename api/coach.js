@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     const verdict = await verifierQuota(req);
     if (!verdict.autorise && verdict.code === 'connexion') return refuserQuota(res, verdict);
 
-    const { messages = [] } = req.body || {};
+    const { messages = [], langue = 'fr' } = req.body || {};
     if (!Array.isArray(messages) || !messages.length) throw new ErreurIA('Message manquant.', 400);
 
     const propres = messages
@@ -42,8 +42,15 @@ export default async function handler(req, res) {
     while (propres.length && propres[0].role !== 'user') propres.shift();
     if (!propres.length) throw new ErreurIA('Message manquant.', 400);
 
+    /* La langue d'interface pilote la langue des réponses : un
+       utilisateur qui a mis le site en anglais ne doit pas recevoir
+       une correction en français. */
+    const LANGUES = { fr: 'français', en: 'anglais', es: 'espagnol' };
+    const nom = LANGUES[langue] || LANGUES.fr;
+    const systeme = SYSTEME + `\n\nRéponds intégralement en ${nom}, quelle que soit la langue de la question.`;
+
     const reponse = await appelerModele({
-      systeme: SYSTEME,
+      systeme,
       messages: propres,
       maxTokens: 700,
       effort: 'low',

@@ -52,11 +52,13 @@ export const TEXTES = {
       ${bloc('1. Objet', `<p>Les présentes conditions régissent la vente des abonnements et accès payants à PrepOral, service d'entraînement aux oraux édité par ${EDITEUR.nom}.</p>`)}
       ${bloc('2. Offres et prix', `
         <p>Offre gratuite : 2 simulations complètes, sans carte bancaire.</p>
-        <p>PrepOral Premium : 9,99 € TTC par mois, sans engagement, reconduit automatiquement chaque mois jusqu'à résiliation.</p>
-        <p>Pass 48 heures : 4,99 € TTC, accès complet pendant 48 heures à compter du paiement, sans reconduction.</p>
+        <p>Pass 48 heures : 4,90 € TTC, accès complet pendant 48 heures à compter du paiement. Paiement unique, sans reconduction.</p>
+        <p>PrepOral Premium : 9,90 € TTC par mois, sans engagement, reconduit automatiquement chaque mois jusqu'à résiliation.</p>
+        <p>PrepOral Extra : 54,90 € TTC, accès complet pendant 6 mois (183 jours) à compter du paiement. Paiement unique, sans reconduction et sans résiliation à effectuer.</p>
         <p>Les prix sont indiqués toutes taxes comprises, en euros. ${EDITEUR.nom} peut les modifier à tout moment ; le tarif applicable est celui affiché au moment de la commande.</p>`)}
       ${bloc('3. Commande et paiement', `<p>Le paiement s'effectue en ligne via Stripe (carte bancaire et moyens proposés par Stripe). La commande est validée après confirmation du paiement. Une facture est disponible dans l'espace client.</p>`)}
-      ${bloc('4. Résiliation', `<p>L'abonnement mensuel est résiliable à tout moment depuis le portail client Stripe accessible dans « Mon espace ». La résiliation prend effet à la fin de la période en cours ; aucun prorata n'est remboursé. Le Pass 48 heures n'est pas reconductible.</p>`)}
+      ${bloc('4. Résiliation', `<p>L'abonnement mensuel est résiliable à tout moment depuis le portail client Stripe accessible dans « Mon espace ». La résiliation prend effet à la fin de la période en cours ; aucun prorata n'est remboursé.</p>
+        <p>Le Pass 48 heures et l'offre Extra sont des paiements uniques : ils ne se reconduisent pas et n'ont donc pas à être résiliés. À l'échéance, l'accès revient à l'offre gratuite.</p>`)}
       ${bloc('5. Droit de rétractation', `
         <p>Conformément aux articles L221-18 et suivants du code de la consommation, le consommateur dispose de 14 jours pour se rétracter.</p>
         <p>En souscrivant, vous demandez expressément l'exécution immédiate du service et reconnaissez perdre votre droit de rétractation une fois le service pleinement exécuté (art. L221-28 13°). Pour l'abonnement mensuel, la rétractation reste possible tant qu'aucune simulation payante n'a été lancée.</p>`)}
