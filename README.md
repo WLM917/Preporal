@@ -19,13 +19,14 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 5. [Configuration Stripe](#configuration-stripe)
 6. [Configuration Supabase](#configuration-supabase)
 7. [Mise en production](#mise-en-production)
-8. [Fonctionnement du paywall](#fonctionnement-du-paywall)
-9. [Modération des avis](#modération-des-avis)
-10. [Âge et consentement parental](#âge-et-consentement-parental)
-11. [Coût par simulation](#coût-par-simulation)
-12. [Langues et accessibilité](#langues-et-accessibilité)
-13. [Compatibilité navigateurs](#compatibilité-navigateurs)
-14. [À faire avant de vendre](#à-faire-avant-de-vendre)
+8. [Comptes et inscription](#comptes-et-inscription)
+9. [Fonctionnement du paywall](#fonctionnement-du-paywall)
+10. [Modération des avis](#modération-des-avis)
+11. [Âge et consentement parental](#âge-et-consentement-parental)
+12. [Coût par simulation](#coût-par-simulation)
+13. [Langues et accessibilité](#langues-et-accessibilité)
+14. [Compatibilité navigateurs](#compatibilité-navigateurs)
+15. [À faire avant de vendre](#à-faire-avant-de-vendre)
 
 ---
 
@@ -199,10 +200,16 @@ Carte de test : `4242 4242 4242 4242`, date future, CVC quelconque.
 
 ## Configuration Supabase
 
+### Mise en place
+
 1. Créez un projet **en région européenne** (RGPD).
-2. SQL Editor → collez et exécutez `supabase/schema.sql`.
-3. Authentication → Providers : activez *Email* (lien magique) et *Google*
+2. SQL Editor → collez et exécutez `supabase/schema.sql`. Le script est
+   ré-exécutable : relancez-le après chaque mise à jour du dépôt.
+3. Authentication → Sign In / Providers : activez *Email* et *Google*
    (renseignez le client OAuth et ajoutez l'URL de redirection de votre domaine).
+   Sous *Email*, laissez **Enable email provider** actif et gardez
+   **Confirm email** coché : sans confirmation, n'importe qui peut créer un
+   compte avec l'adresse d'un tiers.
 4. Reportez `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` dans les variables
    d'environnement Vercel.
 5. Dans `index.html`, renseignez le bloc `window.PREPORAL_ENV` avec l'URL du
@@ -211,6 +218,161 @@ Carte de test : `4242 4242 4242 4242`, date future, CVC quelconque.
 
 Tant que ce bloc reste vide, l'application fonctionne en **mode local** :
 historique et avis restent dans le navigateur.
+
+### « Je me connecte, et l'en-tête affiche toujours Connexion »
+
+C'est presque toujours la liste des URL de redirection, pas le code.
+
+Un lien de connexion (lien magique, confirmation d'inscription, retour Google)
+ramène le visiteur vers l'URL demandée par le navigateur — **à condition que
+Supabase la reconnaisse**. Sinon, il le renvoie silencieusement vers la *Site
+URL* du projet. Le jeton part donc sur un autre domaine que celui où le
+visiteur se trouvait : la session s'ouvre là-bas, et la page d'origine reste
+déconnectée, avec « Connexion » en haut à droite.
+
+Dans **Authentication → URL Configuration** :
+
+| Champ | Valeur |
+|---|---|
+| **Site URL** | l'adresse de production, sans barre finale — `https://preporal.vercel.app` |
+| **Redirect URLs** | une ligne par environnement d'où l'on se connecte |
+
+```
+https://preporal.vercel.app/**
+https://*-<votre-compte>.vercel.app/**      ← les déploiements de prévisualisation
+http://localhost:3000/**                     ← le développement local
+https://votre-domaine.fr/**                  ← après branchement du domaine
+```
+
+Le `/**` est nécessaire : `js/auth.js` renvoie sur `index.html?vue=compte`
+(pour arriver dans *Mon espace*, pas sur l'accueil), et une entrée sans
+joker ne couvre ni le chemin ni les paramètres.
+
+Vérifications, dans l'ordre, si le symptôme persiste :
+
+1. Ouvrez le lien reçu par e-mail et regardez l'adresse finale. Si le domaine a
+   changé en route, c'est bien la liste ci-dessus.
+2. Console du navigateur : `localStorage` doit contenir une clé
+   `sb-<projet>-auth-token` après le retour.
+3. Un lien de connexion **ne sert qu'une fois** et expire (1 h par défaut,
+   *Email OTP Expiration*). Un lien rouvert, ou pré-chargé par un antivirus de
+   messagerie, arrive déjà consommé — d'où l'intérêt de proposer aussi le mot
+   de passe, ce que fait maintenant l'onglet *Se connecter*.
+4. Google OAuth : l'URL `https://<projet>.supabase.co/auth/v1/callback` doit
+   figurer dans les *Authorized redirect URIs* de la console Google Cloud.
+
+### Des e-mails dans la langue du candidat
+
+Supabase envoie **un seul jeu de modèles**, en anglais par défaut, et n'a pas de
+sélecteur de langue. Il faut donc écrire les modèles soi-même. `js/auth.js`
+joint la langue de l'interface aux métadonnées du compte, lisible dans les
+modèles sous `{{ .Data.langue }}` :
+
+```js
+const donnees = (extra = {}) => ({ langue: langue(), ...extra });
+```
+
+**Authentication → Emails → Templates**, onglet *Confirm signup* (puis
+*Magic Link*, *Reset password*, *Change email address*) :
+
+```html
+{{ if eq .Data.langue "en" }}
+  <h2>Confirm your account</h2>
+  <p>Hi {{ .Data.prenom }}, one click and your two free sessions are yours.</p>
+  <p><a href="{{ .ConfirmationURL }}">Confirm my email address</a></p>
+  <p>Didn't sign up for PrepOral? Ignore this message.</p>
+{{ else if eq .Data.langue "es" }}
+  <h2>Confirma tu cuenta</h2>
+  <p>Hola {{ .Data.prenom }}: un clic y tus dos simulaciones gratuitas son tuyas.</p>
+  <p><a href="{{ .ConfirmationURL }}">Confirmar mi correo</a></p>
+  <p>¿No te has registrado en PrepOral? Ignora este mensaje.</p>
+{{ else }}
+  <h2>Confirmez votre compte</h2>
+  <p>Bonjour {{ .Data.prenom }}, un clic et vos deux simulations offertes sont à vous.</p>
+  <p><a href="{{ .ConfirmationURL }}">Confirmer mon adresse</a></p>
+  <p>Vous n'avez pas créé de compte PrepOral ? Ignorez ce message.</p>
+{{ end }}
+```
+
+Le français sert de branche par défaut : un compte créé avant cette mise à jour
+n'a pas de `langue` en métadonnées et tombe donc sur le français, ce qui vaut
+mieux qu'un message vide.
+
+L'objet du message se règle juste au-dessus du corps, dans le même onglet.
+La documentation Supabase ne dit rien de l'usage des conditions dans ce champ :
+testez-le sur votre projet avant de compter dessus, et prévoyez à défaut un
+objet qui passe dans les trois langues — « PrepOral · confirmation /
+confirmación » — plutôt qu'un objet anglais devant un corps français.
+
+Quatre points d'attention :
+
+- Le SMTP intégré de Supabase est limité (quelques messages par heure) et
+  réservé aux tests. Avant d'ouvrir les inscriptions, branchez un SMTP réel
+  dans **Project Settings → Authentication → SMTP Settings** (Resend, Postmark,
+  Brevo…), avec un domaine à vous authentifié en SPF + DKIM. Sans cela, les
+  messages partent en indésirables ou ne partent pas du tout.
+- `{{ .Data.prenom }}` est vide pour un compte créé via Google ou via le lien
+  magique : écrivez des phrases qui restent lisibles sans prénom.
+- `.Data` lit les métadonnées **enregistrées sur le compte**. Elles sont
+  écrites à l'inscription, et `js/auth.js` les remet à jour quand un candidat
+  connecté change de langue — un message de réinitialisation de mot de passe,
+  qui n'accepte aucune donnée au moment de l'envoi, part donc dans la dernière
+  langue choisie.
+- Les modèles ne sont pas versionnés dans ce dépôt. Gardez-en une copie
+  ailleurs : une réinitialisation de projet les efface.
+- Testez chaque modèle en créant un compte réel dans chacune des trois langues.
+  Le rendu HTML des messages diffère beaucoup d'un client de messagerie à
+  l'autre.
+
+### Gérer les comptes depuis supabase.com
+
+**Authentication → Users** est la liste de référence. On y trouve, par compte :
+
+| Action | Où |
+|---|---|
+| Chercher un candidat | barre de recherche, par adresse |
+| Voir la date d'inscription, la dernière connexion, le fournisseur | colonnes de la liste |
+| Renvoyer la confirmation, envoyer un lien de connexion, réinitialiser le mot de passe | menu `⋯` en bout de ligne |
+| Créer un compte à la main | **Add user** (utile pour un accès de démonstration) |
+| Bloquer sans supprimer | `⋯` → *Ban user*, en choisissant la durée |
+| Supprimer définitivement | `⋯` → *Delete user* |
+
+Une suppression efface **en cascade** le profil, l'historique des simulations et
+le compteur d'usage (`on delete cascade` dans le schéma) : c'est la réponse
+technique à une demande d'effacement RGPD. Les avis publiés, eux, ne sont pas
+rattachés au compte — supprimez-les au besoin depuis la page de modération.
+
+Le prénom, le nom et la langue ne s'affichent pas dans cette liste : ils vivent
+dans la table `profils`, visible dans **Table Editor → profils**. Pour une vue
+d'ensemble, SQL Editor :
+
+```sql
+-- Comptes récents, avec leur consommation
+select p.prenom, p.nom, p.email, p.langue, p.premium, p.plan,
+       coalesce(u.simulations, 0) as simulations_utilisees,
+       p.cree_le
+from public.profils p
+left join public.usages u on u.utilisateur_id = p.id
+order by p.cree_le desc
+limit 50;
+```
+
+```sql
+-- Offrir un accès Premium (support, presse, partenaire)
+update public.profils
+set premium = true, plan = 'offert', premium_jusqu_au = now() + interval '3 months'
+where email = 'candidat@exemple.fr';
+```
+
+```sql
+-- Rendre ses deux simulations gratuites à un candidat
+delete from public.usages
+where utilisateur_id = (select id from public.profils where email = 'candidat@exemple.fr');
+```
+
+> Le statut Premium écrit à la main est écrasé au prochain évènement Stripe
+> concernant ce client. Pour un accès offert durable, utilisez un compte sans
+> abonnement Stripe, ou un coupon Stripe à 100 %.
 
 ---
 
@@ -225,27 +387,85 @@ Puis, dans Vercel → Settings → Environment Variables, ajoutez toutes les cl�
 
 ---
 
+## Comptes et inscription
+
+Quatre façons d'entrer, un seul écran. La modale `#modal-auth` a deux onglets ;
+`js/auth.js` les pilote.
+
+| Onglet | Chemins | Fonction |
+|---|---|---|
+| **Se connecter** | mot de passe · lien magique · Google | `connexionMotDePasse()`, `connexionEmail()`, `connexionGoogle()` |
+| **Inscription** | prénom, nom, adresse, mot de passe (+ confirmation) · Google | `inscription()` |
+
+Le prénom, le nom et la langue partent dans `options.data` de `signUp` : ils
+atterrissent dans `raw_user_meta_data`, d'où le trigger `creer_profil()` les
+recopie dans la table `profils`, et d'où les modèles d'e-mail les lisent
+(`{{ .Data.prenom }}`).
+
+### Un compte avant la première simulation
+
+`exigerCompte()` garde le bouton « Lancer ma simulation » :
+
+```js
+if (!await exigerCompte()) return;   // js/simulateur.js
+```
+
+La promesse se résout à `true` dès qu'une session s'ouvre, à `false` si la
+modale est refermée sans connexion. Sans clés Supabase renseignées, elle
+renvoie `true` : l'application reste utilisable en mode local.
+
+Le motif de la demande est affiché dans la modale (`#auth-raison`), plutôt que
+de laisser le candidat deviner pourquoi on lui réclame un compte à cet
+instant précis.
+
+### Une fois connecté
+
+Le bouton d'en-tête devient un menu (`#menu-compte`) : nom, adresse, statut de
+l'abonnement, « Gérer mon compte », « Voir les offres » / « Gérer mon
+abonnement », « Se déconnecter ». Dans *Mon espace*, les deux boutons
+d'entrée disparaissent au profit de « Se déconnecter ».
+
+Le retour après authentification pointe sur `index.html?vue=compte` :
+
+```js
+const retour = () => new URL('./index.html?vue=compte', location.href).href;
+```
+
+Le candidat arrive donc dans son espace, où l'état du compte est visible — et
+non sur l'accueil, où rien ne dit que la connexion a fonctionné. Encore
+faut-il que Supabase accepte cette URL : voir *Configuration Supabase → « Je me
+connecte, et l'en-tête affiche toujours Connexion »*.
+
+---
+
 ## Fonctionnement du paywall
 
 | Étape | Comportement |
 |---|---|
-| Simulations 1 et 2 | gratuites, sans compte ni carte |
+| « Lancer ma simulation », sans session | ouvre la modale, onglet *Inscription* |
+| Simulations 1 et 2 | gratuites, sans carte, rattachées au compte |
 | Fin de la 1re simulation | modale d'offre, fermable (« Plus tard ») |
 | Lancement de la 3e | modale bloquante : Pass 48 h, Premium mensuel ou Extra 6 mois |
 | Après paiement | retour sur `/?paiement=ok&session_id=…`, **vérifié auprès de Stripe** |
 | Résiliation | bouton « Gérer mon abonnement » → portail client Stripe |
 
-Le quota est désormais **appliqué côté serveur** (`api/_lib/quota.js`), et non
-plus seulement affiché dans le navigateur :
+Les deux simulations offertes vont **au compte, pas au navigateur** : une
+nouvelle inscription les ouvre, et changer d'appareil ou de navigateur ne les
+réinitialise pas.
+
+Le quota est **appliqué côté serveur** (`api/_lib/quota.js`), et non plus
+seulement affiché dans le navigateur :
 
 - **Premium** (abonnement actif ou pass 48 h valide) → illimité ;
 - **connecté sans premium** → compteur dans la table `usages` ;
-- **anonyme** → compteur dans `usages_anonymes`, indexé par une empreinte
-  non réversible (IP + navigateur + langue + sel serveur).
+- **anonyme** → refusé (`code: 'connexion'`), sauf `EXIGER_CONNEXION=false`, qui
+  rétablit un compteur dans `usages_anonymes` indexé par une empreinte non
+  réversible (IP + navigateur + langue + sel serveur).
 
 Le compteur `localStorage` ne sert plus qu'à l'affichage. `/api/questions`,
 `/api/feedback` et `/api/coach` refusent la requête avec un **402** quand le
-quota est épuisé ; le front ouvre alors la modale d'offre.
+quota est épuisé ; le front ouvre alors la modale d'offre — ou la modale
+d'inscription si le refus porte le code `connexion`.
 
 > **Compte obligatoire, par défaut.** `EXIGER_CONNEXION` vaut `true` sauf si
 > vous écrivez explicitement `false`. Un compte gratuit est donc demandé dès la
@@ -354,10 +574,10 @@ jetons et une estimation en dollars :
 Ordres de grandeur, sur la base d'une simulation de cinq questions avec un CV
 et une offre d'emploi (~23 000 jetons d'entrée, ~2 900 de sortie au total) :
 
-| Modèle | Coût par simulation | Simulations couvertes par un abonnement à 9,99 € |
+| Modèle | Coût par simulation | Simulations couvertes par un abonnement à 9,90 € |
 |---|---|---|
 | `claude-opus-5` (défaut) | ~0,19 $ soit ~0,17 € | ~57 |
-| `claude-sonnet-5` | ~0,08 $ soit ~0,07 € | ~144 |
+| `claude-sonnet-5` | ~0,08 $ soit ~0,07 € | ~142 |
 
 Un abonné qui enchaîne plus d'une cinquantaine de simulations par mois coûte
 donc plus qu'il ne rapporte sur Opus. Trois leviers, dans l'ordre :
@@ -455,14 +675,25 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 - **Coût mesuré** : chaque appel journalise ses jetons et son coût estimé.
 - **Référencement et partage** : Open Graph, carte Twitter, JSON-LD,
   `robots.txt`, `sitemap.xml`, image de partage.
-- **Suite de tests** : 44 tests, dont un qui aurait évité que la politique de
+- **Suite de tests** : 47 tests, dont un qui aurait évité que la politique de
   sécurité casse l'import de documents.
 - **Trois langues** (français, anglais, espagnol) avec voix et rédaction de l'IA
   qui suivent le choix, et lecture à voix haute de chaque réponse et correction.
+- **Compte obligatoire avant la première simulation**, avec inscription et
+  connexion séparées, menu de compte dans l'en-tête, et deux simulations
+  offertes rattachées au compte plutôt qu'au navigateur.
 
 ### À votre charge
 
-1. **Mentions légales.** Renseignez le bloc `window.PREPORAL_ENV` dans
+1. **Modèles d'e-mail Supabase.** Les messages d'authentification partent en
+   anglais tant que vous n'avez pas collé les modèles multilingues, et le SMTP
+   intégré est limité aux tests. Voir *Configuration Supabase → Des e-mails
+   dans la langue du candidat*. C'est le premier contact d'un nouvel inscrit
+   avec le service : il ne peut pas rester en anglais sur un site français.
+2. **URL de redirection Supabase.** Ajoutez chaque environnement dans
+   *Authentication → URL Configuration*, sinon la connexion aboutit sur un
+   autre domaine que celui où se trouvait le candidat.
+3. **Mentions légales.** Renseignez le bloc `window.PREPORAL_ENV` dans
    `index.html` : `EDITEUR_NOM`, `EDITEUR_STATUT`, `EDITEUR_SIRET`,
    `EDITEUR_TVA`, `EDITEUR_ADRESSE`, `EDITEUR_EMAIL`, `EDITEUR_DIRECTEUR`,
    `EDITEUR_MEDIATEUR`. Tant que c'est incomplet, un bandeau d'avertissement
@@ -470,7 +701,7 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    manquante. Le médiateur de la consommation est obligatoire dès la première
    vente à un consommateur. **Faites relire par un juriste** : les textes
    fournis sont un modèle, pas un conseil juridique.
-2. **Domaine.** Le site est déclaré sur `https://preporal.vercel.app`, l'URL
+4. **Domaine.** Le site est déclaré sur `https://preporal.vercel.app`, l'URL
    que sert réellement ce dépôt. Pour passer à un domaine personnalisé,
    remplacez-le aux trois endroits — `index.html` (canonique, Open Graph,
    carte Twitter), `robots.txt` et `sitemap.xml` — puis lancez `npm test` :
@@ -483,18 +714,18 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    > autre site revient à demander aux moteurs de recherche de désindexer
    > celui-ci. Si `preporal.com` doit devenir la vitrine de ce projet,
    > faites-le pointer vers ce projet Vercel *avant* de changer le domaine ici.
-3. **Vérification du consentement parental.** L'adresse du responsable légal
+5. **Vérification du consentement parental.** L'adresse du responsable légal
    est collectée sous 15 ans, mais aucun message ne lui est envoyé : le
    consentement reste déclaratif.
-4. **Friction à l'inscription.** `EXIGER_CONNEXION` vaut désormais `true` par
+6. **Friction à l'inscription.** `EXIGER_CONNEXION` vaut désormais `true` par
    défaut : le quota gratuit est étanche, mais un compte est demandé avant la
    première simulation. Surveillez le taux d'abandon sur cette étape ; le
    repli `EXIGER_CONNEXION=false` existe, au prix d'un quota contournable.
-5. **Prix.** Voir « Coût par simulation » : à 9,99 € sur `claude-opus-5`, un
+7. **Prix.** Voir « Coût par simulation » : à 9,90 € sur `claude-opus-5`, un
    abonné devient déficitaire au-delà d'une cinquantaine de simulations par
    mois. Décidez entre un modèle moins cher, une limite d'usage équitable
    inscrite aux CGV, ou un tarif plus élevé.
-6. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
+8. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
    `usages_anonymes` inactives depuis plus de 6 mois (minimisation RGPD) ;
    la requête est en commentaire dans `supabase/schema.sql`.
 

@@ -33,7 +33,7 @@ export const nomAffiche = () =>
 /* ── Initialisation ────────────────────────────────────────── */
 export async function initAuth() {
   brancherBoutons();
-  surChangementLangue(majInterface);
+  surChangementLangue(code => { majInterface(); memoriserLangue(code); });
   if (!configure()) { majInterface(); return; }
 
   try {
@@ -90,6 +90,16 @@ async function chargerProfil() {
       profil.stripeClientId = data.stripe_client_id || null;
     }
   } catch (e) { console.warn('Profil non chargé', e); }
+}
+
+/** Garde la langue du compte à jour côté Supabase.
+    Les modèles d'e-mail lisent les métadonnées enregistrées, pas la
+    langue de la page : sans cela, un message de réinitialisation de
+    mot de passe repartirait dans la langue choisie à l'inscription. */
+async function memoriserLangue(code) {
+  if (!supabase || !session.id || !code) return;
+  try { await supabase.auth.updateUser({ data: { langue: code } }); }
+  catch (e) { console.warn('Langue du compte non enregistrée', e); }
 }
 
 /* ── Messages d'erreur lisibles ────────────────────────────── */
