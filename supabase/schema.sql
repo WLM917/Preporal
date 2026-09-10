@@ -10,6 +10,9 @@
 create table if not exists public.profils (
   id                uuid primary key references auth.users(id) on delete cascade,
   email             text,
+  prenom            text,
+  nom               text,
+  langue            text,                       -- 'fr' | 'en' | 'es'
   premium           boolean not null default false,
   plan              text,                       -- 'mensuel' | 'pass48'
   premium_jusqu_au  timestamptz,                -- null = abonnement récurrent
@@ -17,6 +20,11 @@ create table if not exists public.profils (
   cree_le           timestamptz not null default now(),
   maj_le            timestamptz not null default now()
 );
+
+-- Pour un projet créé avant l'ajout du formulaire d'inscription.
+alter table public.profils add column if not exists prenom text;
+alter table public.profils add column if not exists nom text;
+alter table public.profils add column if not exists langue text;
 
 alter table public.profils enable row level security;
 
@@ -28,15 +36,31 @@ drop policy if exists "profil modifiable par son proprietaire" on public.profils
 create policy "profil modifiable par son proprietaire"
   on public.profils for update using (auth.uid() = id);
 
--- Création automatique du profil à l'inscription
+-- Création automatique du profil à l'inscription.
+-- Le prénom, le nom et la langue sont joints au compte par
+-- js/auth.js (options.data de signUp) : ils arrivent ici dans
+-- raw_user_meta_data. Les recopier dans « profils » les rend
+-- lisibles depuis le Table Editor, et interrogeables en SQL —
+-- la liste Authentication → Users, elle, n'affiche que l'adresse.
 create or replace function public.creer_profil()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profils (id, email) values (new.id, new.email)
-  on conflict (id) do nothing;
+  insert into public.profils (id, email, prenom, nom, langue)
+  values (
+    new.id,
+    new.email,
+    nullif(new.raw_user_meta_data->>'prenom', ''),
+    nullif(new.raw_user_meta_data->>'nom', ''),
+    nullif(new.raw_user_meta_data->>'langue', '')
+  )
+  on conflict (id) do update set
+    email  = excluded.email,
+    prenom = coalesce(excluded.prenom, public.profils.prenom),
+    nom    = coalesce(excluded.nom,    public.profils.nom),
+    langue = coalesce(excluded.langue, public.profils.langue);
   return new;
 end;
 $$;

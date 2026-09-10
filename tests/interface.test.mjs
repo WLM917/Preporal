@@ -211,6 +211,29 @@ test('les trois offres sont cohérentes entre elles', async () => {
     `équivalent mensuel annoncé ≠ ${equivalent} €`);
 });
 
+test('aucune page ne promet des simulations « sans compte »', async () => {
+  /* Un compte est exigé avant la première simulation (EXIGER_CONNEXION,
+     exigerCompte()). Promettre le contraire sur la page de vente serait
+     une pratique commerciale trompeuse — et la formule y a figuré tant
+     que le quota était anonyme, donc elle peut revenir par copier-coller. */
+  const promesses = [/sans compte/i, /no account/i, /sin cuenta/i, /sans inscription/i];
+  const sources = [
+    ...PAGES.map(p => ({ nom: p.fichier, texte: lire(p.fichier) })),
+    ...['en', 'es'].map(l => ({ nom: `js/langues/${l}.js`, texte: lire(`js/langues/${l}.js`) }))
+  ];
+
+  for (const { nom, texte } of sources) {
+    // Les commentaires de code expliquent légitimement pourquoi un compte
+    // est nécessaire : on ne teste que ce qui est affiché.
+    const visible = nom.endsWith('.js')
+      ? texte.replace(/^\s*\/\*[\s\S]*?\*\//m, '')
+      : texte.replace(/<!--[\s\S]*?-->/g, '');
+    for (const p of promesses) {
+      assert.ok(!p.test(visible), `${nom} promet encore une simulation ${p}`);
+    }
+  }
+});
+
 test('les traductions couvrent toutes les clés du balisage', async () => {
   /* Une clé présente dans le HTML mais absente d'un dictionnaire
      retombe silencieusement sur le français : la page devient un

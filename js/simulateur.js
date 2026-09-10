@@ -7,17 +7,18 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { TYPES_ORAL, typeParId } from './config.js';
-import { $, $$, echappe, formaterTemps, compterMots, toast, brancherReglages, reglerGroupe, ouvrirModale } from './ui.js';
+import { $, $$, echappe, formaterTemps, compterMots, toast, brancherReglages, reglerGroupe } from './ui.js';
 import { Voix, Dictee, dicteeSupportee, langueDeLEpreuve } from './speech.js';
 import { brancherDepot } from './upload.js';
 import { genererQuestions, modeDemo as demoQuestions, ErreurQuota } from './questions.js';
 import { evaluer } from './feedback.js';
 import { afficherRapport, exporterPDF } from './report.js';
-import { session } from './auth.js';
+import { session, exigerCompte, configure as authConfigure } from './auth.js';
 import { brancherPaywall, peutLancer, estPremium, consommerSimulation, quotaRestant, ouvrirPaywall, majJauge } from './paywall.js';
 import { enregistrerSimulation } from './history.js';
 import { brancherAge, demanderAgeSiNecessaire } from './age.js';
 import { brancherNavigation } from './nav.js';
+import { t } from './i18n.js';
 import { demarrerChargement, arreterChargement } from './chargement.js';
 
 const CIRCONFERENCE = 326.73;
@@ -128,9 +129,14 @@ function verifierFormulaire() {
   $('#btn-lancer').disabled = !pret;
 
   const aide = $('#aide-action');
-  if (!pret) aide.textContent = 'Complétez les deux champs pour démarrer.';
-  else if (!peutLancer()) aide.textContent = 'Vos simulations gratuites sont utilisées : passez au Premium pour continuer.';
-  else aide.textContent = `Durée estimée : environ ${Math.round(etat.nbQuestions * etat.duree / 60)} minutes.`;
+  const compteRequis = authConfigure() && !session.email;
+  if (!pret) aide.textContent = t('sim.aide_completer', 'Complétez les deux champs pour démarrer.');
+  else if (compteRequis) aide.textContent = t('sim.aide_compte',
+    'Dernière étape : un compte gratuit, pour rattacher vos deux simulations offertes.');
+  else if (!peutLancer()) aide.textContent = t('sim.aide_quota',
+    'Vos simulations gratuites sont utilisées : passez au Premium pour continuer.');
+  else aide.textContent = t('sim.aide_duree', 'Durée estimée : environ {n} minutes.')
+    .replace('{n}', Math.round(etat.nbQuestions * etat.duree / 60));
 
   // Compteurs recalculés au changement de type
   ['champA:compteur-A', 'champB:compteur-B'].forEach(paire => {
@@ -144,6 +150,11 @@ function verifierFormulaire() {
 
 /* ═══ Lancement ═══ */
 $('#btn-lancer').addEventListener('click', async () => {
+  /* Un compte d'abord. Sans lui, les deux simulations offertes ne
+     tiennent pas : il suffirait de vider son navigateur pour repartir
+     à zéro. Rattachées à un compte, elles sont comptées en base. */
+  if (!await exigerCompte()) return;
+
   // Première simulation : on demande la tranche d'âge avant de commencer.
   if (demanderAgeSiNecessaire()) return;
   if (!peutLancer()) { ouvrirPaywall('quota'); return; }
@@ -176,8 +187,7 @@ $('#btn-lancer').addEventListener('click', async () => {
     arreterChargement();
     allerEcran('accueil');
     if (e instanceof ErreurQuota && e.code === 'connexion') {
-      toast(e.message, 'erreur');
-      ouvrirModale('modal-auth');
+      exigerCompte(e.message);
     } else {
       ouvrirPaywall('quota');
     }
