@@ -261,6 +261,26 @@ Vérifications, dans l'ordre, si le symptôme persiste :
 4. Google OAuth : l'URL `https://<projet>.supabase.co/auth/v1/callback` doit
    figurer dans les *Authorized redirect URIs* de la console Google Cloud.
 
+### « Je m'inscris et je ne reçois aucun message »
+
+Trois causes, dans l'ordre de fréquence.
+
+1. **Le plafond de 2 messages par heure du SMTP intégré.** C'est de loin la
+   plus courante en phase de test : on essaie le lien magique deux fois, puis
+   on crée un compte, et ce troisième message ne part jamais. Aucune erreur
+   n'apparaît dans le navigateur. Attendez une heure, ou branchez un vrai SMTP.
+2. **L'adresse a déjà un compte.** `signUp` répond alors « succès » avec un
+   utilisateur factice et n'envoie rien : Supabase évite ainsi de révéler qui
+   possède un compte. Le seul indice est `identities`, qui revient vide.
+   `js/auth.js` le détecte et bascule sur l'onglet *Se connecter* en gardant
+   l'adresse saisie, au lieu d'annoncer un e-mail qui ne partira pas.
+3. **Le message est dans les indésirables.** Sans SPF ni DKIM sur un domaine à
+   vous, c'est le sort ordinaire d'un message d'authentification.
+
+Pour vérifier ce qui est réellement parti : **Authentication → Users**, la
+colonne de confirmation dit si l'adresse a été validée ; et
+**Logs → Auth Logs** montre chaque tentative d'envoi.
+
 ### Des e-mails dans la langue du candidat
 
 Supabase envoie **un seul jeu de modèles**, en anglais par défaut, et n'a pas de
@@ -306,11 +326,15 @@ confirmación » — plutôt qu'un objet anglais devant un corps français.
 
 Quatre points d'attention :
 
-- Le SMTP intégré de Supabase est limité (quelques messages par heure) et
-  réservé aux tests. Avant d'ouvrir les inscriptions, branchez un SMTP réel
-  dans **Project Settings → Authentication → SMTP Settings** (Resend, Postmark,
-  Brevo…), avec un domaine à vous authentifié en SPF + DKIM. Sans cela, les
-  messages partent en indésirables ou ne partent pas du tout.
+- **Le SMTP intégré plafonne à 2 messages par heure.** Ce n'est pas une
+  approximation : c'est le chiffre annoncé par Supabase, qui précise que ce
+  service n'est pas destiné à la production. Deux essais de connexion, et le
+  troisième message ne part pas — sans erreur côté navigateur, ce qui donne
+  l'impression trompeuse que l'inscription a échoué. Avant d'ouvrir les
+  inscriptions, branchez un SMTP réel dans **Project Settings → Authentication
+  → SMTP Settings** (Resend, Postmark, Brevo…), avec un domaine à vous
+  authentifié en SPF + DKIM. Le plafond passe alors à 30 messages par heure,
+  relevable dans *Rate Limits*.
 - `{{ .Data.prenom }}` est vide pour un compte créé via Google ou via le lien
   magique : écrivez des phrases qui restent lisibles sans prénom.
 - `.Data` lit les métadonnées **enregistrées sur le compte**. Elles sont
@@ -420,10 +444,32 @@ instant précis.
 
 ### Une fois connecté
 
-Le bouton d'en-tête devient un menu (`#menu-compte`) : nom, adresse, statut de
-l'abonnement, « Gérer mon compte », « Voir les offres » / « Gérer mon
-abonnement », « Se déconnecter ». Dans *Mon espace*, les deux boutons
-d'entrée disparaissent au profit de « Se déconnecter ».
+Le bouton d'en-tête devient un menu (`#menu-compte`), titré « Mon compte » :
+pastille, nom, adresse, statut de l'abonnement, « Gérer mon compte », « Voir
+les offres » / « Gérer mon abonnement », « Se déconnecter ». Dans *Mon
+espace*, les deux boutons d'entrée disparaissent au profit de « Se
+déconnecter ».
+
+La pastille affiche une **photo de profil** si le compte en a une, et une
+silhouette sinon. Les comptes Google en apportent déjà une (`avatar_url` dans
+les métadonnées). Pour permettre un téléversement, il faudra un compartiment
+Supabase Storage : la seule chose à faire ensuite est de renseigner
+`session.avatar`, tout le rendu suit.
+
+### Robustesse du chargement
+
+Le client Supabase est importé depuis `esm.sh` au chargement de la page. Un
+import qui reste en suspens — CDN injoignable, proxy d'entreprise, bloqueur —
+gèlerait toute l'initialisation : en-tête figé sur « Connexion », menu de
+compte jamais dessiné. `initAuth()` borne donc cette attente à 8 secondes
+(`DELAI_CLIENT`), après quoi l'application continue en mode local plutôt que
+de rester muette.
+
+Un lien d'authentification en échec est lu et expliqué : Supabase renvoie
+`#error=access_denied&error_code=otp_expired` quand le lien a expiré, a déjà
+servi, ou a été pré-chargé par un antivirus de messagerie. Sans cette lecture,
+le candidat retombe sur l'accueil, déconnecté, sans le moindre message — le
+symptôme le plus déroutant de toute l'authentification.
 
 Le retour après authentification pointe sur `index.html?vue=compte` :
 

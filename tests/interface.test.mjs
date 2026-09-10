@@ -211,6 +211,78 @@ test('les trois offres sont cohérentes entre elles', async () => {
     `équivalent mensuel annoncé ≠ ${equivalent} €`);
 });
 
+test("l'inscription distingue une adresse déjà inscrite", () => {
+  /* signUp répond « succès » avec un utilisateur factice quand l'adresse
+     existe déjà, et n'envoie aucun message : Supabase évite ainsi de
+     révéler qui possède un compte. Le seul indice est identities, vide.
+     Sans ce test, on annonce un e-mail qui ne partira jamais — c'est
+     exactement ce qui est arrivé sur ce projet. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+
+  // Le corps d'inscription() lui-même, pas le fichier entier : le drapeau
+  // doit naître ici, sinon l'appelant teste une propriété jamais posée.
+  const debut = src.indexOf('export async function inscription');
+  assert.ok(debut > -1, 'inscription() a disparu');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  assert.match(corps, /identities/,
+    "le cas « adresse déjà inscrite » n'est plus détecté");
+  assert.match(corps, /dejaInscrit/,
+    'inscription() doit signaler le cas à son appelant');
+  assert.match(src.slice(src.indexOf('btnInscrire')), /dejaInscrit/,
+    "le formulaire doit traiter le cas au lieu d'annoncer un e-mail");
+});
+
+test("les liens d'authentification en échec sont expliqués", () => {
+  /* Un lien périmé ou déjà cliqué renvoie #error=…&error_code=otp_expired.
+     Ignoré, il dépose le candidat sur l'accueil, déconnecté, sans un mot. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+  assert.match(src, /error_code/, "le code d'erreur du lien n'est plus lu");
+  for (const code of ['otp_expired', 'access_denied']) {
+    assert.ok(src.includes(code), `message manquant pour ${code}`);
+  }
+});
+
+test("le chargement du client Supabase est borné dans le temps", () => {
+  /* Le client vient d'un CDN. Un import qui reste en suspens gèle toute
+     l'initialisation : en-tête figé sur « Connexion », menu jamais dessiné. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+  assert.match(src, /Promise\.race/, 'le délai de garde a disparu');
+});
+
+test('chaque champ de mot de passe peut être révélé', () => {
+  /* Un mot de passe qu'on ne peut pas relire se tape deux fois de travers,
+     et la confirmation ne fait alors que répéter la faute de frappe. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+  const CHAMPS = ['auth-motdepasse', 'inscr-motdepasse', 'inscr-confirmation'];
+
+  assert.match(src, /function brancherOeil/, "la fonction qui pose l'œil a disparu");
+
+  /* On regarde les appels, pas la simple présence des identifiants :
+     ceux-ci apparaissent ailleurs dans le fichier, et un test qui se
+     contenterait de les chercher resterait vert après suppression du
+     câblage — ce qui a été vérifié en cassant volontairement le code. */
+  const appels = [...src.matchAll(/brancherOeil\(/g)]
+    .map(m => src.slice(Math.max(0, m.index - 200), m.index + 200))
+    .filter(bout => !/function brancherOeil/.test(bout.slice(180, 220)))
+    .join('\n');
+  assert.ok(appels, 'brancherOeil() n\'est jamais appelé');
+  for (const id of CHAMPS) {
+    assert.ok(appels.includes(`'#${id}'`), `${id} ne reçoit pas d'œil`);
+  }
+  assert.match(src, /aria-pressed/, "l'œil doit annoncer son état aux lecteurs d'écran");
+
+  // Et les trois champs doivent exister, en type password, sur chaque page.
+  for (const { fichier } of PAGES) {
+    const page = lire(fichier);
+    for (const id of CHAMPS) {
+      const balise = page.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`));
+      assert.ok(balise, `${id} absent de ${fichier}`);
+      assert.match(balise[0], /type="password"/, `${id} n'est pas un champ mot de passe dans ${fichier}`);
+    }
+  }
+});
+
 test('aucune page ne promet des simulations « sans compte »', async () => {
   /* Un compte est exigé avant la première simulation (EXIGER_CONNEXION,
      exigerCompte()). Promettre le contraire sur la page de vente serait

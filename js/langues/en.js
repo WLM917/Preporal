@@ -6,6 +6,15 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
+  "auth.afficher_mot_de_passe": "Show password",
+  "auth.masquer_mot_de_passe": "Hide password",
+  "auth.deja_inscrit": "This address already has an account. Sign in, or use “Forgot your password?”.",
+  "auth.erreur_otp_expired": "This link has expired or has already been used. A sign-in link only works once. Ask for a new one, or sign in with your password.",
+  "auth.erreur_access_denied": "This link is no longer valid. Ask for a new one, or sign in with your password.",
+  "auth.erreur_otp_disabled": "Link sign-in is switched off on this project.",
+  "auth.erreur_email_link_invalid": "This link is invalid. Ask for a new one.",
+  "auth.erreur_server_error": "The authentication service did not answer. Try again in a moment.",
+  "auth.erreur_validation_failed": "The link you received is incomplete. Ask for a new one.",
   "titre.auth_volet": "One account, and<br>the panel can wait.",
   "auth.se_connecter": "Sign in",
   "auth.inscription": "Sign up",
@@ -39,7 +48,7 @@ export default {
   "auth.creation_en_cours": "Creating your account…",
   "auth.bienvenue": "You're in.",
   "auth.compte_cree": "Account created. Your two free sessions are waiting.",
-  "auth.confirmez_boite_mail": "Account created. Open your inbox and click the link to activate it.",
+  "auth.confirmez_boite_mail": "Account created. Open your inbox and click the link to activate it. Check your spam folder too.",
   "auth.lien_envoye": "Link sent. Open your inbox to sign in.",
   "auth.deconnecte": "You are signed out.",
   "compte.mon_compte": "My account",
