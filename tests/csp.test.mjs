@@ -50,7 +50,7 @@ function hotesReferences() {
     .filter(e => e.isFile() && e.name.endsWith('.js'))
     .map(e => join(RACINE, 'js', 'langues', e.name));
   const fichiers = [join(RACINE, 'index.html'), join(RACINE, 'simulateur.html'),
-    join(RACINE, 'temoignages.html'), ...modules, ...traductions];
+    join(RACINE, 'temoignages.html'), join(RACINE, 'compte.html'), ...modules, ...traductions];
   const hotes = new Set();
   for (const f of fichiers) {
     for (const m of readFileSync(f, 'utf8').matchAll(/https:\/\/([a-zA-Z0-9.-]+)/g)) {

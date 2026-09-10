@@ -778,6 +778,15 @@
           </div>
         </div>
 
+        <label for="inscr-pseudo" class="mt-4 block text-sm font-medium">
+          <span data-i18n="auth.pseudonyme">Pseudonyme</span>
+          <span class="ml-1 text-xs font-normal text-muted" data-i18n="auth.facultatif">(facultatif)</span>
+        </label>
+        <input id="inscr-pseudo" type="text" autocomplete="nickname" maxlength="24" placeholder="Cam"
+          class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none"
+          data-i18n-attr="placeholder:auth.pseudonyme_exemple">
+        <p class="mt-2 text-xs text-muted" data-i18n="auth.pseudonyme_aide">Affiché en haut de page à la place de votre adresse. Sans pseudonyme, ce sera « Prénom N. ».</p>
+
         <label for="inscr-email" class="mt-4 block text-sm font-medium" data-i18n="auth.adresse_email">Adresse e-mail</label>
         <input id="inscr-email" type="email" autocomplete="email" placeholder="vous@exemple.fr"
           class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">

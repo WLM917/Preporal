@@ -24,7 +24,8 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = [
   { fichier: 'index.html',       entree: 'app.js' },
   { fichier: 'simulateur.html',  entree: 'simulateur.js' },
-  { fichier: 'temoignages.html', entree: 'temoignages.js' }
+  { fichier: 'temoignages.html', entree: 'temoignages.js' },
+  { fichier: 'compte.html',      entree: 'compte.js' }
 ];
 
 const lire = f => readFileSync(join(RACINE, f), 'utf8');

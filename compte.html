@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ton oral en trois étapes — PrepOral</title>
-<meta name="description" content="Choisissez votre épreuve, déposez vos documents, réglez le format : PrepOral pose les questions à voix haute, vous chronomètre et corrige votre prestation.">
+<title>Mon compte — PrepOral</title>
+<meta name="description" content="Les retours de candidats ayant préparé leur oral avec PrepOral : entretien, Grand Oral, brevet, concours, pitch et certifications de langue. Avis vérifiés avant publication.">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/logo.svg">
 
 <!-- Adressez ces deux valeurs à votre domaine définitif. -->
-<link rel="canonical" href="https://preporal.vercel.app/simulateur.html">
-<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#08070C" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 
@@ -18,8 +17,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PrepOral">
 <meta property="og:locale" content="fr_FR">
-<meta property="og:url" content="https://preporal.vercel.app/simulateur.html">
-<meta property="og:title" content="Ton oral en trois étapes — PrepOral">
+<meta property="og:url" content="https://preporal.vercel.app/compte.html">
+<meta property="og:title" content="Mon compte — PrepOral">
 <meta property="og:description" content="Entraîne-toi en conditions réelles : l'examinateur pose ses questions à voix haute, te chronomètre, puis corrige le fond et la forme. Deux simulations offertes.">
 <meta property="og:image" content="https://preporal.vercel.app/assets/partage.svg">
 <meta property="og:image:alt" content="PrepOral, simulateur d'oraux assisté par IA">
@@ -258,350 +257,154 @@
 
 <main id="contenu" class="mx-auto max-w-contenu px-4 pb-24 sm:px-6">
 
-<section id="vue-simulateur">
-  <div id="ecran-accueil" class="entree">
-
-    <div class="pt-10 text-center sm:pt-14">
-      <h1 class="titre-geant mx-auto max-w-3xl" data-i18n="titre.hero_simulateur">
-        Ton oral en <span class="marqueur">trois étapes</span>.
-      </h1>
-      <p class="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted" data-i18n="sim.choisis_ton_epreuve_depose_tes_documents_regle_le_fo">
-        Choisis ton épreuve, dépose tes documents, règle le format.
-        La première question tombe trente secondes plus tard.
-      </p>
-      <div class="mx-auto mt-7 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted">
-        <span class="flex items-center gap-1.5">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
-          <span data-i18n="sim.documents_lus_navigateur">Documents lus dans votre navigateur, jamais stockés</span>
-        </span>
-        <span id="jauge-quota" class="rounded-md bg-raised px-2 py-1 tabular-nums"></span>
-      </div>
+  <!-- Non connecté : on ne montre rien d'un compte qui n'existe pas. -->
+  <section id="compte-anonyme" class="hidden py-24 text-center">
+    <h1 class="titre-section" data-i18n="compte.titre_anonyme">Connectez-vous pour gérer votre compte</h1>
+    <p class="mx-auto mt-4 max-w-md leading-relaxed text-muted" data-i18n="compte.intro_anonyme">
+      Vos informations, votre abonnement et vos simulations offertes vous attendent derrière votre compte.
+    </p>
+    <div class="mt-8 flex flex-wrap justify-center gap-3">
+      <button id="btn-inscription-2" type="button" class="rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3 font-medium text-white shadow-glow transition hover:brightness-110" data-i18n="auth.inscription">Inscription</button>
+      <button id="btn-connexion-2" type="button" class="rounded-xl border border-line bg-raised px-6 py-3 text-sm font-medium transition hover:border-iris/50" data-i18n="auth.se_connecter">Se connecter</button>
     </div>
-    <!-- ══ Le configurateur ══ -->
-    <div id="configurer" class="mt-10 scroll-mt-24">
-      <div class="mt-10 rounded-3xl border border-line bg-surface p-5 shadow-carte sm:p-8">
+  </section>
 
-        <!-- ── Étape 1 ── -->
-        <div>
-          <div class="flex items-center gap-3">
-            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">1</span>
-            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.quel_oral_prepares_tu">Quel oral prépares-tu ?</h3>
-          </div>
-          <div id="grille-types" class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
+  <!-- Connecté -->
+  <section id="compte-connecte" class="hidden pt-10">
+    <h1 class="titre-section" data-i18n="compte.gerer_mon_compte">Gérer mon compte</h1>
+    <p class="mt-3 max-w-xl leading-relaxed text-muted" data-i18n="compte.intro">
+      Votre identité, votre abonnement et vos moyens de paiement. Rien n'est visible par les autres candidats.
+    </p>
 
-          <div id="zone-sous-choix" class="mt-4 hidden">
-            <label id="label-sous-choix" for="sous-choix" class="text-sm font-medium" data-i18n="sim.matiere">Matière</label>
-            <select id="sous-choix" class="mt-2 w-full rounded-xl border border-line bg-ink px-4 py-3 text-sm focus:border-iris focus:outline-none sm:max-w-xs"></select>
-          </div>
-        </div>
+    <div class="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
 
-        <hr class="my-8 border-line">
+      <!-- ══ Colonne principale ══ -->
+      <div class="space-y-5">
 
-        <!-- ── Étape 2 ── -->
-        <div>
-          <div class="flex items-center gap-3">
-            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">2</span>
-            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.tes_documents">Tes documents</h3>
-          </div>
-          <p class="mt-2 text-sm text-muted" data-i18n="sim.pdf_word_image_ou_texte_colle_tes_fichiers_sont_lus_">PDF, Word, image ou texte collé. Tes fichiers sont lus dans ton navigateur, jamais stockés.</p>
+        <!-- Identité visuelle -->
+        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-6">
+          <h2 class="font-display text-lg font-bold" data-i18n="compte.identite_visuelle">Photo et couleur</h2>
+          <p class="mt-1 text-sm text-muted" data-i18n="compte.identite_aide">
+            Une photo remplace la silhouette. Sans photo, choisissez la teinte de votre pastille.
+          </p>
 
-          <div class="mt-5 grid gap-4 lg:grid-cols-2">
-            <!-- Champ A -->
-            <div class="champ rounded-2xl border border-line bg-ink/50 p-4 transition sm:p-5">
-              <div class="flex items-start justify-between gap-3">
-                <div class="flex items-start gap-3">
-                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-iris/15 text-iris2">
-                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
-                  </span>
-                  <div>
-                    <p id="label-A" class="font-display font-bold leading-tight" data-i18n="sim.votre_cv">Votre CV</p>
-                    <p id="aide-A" class="mt-0.5 text-xs text-muted" data-i18n="sim.parcours_missions_resultats">Parcours, missions, résultats</p>
-                  </div>
-                </div>
-                <span id="compteur-A" class="shrink-0 text-xs tabular-nums text-muted">0</span>
-              </div>
-
-              <label id="depot-A" class="depot mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line bg-ink/40 px-4 py-3 text-sm text-muted transition hover:border-iris/60">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-                <span id="etat-fichier-A">Importer un fichier ou glissez-le ici</span>
-                <input id="fichier-A" type="file" class="sr-only" accept=".pdf,.txt,.md,.doc,.docx,.rtf,image/*">
+          <div class="mt-5 flex flex-wrap items-center gap-5">
+            <div id="apercu-avatar" class="shrink-0"></div>
+            <div class="flex flex-wrap gap-2">
+              <label class="cursor-pointer rounded-xl border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/60">
+                <span data-i18n="compte.choisir_photo">Choisir une photo</span>
+                <input id="fichier-avatar" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only">
               </label>
-
-              <textarea id="champA" rows="7" class="mt-3 w-full rounded-xl border border-line bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none" placeholder="Collez ou importez votre CV…"></textarea>
-              <p id="min-A" class="mt-2 text-xs text-muted" data-i18n="sim.minimum_200_caracteres">Minimum 200 caractères.</p>
-            </div>
-
-            <!-- Champ B -->
-            <div class="champ rounded-2xl border border-line bg-ink/50 p-4 transition sm:p-5">
-              <div class="flex items-start justify-between gap-3">
-                <div class="flex items-start gap-3">
-                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-iris/15 text-iris2">
-                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </span>
-                  <div>
-                    <p id="label-B" class="font-display font-bold leading-tight" data-i18n="sim.l_offre_d_emploi">L'offre d'emploi</p>
-                    <p id="aide-B" class="mt-0.5 text-xs text-muted" data-i18n="sim.intitule_missions_profil_recherche">Intitulé, missions, profil recherché</p>
-                  </div>
-                </div>
-                <span id="compteur-B" class="shrink-0 text-xs tabular-nums text-muted">0</span>
-              </div>
-
-              <label id="depot-B" class="depot mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line bg-ink/40 px-4 py-3 text-sm text-muted transition hover:border-iris/60">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-                <span id="etat-fichier-B">Importer un fichier ou glissez-le ici</span>
-                <input id="fichier-B" type="file" class="sr-only" accept=".pdf,.txt,.md,.doc,.docx,.rtf,image/*">
-              </label>
-
-              <textarea id="champB" rows="7" class="mt-3 w-full rounded-xl border border-line bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none" placeholder="Collez l'annonce complète…"></textarea>
-              <p id="min-B" class="mt-2 text-xs text-muted" data-i18n="sim.minimum_150_caracteres">Minimum 150 caractères.</p>
+              <button id="btn-retirer-photo" type="button" class="hidden rounded-xl border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-coral/60" data-i18n="compte.retirer_photo">Retirer la photo</button>
             </div>
           </div>
+          <p id="etat-avatar" class="mt-3 text-xs text-muted" role="status"></p>
+
+          <p class="mt-6 text-sm font-medium" data-i18n="compte.couleur_pastille">Couleur de la pastille</p>
+          <div id="choix-couleurs" role="radiogroup" aria-label="Couleur de la pastille" class="mt-3 flex flex-wrap gap-2.5"></div>
         </div>
 
-        <hr class="my-8 border-line">
+        <!-- Informations -->
+        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-6">
+          <h2 class="font-display text-lg font-bold" data-i18n="compte.mes_informations">Mes informations</h2>
 
-        <!-- ── Étape 3 ── -->
-        <div>
-          <div class="flex items-center gap-3">
-            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">3</span>
-            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.le_format_de_l_epreuve">Le format de l'épreuve</h3>
-          </div>
-
-          <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
-              <span class="text-sm font-medium" data-i18n="sim.nombre_de_questions">Nombre de questions</span>
-              <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="nbQuestions">
-                <button type="button" data-valeur="3" class="opt rounded-md px-3 py-1.5 text-sm">3</button>
-                <button type="button" data-valeur="5" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut>5</button>
-                <button type="button" data-valeur="8" class="opt rounded-md px-3 py-1.5 text-sm">8</button>
-              </div>
+              <label for="c-prenom" class="text-sm font-medium" data-i18n="auth.prenom">Prénom</label>
+              <input id="c-prenom" type="text" autocomplete="given-name" maxlength="40"
+                class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm focus:border-iris focus:outline-none">
             </div>
             <div>
-              <span class="text-sm font-medium" data-i18n="sim.temps_par_reponse">Temps par réponse</span>
-              <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="duree">
-                <button type="button" data-valeur="60" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.1_min">1 min</button>
-                <button type="button" data-valeur="120" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut data-i18n="sim.2_min">2 min</button>
-                <button type="button" data-valeur="300" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.5_min">5 min</button>
-              </div>
-            </div>
-            <div>
-              <span class="text-sm font-medium" data-i18n="sim.ton_de_l_examinateur">Ton de l'examinateur</span>
-              <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="niveau">
-                <button type="button" data-valeur="bienveillant" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.bienveillant">Bienveillant</button>
-                <button type="button" data-valeur="standard" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut data-i18n="sim.standard">Standard</button>
-                <button type="button" data-valeur="exigeant" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.exigeant">Exigeant</button>
-              </div>
+              <label for="c-nom" class="text-sm font-medium" data-i18n="auth.nom">Nom</label>
+              <input id="c-nom" type="text" autocomplete="family-name" maxlength="40"
+                class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm focus:border-iris focus:outline-none">
             </div>
           </div>
 
-          <div class="mt-6 grid gap-3 sm:grid-cols-2">
-            <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-ink/40 p-4 transition hover:border-iris/50">
-              <input id="mode-reel" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0 accent-[#7C5CFF]">
-              <span>
-                <span class="block text-sm font-medium">Mode conditions réelles</span>
-                <span class="mt-0.5 block text-xs leading-relaxed text-muted">Chrono strict, pas de pause, passage automatique à la question suivante.</span>
-              </span>
-            </label>
-            <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-ink/40 p-4 transition hover:border-iris/50">
-              <input id="lecture-auto" type="checkbox" checked class="mt-0.5 h-4 w-4 shrink-0 accent-[#7C5CFF]">
-              <span>
-                <span class="block text-sm font-medium">L'examinateur parle</span>
-                <span class="mt-0.5 block text-xs leading-relaxed text-muted">Chaque question est lue à voix haute, comme le jour J.</span>
-              </span>
-            </label>
+          <label for="c-pseudo" class="mt-4 block text-sm font-medium">
+            <span data-i18n="auth.pseudonyme">Pseudonyme</span>
+            <span class="ml-1 text-xs font-normal text-muted" data-i18n="auth.facultatif">(facultatif)</span>
+          </label>
+          <input id="c-pseudo" type="text" autocomplete="nickname" maxlength="24"
+            class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm focus:border-iris focus:outline-none">
+          <p class="mt-2 text-xs text-muted" data-i18n="compte.pseudo_aide">
+            Affiché en haut de page. Sans pseudonyme, ce sera <span id="apercu-nom" class="text-soft">Prénom N.</span>
+          </p>
+
+          <label for="c-telephone" class="mt-4 block text-sm font-medium">
+            <span data-i18n="compte.telephone">Téléphone</span>
+            <span class="ml-1 text-xs font-normal text-muted" data-i18n="auth.facultatif">(facultatif)</span>
+          </label>
+          <input id="c-telephone" type="tel" autocomplete="tel" maxlength="24" placeholder="06 12 34 56 78"
+            class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <button id="btn-enregistrer" type="button" class="rounded-xl bg-inverse px-5 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="compte.enregistrer">Enregistrer</button>
+            <span id="etat-infos" class="text-sm text-muted" role="status"></span>
           </div>
         </div>
 
-        <hr class="my-8 border-line">
+        <!-- Adresse et mot de passe -->
+        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-6">
+          <h2 class="font-display text-lg font-bold" data-i18n="compte.connexion">Adresse et mot de passe</h2>
 
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p id="aide-action" class="text-sm text-muted" data-i18n="sim.completez_les_deux_champs_pour_demarrer">Complétez les deux champs pour démarrer.</p>
-          <button id="btn-lancer" type="button" disabled
-            class="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-inverse px-7 py-4 font-display text-base font-bold text-sur-inverse transition enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted sm:w-auto">
-            <span data-i18n="cta.lancer_simulation">Lancer ma simulation</span>
-            <span class="transition-transform group-hover:translate-x-1">→</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+          <label for="c-email" class="mt-5 block text-sm font-medium" data-i18n="auth.adresse_email">Adresse e-mail</label>
+          <input id="c-email" type="email" autocomplete="email"
+            class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm focus:border-iris focus:outline-none">
+          <p class="mt-2 text-xs text-muted" data-i18n="compte.email_aide">
+            Changer d'adresse demande une confirmation : un lien part vers l'ancienne et la nouvelle.
+          </p>
 
-  <!-- ─── Écran chargement ─── -->
-  <div id="ecran-chargement" class="hidden py-16 sm:py-24">
-    <div class="mx-auto max-w-lg rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-8">
-
-      <div class="flex items-center gap-4">
-        <span class="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-iris/12">
-          <span class="absolute inset-0 rounded-2xl border-2 border-line"></span>
-          <span class="absolute inset-0 animate-spin rounded-2xl border-2 border-transparent border-t-iris2"></span>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-iris2">
-            <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
-          </svg>
-        </span>
-        <div class="min-w-0">
-          <p id="titre-chargement" class="font-display text-lg font-bold leading-tight" data-i18n="sim.preparation_de_votre_oral">Préparation de votre oral</p>
-          <p class="mt-0.5 text-sm text-muted" data-i18n="sim.quelques_secondes_l_examinateur_se_prepare">Quelques secondes, l'examinateur se prépare.</p>
-        </div>
-      </div>
-
-      <div class="mt-6 h-1.5 overflow-hidden rounded-full bg-line">
-        <i id="barre-chargement" class="block h-full w-0 rounded-full bg-gradient-to-r from-iris to-iris2 transition-[width] duration-300 ease-out"></i>
-      </div>
-
-      <ul id="etapes-chargement" class="mt-6 space-y-3"></ul>
-
-      <div class="mt-7 rounded-2xl border border-line bg-ink/40 p-4">
-        <p class="text-xs font-medium text-iris2" data-i18n="sim.pendant_que_vous_attendez">Pendant que vous attendez</p>
-        <p id="conseil-chargement" class="mt-1.5 text-sm leading-relaxed text-muted"></p>
-      </div>
-    </div>
-  </div>
-
-  <div id="ecran-simulation" class="hidden pt-8">
-    <div class="flex items-center justify-between gap-4">
-      <p class="text-sm text-muted">Question <span id="num-question" class="font-semibold text-soft">1</span> sur <span id="total-questions">5</span></p>
-      <button id="btn-abandon" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="sim.quitter">Quitter</button>
-    </div>
-    <div id="segments" class="mt-3 flex gap-1.5"></div>
-
-    <div class="mt-8 grid gap-4 lg:grid-cols-[1fr_260px]">
-      <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
-        <div class="flex flex-wrap items-center gap-3">
-          <span id="categorie" class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-3 py-1 text-xs font-medium text-iris2" data-i18n="sim.question">Question</span>
-          <button id="btn-relire" type="button" class="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-3 py-1 text-xs transition hover:border-iris/60">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
-            Réécouter la question
-          </button>
-        </div>
-        <h2 id="question" class="mt-4 font-display text-2xl font-bold leading-snug sm:text-[28px]">…</h2>
-
-        <div class="mt-8 rounded-2xl border border-line bg-ink/40 p-4 text-center">
-          <button id="btn-micro" type="button"
-            class="mx-auto flex w-full max-w-sm items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-iris to-iris2 px-6 py-5 font-display text-lg font-bold text-white shadow-glow transition hover:brightness-110">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-            <span id="libelle-micro">Répondre à l'oral</span>
-          </button>
-          <p id="etat-micro" class="mt-3 text-sm text-muted" data-i18n="sim.parlez_normalement_votre_reponse_s_ecrit_toute_seule">Parlez normalement : votre réponse s'écrit toute seule.</p>
-          <p id="interim" class="mt-2 min-h-[1.25rem] text-sm italic text-iris2"></p>
-        </div>
-
-        <div class="mt-6 flex items-baseline justify-between">
-          <label for="reponse" class="text-sm font-medium" data-i18n="sim.votre_reponse">Votre réponse</label>
-          <span id="compteur-reponse" class="text-xs tabular-nums text-muted" data-i18n="sim.0_mot">0 mot</span>
-        </div>
-        <textarea id="reponse" rows="7"
-          class="mt-2 w-full rounded-xl border border-line/70 bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none"
-          placeholder="Vous pouvez aussi écrire directement ici."></textarea>
-
-        <div class="mt-5 flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
-          <button id="btn-suivant" type="button"
-            class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.valider_et_continuer">
-            Valider et continuer
-          </button>
-          <button id="btn-passer" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="sim.passer_cette_question">Passer cette question</button>
-        </div>
-      </div>
-
-      <aside class="rounded-2xl border border-line bg-surface p-5 text-center shadow-carte">
-        <p class="text-sm text-muted" data-i18n="sim.temps_de_parole">Temps de parole</p>
-        <div class="relative mx-auto mt-4 h-[132px] w-[132px]">
-          <svg viewBox="0 0 120 120" class="anneau h-full w-full">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="rgb(var(--line))" stroke-width="8"/>
-            <circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="#7C5CFF" stroke-width="8" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="0"/>
-          </svg>
-          <div class="absolute inset-0 grid place-items-center">
-            <span id="chrono" role="timer" class="font-display text-3xl font-extrabold tabular-nums">2:00</span>
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <button id="btn-changer-email" type="button" class="rounded-xl border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/60" data-i18n="compte.changer_adresse">Changer d'adresse</button>
+            <button id="btn-changer-mdp" type="button" class="rounded-xl border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/60" data-i18n="compte.changer_mot_de_passe">Changer de mot de passe</button>
           </div>
+          <p id="etat-connexion" class="mt-3 text-sm text-muted" role="status"></p>
         </div>
-        <p id="etat-chrono" class="mt-4 text-sm text-muted" data-i18n="sim.le_chrono_tourne">Le chrono tourne.</p>
-        <button id="btn-pause" type="button" class="mt-4 w-full rounded-lg border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/50" data-i18n="sim.mettre_en_pause">Mettre en pause</button>
+
+        <!-- Suppression -->
+        <div class="rounded-2xl border border-coral/40 bg-coral/5 p-5 sm:p-6">
+          <h2 class="font-display text-lg font-bold" data-i18n="compte.supprimer_titre">Supprimer mon compte</h2>
+          <p class="mt-2 text-sm leading-relaxed text-muted" data-i18n="compte.supprimer_aide">
+            Efface définitivement votre profil, vos simulations passées et votre compteur d'usage.
+            Un abonnement en cours doit être résilié d'abord, depuis le portail de paiement.
+          </p>
+          <button id="btn-supprimer-compte" type="button" class="mt-4 rounded-xl border border-coral/60 px-4 py-2.5 text-sm font-medium text-coral transition hover:bg-coral/10" data-i18n="compte.supprimer_bouton">Demander la suppression</button>
+        </div>
+      </div>
+
+      <!-- ══ Colonne latérale ══ -->
+      <aside class="space-y-5">
+
+        <!-- Abonnement -->
+        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte">
+          <h2 class="font-display text-lg font-bold" data-i18n="compte.mon_abonnement">Mon abonnement</h2>
+          <div id="etat-abonnement" class="mt-4 space-y-3 text-sm"></div>
+          <div id="actions-abonnement" class="mt-5 space-y-2"></div>
+        </div>
+
+        <!-- Simulations restantes -->
+        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte">
+          <h2 class="font-display text-lg font-bold" data-i18n="compte.mes_simulations">Mes simulations</h2>
+          <p id="compteur-simulations" class="mt-3 font-display text-3xl font-extrabold tabular-nums"></p>
+          <p id="detail-simulations" class="mt-1 text-sm text-muted"></p>
+          <a href="./index.html?vue=compte" class="mt-5 block rounded-xl border border-line bg-raised px-4 py-2.5 text-center text-sm font-medium transition hover:border-iris/50" data-i18n="cta.mes_simulations">Voir mes simulations passées</a>
+        </div>
+
+        <!-- Paiement -->
+        <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte">
+          <h2 class="font-display text-lg font-bold" data-i18n="compte.moyens_de_paiement">Moyens de paiement</h2>
+          <p class="mt-2 text-sm leading-relaxed text-muted" data-i18n="compte.paiement_aide">
+            Vos coordonnées bancaires ne transitent jamais par PrepOral et ne sont pas stockées ici :
+            elles sont gérées par Stripe, sur ses propres pages.
+          </p>
+          <button id="btn-portail" type="button" class="mt-4 w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-iris/50" data-i18n="compte.ouvrir_portail">Gérer mes moyens de paiement</button>
+        </div>
       </aside>
     </div>
-  </div>
-  <div id="ecran-rapport" class="hidden pt-12">
-    <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
-      <div class="grid gap-8 sm:grid-cols-[160px_1fr] sm:items-center">
-        <div class="relative mx-auto h-[160px] w-[160px]">
-          <svg viewBox="0 0 120 120" class="anneau h-full w-full">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="rgb(var(--line))" stroke-width="9"/>
-            <circle id="arc-score" cx="60" cy="60" r="52" fill="none" stroke="#3DDC97" stroke-width="9" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"/>
-          </svg>
-          <div class="absolute inset-0 grid place-items-center text-center">
-            <div>
-              <span id="score-global" class="font-display text-4xl font-extrabold tabular-nums">0</span>
-              <span class="block text-xs text-muted" data-i18n="sim.sur_100">sur 100</span>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <p id="type-rapport" class="text-sm text-muted" data-i18n="sim.simulation">Simulation</p>
-            <div id="ecoute-bilan" class="sans-impression"></div>
-          </div>
-          <h2 id="verdict" class="mt-1 font-display text-3xl font-extrabold tracking-tight" data-i18n="sim.rapport_de_simulation">Rapport de simulation</h2>
-          <p id="verdict-detail" class="mt-2 max-w-lg leading-relaxed text-muted">…</p>
-          <dl class="mt-6 grid grid-cols-3 gap-3 text-center">
-            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.questions">Questions</dt><dd id="stat-questions" class="font-display text-xl font-bold tabular-nums">0</dd></div>
-            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.temps_de_parole">Temps de parole</dt><dd id="stat-temps" class="font-display text-xl font-bold tabular-nums">0:00</dd></div>
-            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.mots_reponse">Mots / réponse</dt><dd id="stat-mots" class="font-display text-xl font-bold tabular-nums">0</dd></div>
-          </dl>
-        </div>
-      </div>
-      <div id="criteres" class="mt-8 grid gap-x-8 gap-y-5 border-t border-line/70 pt-8 sm:grid-cols-2"></div>
-    </div>
-
-    <!-- Éloquence -->
-    <div class="mt-6 rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <h3 class="font-display text-xl font-bold" data-i18n="sim.eloquence_et_voix">Éloquence et voix</h3>
-        <span id="eloq-note" class="rounded-full border border-line bg-raised px-3 py-1 font-display text-sm font-bold tabular-nums">– / 20</span>
-      </div>
-      <div class="mt-5 grid gap-3 sm:grid-cols-3">
-        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.debit_de_parole">Débit de parole</p><p id="eloq-debit" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-debit-note" class="text-xs text-muted"></p></div>
-        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.richesse_du_vocabulaire">Richesse du vocabulaire</p><p id="eloq-richesse" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-richesse-note" class="text-xs text-muted"></p></div>
-        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.clarte">Clarté</p><p id="eloq-clarte" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-clarte-note" class="text-xs text-muted"></p></div>
-      </div>
-      <ul id="eloq-conseils" class="mt-5 space-y-2 text-sm text-muted"></ul>
-    </div>
-
-    <h3 class="mt-12 font-display text-xl font-bold" data-i18n="sim.reponse_par_reponse">Réponse par réponse</h3>
-    <div id="detail-reponses" class="mt-4 space-y-4"></div>
-
-    <!-- Fin de simulation : on renvoie vers l'historique, où tout se relit. -->
-    <div class="sans-impression mt-10 rounded-2xl border border-iris/30 bg-iris/5 p-5 sm:p-6">
-      <h3 class="font-display text-lg font-bold" data-i18n="sim.ce_bilan_est_enregistre">Ce bilan est enregistré</h3>
-      <p class="mt-1.5 text-sm leading-relaxed text-muted" data-i18n="sim.retrouvez_le_quand_vous_voulez_dans_mes_simulations_">
-        Retrouvez-le quand vous voulez dans « Mes simulations passées », avec les questions
-        posées, vos réponses et la correction complète de l'examinateur.
-      </p>
-      <a id="btn-mes-simulations" href="./index.html?vue=compte"
-        class="group mt-4 inline-flex items-center gap-2 rounded-xl bg-inverse px-6 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90">
-        <span data-i18n="cta.mes_simulations">Voir mes simulations passées</span>
-        <span class="transition-transform group-hover:translate-x-1">→</span>
-      </a>
-    </div>
-
-    <div class="sans-impression mt-6 flex flex-col gap-3 sm:flex-row">
-      <button id="btn-rejouer" type="button" class="rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.refaire_une_simulation">Refaire une simulation</button>
-      <button id="btn-pdf" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50" data-i18n="sim.telecharger_le_bilan_en_pdf">Télécharger le bilan en PDF</button>
-      <button id="btn-modifier" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50" data-i18n="sim.modifier_mes_documents">Modifier mes documents</button>
-    </div>
-
-    <!-- Invitation à déposer un avis : c'est ainsi que la page Témoignages se remplit. -->
-    <div id="invite-avis" class="sans-impression mt-6 hidden rounded-2xl border border-line bg-surface p-5 sm:p-6">
-      <h3 class="font-display font-bold" data-i18n="sim.ca_vous_a_servi">Ça vous a servi ?</h3>
-      <p class="mt-1.5 text-sm leading-relaxed text-muted" data-i18n="sim.votre_retour_aide_les_prochains_candidats_a_se_lance">
-        Votre retour aide les prochains candidats à se lancer. Il est vérifié avant publication.
-      </p>
-      <a href="./temoignages.html#deposer"
-        class="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-raised px-5 py-3 text-sm font-medium transition hover:border-iris/60" data-i18n="sim.laisser_un_avis">
-        Laisser un avis
-      </a>
-    </div>
-  </div>
-</section>
-
+  </section>
 </main>
+
 
 <!-- ══════════════════════════════════════════════════════════
      PIED DE PAGE
@@ -874,6 +677,6 @@
 <div id="toasts" class="fixed bottom-24 left-1/2 z-[60] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 flex-col gap-2"></div>
 
 
-<script type="module" src="js/simulateur.js"></script>
+<script type="module" src="js/compte.js"></script>
 </body>
 </html>
