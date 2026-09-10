@@ -208,7 +208,7 @@
 </head>
 <body class="min-h-full font-sans antialiased">
 
-<a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-xl focus:bg-iris focus:px-4 focus:py-2 focus:font-medium focus:text-white">Aller au contenu</a>
+<a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-xl focus:bg-iris focus:px-4 focus:py-2 focus:font-medium focus:text-white" data-i18n="accueil.aller_au_contenu">Aller au contenu</a>
 
 <!-- ══════════════════════════════════════════════════════════
      EN-TÊTE  (identique sur toutes les pages)
@@ -222,20 +222,33 @@
     </a>
 
     <nav class="hidden items-center gap-1 md:flex" aria-label="Navigation principale">
-      <a href="./index.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Accueil</a>
-      <a href="./simulateur.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Simulateur</a>
-      <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Coach IA</a>
-      <a href="./temoignages.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Témoignages</a>
-      <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Mon espace</a>
+      <a href="./index.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.accueil">Accueil</a>
+      <a href="./simulateur.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.simulateur">Simulateur</a>
+      <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.coach_ia">Coach IA</a>
+      <a href="./temoignages.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.temoignages">Témoignages</a>
+      <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.mon_espace">Mon espace</a>
     </nav>
 
     <div class="flex shrink-0 items-center gap-2">
+      <!-- Choix de la langue -->
+      <div class="relative">
+        <button id="btn-langue" type="button" aria-haspopup="listbox" aria-expanded="false"
+          class="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-2 text-sm text-muted transition hover:border-iris/50 hover:text-soft"
+          aria-label="Changer de langue">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>
+          </svg>
+          <span id="langue-courante" class="hidden sm:inline">FR</span>
+        </button>
+        <ul id="menu-langue" role="listbox" aria-label="Langues disponibles"
+          class="absolute right-0 z-50 mt-2 hidden w-44 overflow-hidden rounded-xl border border-line bg-surface shadow-carte"></ul>
+      </div>
       <button id="btn-theme" type="button" class="rounded-lg border border-line p-2 text-muted transition hover:border-iris/50 hover:text-soft" aria-label="Changer de thème">
         <svg data-icone="sombre" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
         <svg data-icone="clair" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
-      <button id="btn-compte" type="button" class="hidden rounded-lg px-3 py-2 text-sm text-muted transition hover:text-soft sm:block">Connexion</button>
-      <a href="./simulateur.html" id="btn-essai" class="rounded-xl bg-inverse px-4 py-2.5 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90">
+      <button id="btn-compte" type="button" class="hidden rounded-lg px-3 py-2 text-sm text-muted transition hover:text-soft sm:block" data-i18n="accueil.connexion">Connexion</button>
+      <a href="./simulateur.html" id="btn-essai" class="rounded-xl bg-inverse px-4 py-2.5 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.essayer_gratuitement">
         Essayer gratuitement
       </a>
     </div>
@@ -245,11 +258,11 @@
 <!-- Menu compact -->
 <nav class="border-b border-line md:hidden" aria-label="Navigation">
   <div class="rail flex gap-1 overflow-x-auto px-4 py-2">
-    <a href="./index.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Accueil</a>
-    <a href="./simulateur.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Simulateur</a>
-    <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Coach IA</a>
-    <a href="./temoignages.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Témoignages</a>
-    <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Mon espace</a>
+    <a href="./index.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.accueil">Accueil</a>
+    <a href="./simulateur.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.simulateur">Simulateur</a>
+    <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.coach_ia">Coach IA</a>
+    <a href="./temoignages.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.temoignages">Témoignages</a>
+    <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.mon_espace">Mon espace</a>
   </div>
 </nav>
 
@@ -264,20 +277,20 @@
 
     <!-- ── Héros ── -->
     <div class="pt-14 text-center sm:pt-20">
-      <h1 class="titre-geant mx-auto max-w-3xl">
+      <h1 class="titre-geant mx-auto max-w-3xl" data-i18n="titre.hero_accueil">
         Réussis ton oral<br>du <span class="marqueur">premier coup</span>.
       </h1>
-      <p class="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+      <p class="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted sm:text-lg" data-i18n="accueil.arrete_de_repeter_dans_le_vide_entraine_toi_en_condi">
         Arrête de répéter dans le vide. Entraîne-toi en conditions réelles, vois exactement
         où tu perds des points, et corrige chaque réponse grâce à une correction détaillée.
       </p>
 
       <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
         <a href="./simulateur.html" class="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-inverse px-7 py-4 font-display text-base font-bold text-sur-inverse transition hover:opacity-90 sm:w-auto">
-          Essayer gratuitement
+          <span data-i18n="accueil.essayer_gratuitement">Essayer gratuitement</span>
           <span class="transition-transform group-hover:translate-x-1">→</span>
         </a>
-        <a href="./index.html?vue=coach" data-vue-lien="coach" class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line px-7 py-4 font-display text-base font-bold transition hover:border-iris/60 sm:w-auto">
+        <a href="./index.html?vue=coach" data-vue-lien="coach" class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line px-7 py-4 font-display text-base font-bold transition hover:border-iris/60 sm:w-auto" data-i18n="accueil.parler_au_coach_ia">
           Parler au coach IA
         </a>
       </div>
@@ -286,11 +299,11 @@
       <div class="mx-auto mt-10 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted">
         <span class="flex items-center gap-1.5">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
-          Documents lus puis supprimés, jamais revendus
+          <span data-i18n="accueil.documents_lus_puis_supprimes">Documents lus puis supprimés, jamais revendus</span>
         </span>
         <span class="flex items-center gap-1.5">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          Paiement sécurisé par Stripe
+          <span data-i18n="accueil.paiement_securise_stripe">Paiement sécurisé par Stripe</span>
         </span>
         <span id="jauge-quota" class="rounded-md bg-raised px-2 py-1 tabular-nums"></span>
       </div>
@@ -300,28 +313,28 @@
     <div class="mx-auto mt-16 max-w-3xl divide-y divide-line border-y border-line sm:mt-20">
       <div class="flex items-baseline gap-5 py-5">
         <span class="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">7</span>
-        <span class="text-sm leading-relaxed text-muted">types d'oraux couverts : entretien, Grand Oral, brevet, concours, pitch, oral de matière, certification de langue</span>
+        <span class="text-sm leading-relaxed text-muted" data-i18n="accueil.types_d_oraux_couverts_entretien_grand_oral_brevet_c">types d'oraux couverts : entretien, Grand Oral, brevet, concours, pitch, oral de matière, certification de langue</span>
       </div>
       <div class="flex items-baseline gap-5 py-5">
         <span class="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">2</span>
-        <span class="text-sm leading-relaxed text-muted">simulations complètes offertes, sans compte ni carte bancaire</span>
+        <span class="text-sm leading-relaxed text-muted" data-i18n="accueil.simulations_completes_offertes_sans_compte_ni_carte_">simulations complètes offertes, sans compte ni carte bancaire</span>
       </div>
       <div class="flex items-baseline gap-5 py-5">
         <span class="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">4</span>
-        <span class="text-sm leading-relaxed text-muted">axes notés à chaque passage : contenu, structure, éloquence et débit de parole</span>
+        <span class="text-sm leading-relaxed text-muted" data-i18n="accueil.axes_notes_a_chaque_passage_contenu_structure_eloque">axes notés à chaque passage : contenu, structure, éloquence et débit de parole</span>
       </div>
     </div>
     <!-- ══ Ce que fait la plateforme ══ -->
     <section class="mt-24 sm:mt-32">
-      <h2 class="titre-section text-center">
+      <h2 class="titre-section text-center" data-i18n="titre.plateforme">
         Ta plateforme <span class="marqueur">tout-en-un</span><br class="hidden sm:block"> pour préparer ton oral.
       </h2>
 
       <!-- Bloc 1 -->
       <div class="mt-14 grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
         <div>
-          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">L'examinateur<br>te parle vraiment</h3>
-          <p class="mt-5 leading-relaxed text-muted">
+          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl" data-i18n="titre.examinateur_parle">L'examinateur<br>te parle vraiment</h3>
+          <p class="mt-5 leading-relaxed text-muted" data-i18n="accueil.les_questions_sont_generees_a_partir_de_tes_propres_">
             Les questions sont générées à partir de tes propres documents, puis lues à voix haute.
             Tu réponds au micro, le chrono tourne. C'est la seule façon de savoir si ta réponse
             tient debout à l'oral et pas seulement sur le papier.
@@ -332,9 +345,9 @@
             <span class="h-2.5 w-2.5 rounded-full bg-coral/70"></span>
             <span class="h-2.5 w-2.5 rounded-full bg-amber/70"></span>
             <span class="h-2.5 w-2.5 rounded-full bg-mint/70"></span>
-            <span class="ml-2 text-xs text-muted">Question 3 / 5 · Mise en situation</span>
+            <span class="ml-2 text-xs text-muted" data-i18n="accueil.question_3_5_mise_en_situation">Question 3 / 5 · Mise en situation</span>
           </div>
-          <p class="mt-5 font-display text-lg font-bold leading-snug">
+          <p class="mt-5 font-display text-lg font-bold leading-snug" data-i18n="accueil.votre_premiere_semaine_porte_sur_un_dossier_que_vous">
             « Votre première semaine porte sur un dossier que vous ne connaissez pas.
             Par quoi commencez-vous ? »
           </p>
@@ -344,7 +357,7 @@
             </span>
             <div class="min-w-0 flex-1">
               <div class="h-1.5 w-full overflow-hidden rounded-full bg-line"><i class="block h-full w-2/3 rounded-full bg-iris"></i></div>
-              <p class="mt-2 text-xs text-muted">1:19 restantes · 78 mots dictés</p>
+              <p class="mt-2 text-xs text-muted" data-i18n="accueil.1_19_restantes_78_mots_dictes">1:19 restantes · 78 mots dictés</p>
             </div>
           </div>
         </div>
@@ -353,25 +366,25 @@
       <!-- Bloc 2 (inversé) -->
       <div class="mt-16 grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
         <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte lg:order-1 sm:p-6">
-          <p class="text-xs text-muted">Critères notés</p>
+          <p class="text-xs text-muted" data-i18n="accueil.criteres_notes">Critères notés</p>
           <div class="mt-4 space-y-4">
             <div>
-              <div class="flex items-baseline justify-between"><span class="text-sm font-medium">Structure de la réponse</span><span class="font-display text-sm font-bold tabular-nums text-muted">78<span class="text-xs"> / 100</span></span></div>
+              <div class="flex items-baseline justify-between"><span class="text-sm font-medium" data-i18n="accueil.structure_de_la_reponse">Structure de la réponse</span><span class="font-display text-sm font-bold tabular-nums text-muted">78<span class="text-xs"> / 100</span></span></div>
               <div class="mt-2 h-2 overflow-hidden rounded-full bg-line"><i class="block h-full w-[78%] rounded-full bg-mint"></i></div>
             </div>
             <div>
-              <div class="flex items-baseline justify-between"><span class="text-sm font-medium">Preuves et chiffres</span><span class="font-display text-sm font-bold tabular-nums text-muted">52<span class="text-xs"> / 100</span></span></div>
+              <div class="flex items-baseline justify-between"><span class="text-sm font-medium" data-i18n="accueil.preuves_et_chiffres">Preuves et chiffres</span><span class="font-display text-sm font-bold tabular-nums text-muted">52<span class="text-xs"> / 100</span></span></div>
               <div class="mt-2 h-2 overflow-hidden rounded-full bg-line"><i class="block h-full w-[52%] rounded-full bg-amber"></i></div>
             </div>
             <div>
-              <div class="flex items-baseline justify-between"><span class="text-sm font-medium">Concision</span><span class="font-display text-sm font-bold tabular-nums text-muted">41<span class="text-xs"> / 100</span></span></div>
+              <div class="flex items-baseline justify-between"><span class="text-sm font-medium" data-i18n="accueil.concision">Concision</span><span class="font-display text-sm font-bold tabular-nums text-muted">41<span class="text-xs"> / 100</span></span></div>
               <div class="mt-2 h-2 overflow-hidden rounded-full bg-line"><i class="block h-full w-[41%] rounded-full bg-coral"></i></div>
             </div>
           </div>
         </div>
         <div class="lg:order-2">
-          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">Vois exactement<br>où tu perds des points</h3>
-          <p class="mt-5 leading-relaxed text-muted">
+          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl" data-i18n="titre.ou_tu_perds">Vois exactement<br>où tu perds des points</h3>
+          <p class="mt-5 leading-relaxed text-muted" data-i18n="accueil.chaque_reponse_est_notee_sur_20_et_decomposee_ce_qui">
             Chaque réponse est notée sur 20 et décomposée : ce qui fonctionne, ce qui manque,
             et une réécriture courte de ce que tu aurais pu dire de mieux. Pas de félicitations
             de politesse — si une réponse est creuse, c'est écrit.
@@ -382,8 +395,8 @@
       <!-- Bloc 3 -->
       <div class="mt-16 grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
         <div>
-          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">Ton débit,<br>ta clarté, ton stress</h3>
-          <p class="mt-5 leading-relaxed text-muted">
+          <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl" data-i18n="titre.debit_clarte">Ton débit,<br>ta clarté, ton stress</h3>
+          <p class="mt-5 leading-relaxed text-muted" data-i18n="accueil.l_analyse_d_eloquence_mesure_ce_que_tu_n_entends_pas">
             L'analyse d'éloquence mesure ce que tu n'entends pas toi-même : mots par minute,
             richesse du vocabulaire, longueur des phrases. La plupart des candidats parlent
             trop vite sans le savoir.
@@ -413,79 +426,79 @@
     </section>
     <!-- ══ Chaque oral a ses codes ══ -->
     <section class="mt-24 sm:mt-32">
-      <h2 class="titre-section text-center">
+      <h2 class="titre-section text-center" data-i18n="titre.chaque_oral">
         Chaque oral a <span class="marqueur">ses codes</span>.
       </h2>
-      <p class="mx-auto mt-4 max-w-xl text-center text-sm leading-relaxed text-muted">
+      <p class="mx-auto mt-4 max-w-xl text-center text-sm leading-relaxed text-muted" data-i18n="accueil.un_jury_de_brevet_et_un_jury_de_grande_ecole_n_atten">
         Un jury de brevet et un jury de grande école n'attendent pas la même chose.
         L'examinateur change de posture, de vocabulaire et de grille selon l'épreuve.
       </p>
 
       <div class="rail mt-10 -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-3 lg:overflow-visible">
         <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[-1.2deg]">
-          <span class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-2.5 py-0.5 text-[11px] font-medium text-iris2">Grand Oral</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted">« Quelqu'un vous soutient exactement l'inverse de votre conclusion. Que lui répondez-vous ? »</p>
-          <p class="mt-4 text-xs text-muted">Noté sur la prise de recul et le lien au projet d'orientation.</p>
+          <span class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-2.5 py-0.5 text-[11px] font-medium text-iris2" data-i18n="accueil.grand_oral">Grand Oral</span>
+          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.quelqu_un_vous_soutient_exactement_l_inverse_de_votr">« Quelqu'un vous soutient exactement l'inverse de votre conclusion. Que lui répondez-vous ? »</p>
+          <p class="mt-4 text-xs text-muted" data-i18n="accueil.note_sur_la_prise_de_recul_et_le_lien_au_projet_d_or">Noté sur la prise de recul et le lien au projet d'orientation.</p>
         </article>
         <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[.8deg]">
-          <span class="inline-flex rounded-full border border-amber/40 bg-amber/10 px-2.5 py-0.5 text-[11px] font-medium text-amber">Entretien</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted">« Votre profil manque d'expérience sur ce périmètre. Pourquoi vous plutôt qu'un candidat confirmé ? »</p>
-          <p class="mt-4 text-xs text-muted">Noté sur les preuves chiffrées et la concision.</p>
+          <span class="inline-flex rounded-full border border-amber/40 bg-amber/10 px-2.5 py-0.5 text-[11px] font-medium text-amber" data-i18n="accueil.entretien">Entretien</span>
+          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.votre_profil_manque_d_experience_sur_ce_perimetre_po">« Votre profil manque d'expérience sur ce périmètre. Pourquoi vous plutôt qu'un candidat confirmé ? »</p>
+          <p class="mt-4 text-xs text-muted" data-i18n="accueil.note_sur_les_preuves_chiffrees_et_la_concision">Noté sur les preuves chiffrées et la concision.</p>
         </article>
         <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[-.6deg]">
-          <span class="inline-flex rounded-full border border-mint/40 bg-mint/10 px-2.5 py-0.5 text-[11px] font-medium text-mint">Brevet · 3e</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted">« Décrivez une journée type de votre stage : que faisiez-vous concrètement ? »</p>
-          <p class="mt-4 text-xs text-muted">Vocabulaire adapté à l'âge, bienveillant mais exigeant.</p>
+          <span class="inline-flex rounded-full border border-mint/40 bg-mint/10 px-2.5 py-0.5 text-[11px] font-medium text-mint" data-i18n="accueil.brevet_3e">Brevet · 3e</span>
+          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.decrivez_une_journee_type_de_votre_stage_que_faisiez">« Décrivez une journée type de votre stage : que faisiez-vous concrètement ? »</p>
+          <p class="mt-4 text-xs text-muted" data-i18n="accueil.vocabulaire_adapte_a_l_age_bienveillant_mais_exigean">Vocabulaire adapté à l'âge, bienveillant mais exigeant.</p>
         </article>
         <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[.9deg]">
-          <span class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-2.5 py-0.5 text-[11px] font-medium text-iris2">Concours</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted">« Qu'est-ce qui, dans votre dossier, pourrait faire hésiter le jury ? »</p>
-          <p class="mt-4 text-xs text-muted">Noté sur la cohérence du projet et la culture générale.</p>
+          <span class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-2.5 py-0.5 text-[11px] font-medium text-iris2" data-i18n="accueil.concours">Concours</span>
+          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.qu_est_ce_qui_dans_votre_dossier_pourrait_faire_hesi">« Qu'est-ce qui, dans votre dossier, pourrait faire hésiter le jury ? »</p>
+          <p class="mt-4 text-xs text-muted" data-i18n="accueil.note_sur_la_coherence_du_projet_et_la_culture_genera">Noté sur la cohérence du projet et la culture générale.</p>
         </article>
         <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[-.9deg]">
-          <span class="inline-flex rounded-full border border-amber/40 bg-amber/10 px-2.5 py-0.5 text-[11px] font-medium text-amber">Pitch</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted">« Quelle est la taille de votre marché, et comment l'avez-vous estimée ? »</p>
-          <p class="mt-4 text-xs text-muted">Questions courtes, concrètes, orientées objection.</p>
+          <span class="inline-flex rounded-full border border-amber/40 bg-amber/10 px-2.5 py-0.5 text-[11px] font-medium text-amber" data-i18n="accueil.pitch">Pitch</span>
+          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.quelle_est_la_taille_de_votre_marche_et_comment_l_av">« Quelle est la taille de votre marché, et comment l'avez-vous estimée ? »</p>
+          <p class="mt-4 text-xs text-muted" data-i18n="accueil.questions_courtes_concretes_orientees_objection">Questions courtes, concrètes, orientées objection.</p>
         </article>
         <article class="eventail w-[280px] shrink-0 rounded-2xl border border-line bg-surface p-5 shadow-carte lg:w-auto lg:rotate-[.5deg]">
-          <span class="inline-flex rounded-full border border-mint/40 bg-mint/10 px-2.5 py-0.5 text-[11px] font-medium text-mint">Certification</span>
-          <p class="mt-3 text-sm italic leading-relaxed text-muted">« Some people say studying abroad is essential. Do you agree? Give reasons and examples. »</p>
-          <p class="mt-4 text-xs text-muted">Posé dans la langue de l'épreuve, noté selon le CECRL.</p>
+          <span class="inline-flex rounded-full border border-mint/40 bg-mint/10 px-2.5 py-0.5 text-[11px] font-medium text-mint" data-i18n="accueil.certification">Certification</span>
+          <p class="mt-3 text-sm italic leading-relaxed text-muted" data-i18n="accueil.some_people_say_studying_abroad_is_essential_do_you_">« Some people say studying abroad is essential. Do you agree? Give reasons and examples. »</p>
+          <p class="mt-4 text-xs text-muted" data-i18n="accueil.pose_dans_la_langue_de_l_epreuve_note_selon_le_cecrl">Posé dans la langue de l'épreuve, noté selon le CECRL.</p>
         </article>
       </div>
     </section>
     <!-- ══ La méthode ══ -->
     <section class="mt-24 sm:mt-32">
       <div class="mx-auto max-w-3xl rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-10">
-        <h2 class="titre-section text-center">Pourquoi PrepOral ?</h2>
+        <h2 class="titre-section text-center" data-i18n="accueil.pourquoi_preporal">Pourquoi PrepOral ?</h2>
         <div class="mt-8 space-y-5 leading-relaxed text-muted">
           <p>
             <span class="font-display text-3xl leading-none text-iris2">«</span>
             La plupart des candidats préparent leur oral en relisant des fiches. Le jour J,
             ils découvrent qu'ils n'ont jamais prononcé leurs réponses à voix haute une seule fois.
           </p>
-          <p>
+          <p data-i18n="accueil.repeter_devant_quelqu_un_coute_cher_gene_et_n_est_pa">
             Répéter devant quelqu'un coûte cher, gêne, et n'est pas répétable dix fois. PrepOral
             fait exactement l'inverse : l'examinateur pose ses questions à voix haute, il ne se
             lasse jamais, et il te dit franchement ce qui ne va pas.
           </p>
-          <p>
+          <p data-i18n="accueil.l_outil_ne_remplace_ni_un_professeur_ni_un_jury_il_t">
             L'outil ne remplace ni un professeur ni un jury. Il te fait passer l'épreuve
             une première fois, en privé, pour que le jour J ne soit pas ta première fois.
           </p>
         </div>
         <div class="mt-8 grid gap-3 sm:grid-cols-3">
           <div class="rounded-xl border border-line bg-ink/40 p-4">
-            <p class="font-display text-sm font-bold">Tes documents restent à toi</p>
-            <p class="mt-1 text-xs leading-relaxed text-muted">Lus le temps de la simulation, jamais conservés ni revendus.</p>
+            <p class="font-display text-sm font-bold" data-i18n="accueil.tes_documents_restent_a_toi">Tes documents restent à toi</p>
+            <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.lus_le_temps_de_la_simulation_jamais_conserves_ni_re">Lus le temps de la simulation, jamais conservés ni revendus.</p>
           </div>
           <div class="rounded-xl border border-line bg-ink/40 p-4">
-            <p class="font-display text-sm font-bold">Aucune promesse de note</p>
-            <p class="mt-1 text-xs leading-relaxed text-muted">Un entraînement, pas une garantie de réussite. C'est écrit dans les CGV.</p>
+            <p class="font-display text-sm font-bold" data-i18n="accueil.aucune_promesse_de_note">Aucune promesse de note</p>
+            <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.un_entrainement_pas_une_garantie_de_reussite_c_est_e">Un entraînement, pas une garantie de réussite. C'est écrit dans les CGV.</p>
           </div>
           <div class="rounded-xl border border-line bg-ink/40 p-4">
-            <p class="font-display text-sm font-bold">Résiliable en un clic</p>
-            <p class="mt-1 text-xs leading-relaxed text-muted">Sans engagement, depuis le portail client Stripe.</p>
+            <p class="font-display text-sm font-bold" data-i18n="accueil.resiliable_en_un_clic">Résiliable en un clic</p>
+            <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.sans_engagement_depuis_le_portail_client_stripe">Sans engagement, depuis le portail client Stripe.</p>
           </div>
         </div>
       </div>
@@ -495,8 +508,8 @@
     <section class="mt-24 sm:mt-32">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 class="titre-section">Ce que disent<br class="hidden sm:block"> nos utilisateurs</h2>
-          <p class="mt-3 text-sm text-muted">Retours de candidats après leur oral, vérifiés avant publication.</p>
+          <h2 class="titre-section" data-i18n="titre.ce_que_disent">Ce que disent<br class="hidden sm:block"> nos utilisateurs</h2>
+          <p class="mt-3 text-sm text-muted" data-i18n="accueil.retours_de_candidats_apres_leur_oral_verifies_avant_">Retours de candidats après leur oral, vérifiés avant publication.</p>
         </div>
         <p id="note-moyenne" class="hidden items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm"></p>
       </div>
@@ -505,7 +518,7 @@
 
       <div class="mt-8 text-center">
         <a href="./temoignages.html" class="group inline-flex items-center gap-2 rounded-xl border border-line bg-raised px-6 py-3.5 font-display font-bold transition hover:border-iris/60">
-          Voir tous les témoignages
+          <span data-i18n="cta.tous_temoignages">Voir tous les témoignages</span>
           <span class="transition-transform group-hover:translate-x-1">→</span>
         </a>
       </div>
@@ -515,15 +528,15 @@
       <div class="relative overflow-hidden rounded-3xl border border-line bg-surface px-6 py-16 text-center shadow-carte sm:px-10">
         <div class="pointer-events-none absolute inset-0" style="background:radial-gradient(600px 300px at 50% 0%, rgba(124,92,255,.22), transparent 70%)"></div>
         <div class="relative">
-          <h2 class="titre-section mx-auto max-w-2xl">
+          <h2 class="titre-section mx-auto max-w-2xl" data-i18n="titre.jour_j">
             Le jour J ne doit pas être <span class="marqueur">ta première fois</span>.
           </h2>
-          <p class="mx-auto mt-5 max-w-lg leading-relaxed text-muted">
+          <p class="mx-auto mt-5 max-w-lg leading-relaxed text-muted" data-i18n="accueil.deux_simulations_completes_offertes_sans_compte_ni_c">
             Deux simulations complètes offertes, sans compte ni carte bancaire.
             Tu sauras en dix minutes où tu en es.
           </p>
           <a href="./simulateur.html" class="group mt-9 inline-flex items-center justify-center gap-2 rounded-xl bg-inverse px-8 py-4 font-display text-base font-bold text-sur-inverse transition hover:opacity-90">
-            Lancer ma première simulation
+            <span data-i18n="cta.premiere_simulation">Lancer ma première simulation</span>
             <span class="transition-transform group-hover:translate-x-1">→</span>
           </a>
         </div>
@@ -536,18 +549,18 @@
      VUE 2 · COACH IA
      ══════════════════════════════════════════════════════════ -->
 <section id="vue-coach" class="hidden pt-10">
-  <h1 class="titre-section">Coach IA</h1>
-  <p class="mt-2 max-w-2xl text-muted">
+  <h1 class="titre-section" data-i18n="accueil.coach_ia">Coach IA</h1>
+  <p class="mt-2 max-w-2xl text-muted" data-i18n="accueil.collez_votre_plan_votre_texte_ou_votre_sujet_et_disc">
     Collez votre plan, votre texte ou votre sujet et discutez avant de vous lancer :
     structuration, reformulation, accroche, questions du jury. À l'écrit ou à la voix.
   </p>
 
   <div class="mt-6 rounded-2xl border border-line bg-surface shadow-carte">
     <div class="flex items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
-      <p class="text-sm text-muted">Discussion libre</p>
+      <p class="text-sm text-muted" data-i18n="accueil.discussion_libre">Discussion libre</p>
       <div class="flex gap-2">
-        <button id="btn-voix-coach" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-iris/60">Lecture audio : activée</button>
-        <button id="btn-vider-coach" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-iris/60">Effacer</button>
+        <button id="btn-voix-coach" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-iris/60" data-i18n="accueil.lecture_audio_activee">Lecture audio : activée</button>
+        <button id="btn-vider-coach" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-iris/60" data-i18n="accueil.effacer">Effacer</button>
       </div>
     </div>
     <div id="fil-coach" class="h-[46vh] min-h-[300px] space-y-4 overflow-y-auto p-4 sm:p-6"></div>
@@ -562,7 +575,7 @@
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m0 0-6-6m6 6-6 6"/></svg>
         </button>
       </div>
-      <p id="etat-micro-coach" class="mt-2 text-xs text-muted">Appuyez sur le micro pour parler à votre coach.</p>
+      <p id="etat-micro-coach" class="mt-2 text-xs text-muted" data-i18n="accueil.appuyez_sur_le_micro_pour_parler_a_votre_coach">Appuyez sur le micro pour parler à votre coach.</p>
     </div>
   </div>
 </section>
@@ -571,16 +584,16 @@
      VUE 3 · MON ESPACE
      ══════════════════════════════════════════════════════════ -->
 <section id="vue-compte" class="hidden pt-10">
-  <h1 class="titre-section">Mon espace</h1>
+  <h1 class="titre-section" data-i18n="accueil.mon_espace">Mon espace</h1>
 
   <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_320px]">
     <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="font-display text-lg font-bold">Mes simulations passées</h2>
-          <p class="text-sm text-muted">Progression de vos notes, de la plus ancienne à la plus récente.</p>
+          <h2 class="font-display text-lg font-bold" data-i18n="accueil.mes_simulations_passees">Mes simulations passées</h2>
+          <p class="text-sm text-muted" data-i18n="accueil.progression_de_vos_notes_de_la_plus_ancienne_a_la_pl">Progression de vos notes, de la plus ancienne à la plus récente.</p>
         </div>
-        <button id="btn-vider-historique" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-coral/60">Tout effacer</button>
+        <button id="btn-vider-historique" type="button" class="rounded-lg border border-line bg-raised px-3 py-1.5 text-xs transition hover:border-coral/60" data-i18n="accueil.tout_effacer">Tout effacer</button>
       </div>
       <div id="graphique-progression" class="mt-5"></div>
       <div id="liste-historique" class="mt-6 space-y-3"></div>
@@ -588,18 +601,18 @@
 
     <aside class="space-y-4">
       <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte">
-        <h2 class="font-display text-lg font-bold">Compte</h2>
-        <p id="etat-compte" class="mt-2 text-sm text-muted">Vous n'êtes pas connecté.</p>
+        <h2 class="font-display text-lg font-bold" data-i18n="accueil.compte">Compte</h2>
+        <p id="etat-compte" class="mt-2 text-sm text-muted" data-i18n="accueil.vous_n_etes_pas_connecte">Vous n'êtes pas connecté.</p>
         <div class="mt-4 space-y-2">
-          <button id="btn-connexion-2" type="button" class="w-full rounded-xl bg-gradient-to-r from-iris to-iris2 px-4 py-3 font-medium text-white shadow-glow transition hover:brightness-110">Connexion / Inscription</button>
-          <button id="btn-portail" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-iris/50">Gérer mon abonnement</button>
-          <button id="btn-deconnexion" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-coral/50">Se déconnecter</button>
+          <button id="btn-connexion-2" type="button" class="w-full rounded-xl bg-gradient-to-r from-iris to-iris2 px-4 py-3 font-medium text-white shadow-glow transition hover:brightness-110" data-i18n="accueil.connexion_inscription">Connexion / Inscription</button>
+          <button id="btn-portail" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-iris/50" data-i18n="accueil.gerer_mon_abonnement">Gérer mon abonnement</button>
+          <button id="btn-deconnexion" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-coral/50" data-i18n="accueil.se_deconnecter">Se déconnecter</button>
         </div>
       </div>
       <div id="carte-premium" class="rounded-2xl border border-iris/40 bg-iris/10 p-5">
-        <p class="font-display font-bold">PrepOral Premium</p>
-        <p id="texte-premium" class="mt-1 text-sm text-muted">Simulations illimitées, rapports détaillés et coach IA sans limite.</p>
-        <button id="btn-premium" type="button" class="mt-4 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90">Voir les offres</button>
+        <p class="font-display font-bold" data-i18n="accueil.preporal_premium">PrepOral Premium</p>
+        <p id="texte-premium" class="mt-1 text-sm text-muted" data-i18n="accueil.simulations_illimitees_rapports_detailles_et_coach_i">Simulations illimitées, rapports détaillés et coach IA sans limite.</p>
+        <button id="btn-premium" type="button" class="mt-4 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.voir_les_offres">Voir les offres</button>
       </div>
     </aside>
   </div>
@@ -618,7 +631,7 @@
           <img src="assets/logo.svg" alt="" width="28" height="28" class="h-7 w-7 rounded-lg">
           <span class="font-display text-base font-extrabold tracking-tight">Prep<span class="text-iris2">Oral</span></span>
         </div>
-        <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted">
+        <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted" data-i18n="accueil.le_moyen_le_plus_rapide_de_passer_son_oral_une_premi">
           Le moyen le plus rapide de passer son oral une première fois, en privé.
           Tes CV, sujets et enregistrements sont traités le temps de la simulation, puis supprimés :
           ils ne sont ni conservés, ni revendus, ni utilisés pour entraîner un modèle.
@@ -626,7 +639,7 @@
       </div>
 
       <nav aria-label="Produit">
-        <p class="font-display text-sm font-bold">Produit</p>
+        <p class="font-display text-sm font-bold" data-i18n="accueil.produit">Produit</p>
         <ul class="mt-4 space-y-2.5 text-sm text-muted">
           <li><button type="button" data-vue="simulateur" class="transition hover:text-soft">Simulateur d'oral</button></li>
           <li><button type="button" data-vue="coach" class="transition hover:text-soft">Coach IA</button></li>
@@ -636,7 +649,7 @@
       </nav>
 
       <nav aria-label="Informations légales">
-        <p class="font-display text-sm font-bold">Légal</p>
+        <p class="font-display text-sm font-bold" data-i18n="accueil.legal">Légal</p>
         <ul class="mt-4 space-y-2.5 text-sm text-muted">
           <li><button type="button" data-legal="mentions" class="transition hover:text-soft">Mentions légales</button></li>
           <li><button type="button" data-legal="cgv" class="transition hover:text-soft">CGV</button></li>
@@ -663,8 +676,8 @@
   <div class="entree w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-8" role="dialog" aria-modal="true" aria-labelledby="paywall-titre">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <p class="text-sm text-iris2">Vos 2 simulations gratuites sont utilisées</p>
-        <h2 id="paywall-titre" class="mt-1 font-display text-2xl font-extrabold tracking-tight">Continuez à vous entraîner</h2>
+        <p class="text-sm text-iris2" data-i18n="accueil.vos_2_simulations_gratuites_sont_utilisees">Vos 2 simulations gratuites sont utilisées</p>
+        <h2 id="paywall-titre" class="mt-1 font-display text-2xl font-extrabold tracking-tight" data-i18n="accueil.continuez_a_vous_entrainer">Continuez à vous entraîner</h2>
       </div>
       <button type="button" data-fermer class="shrink-0 rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
@@ -689,7 +702,7 @@
       <svg viewBox="0 0 24 24" width="14" height="14" class="shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
       Paiement sécurisé par Stripe · Résiliable en un clic · Aucune donnée bancaire sur nos serveurs
     </p>
-    <button type="button" data-fermer class="mt-4 w-full text-center text-sm text-muted underline-offset-4 hover:text-soft hover:underline">Plus tard</button>
+    <button type="button" data-fermer class="mt-4 w-full text-center text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="accueil.plus_tard">Plus tard</button>
   </div>
 </div>
 
@@ -699,12 +712,12 @@
 
     <div class="p-6 sm:p-8">
       <div class="flex items-start justify-between gap-4">
-        <h2 id="auth-titre" class="font-display text-xl font-extrabold">Connexion / Inscription</h2>
+        <h2 id="auth-titre" class="font-display text-xl font-extrabold" data-i18n="accueil.connexion_inscription">Connexion / Inscription</h2>
         <button type="button" data-fermer class="rounded-lg p-1 text-muted hover:text-soft md:hidden" aria-label="Fermer">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p class="mt-2 text-sm text-muted">Votre statut Premium et votre historique vous suivent sur tous vos appareils.</p>
+      <p class="mt-2 text-sm text-muted" data-i18n="accueil.votre_statut_premium_et_votre_historique_vous_suiven">Votre statut Premium et votre historique vous suivent sur tous vos appareils.</p>
 
       <button id="btn-google" type="button" class="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-raised px-4 py-3 font-medium transition hover:border-iris/50">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M23 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.2a5.3 5.3 0 0 1-2.3 3.5v2.9h3.7c2.2-2 3.4-5 3.4-8.6z"/><path fill="#34A853" d="M12 24c3.1 0 5.7-1 7.6-2.8l-3.7-2.9c-1 .7-2.3 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.8v3A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.6 14.7a7.2 7.2 0 0 1 0-4.6v-3H1.8a12 12 0 0 0 0 10.6l3.8-3z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.2.6 4.4 1.7l3.3-3.3A11.6 11.6 0 0 0 12 0 12 12 0 0 0 1.8 6.1l3.8 3C6.5 6.7 9 4.8 12 4.8z"/></svg>
@@ -713,10 +726,10 @@
 
       <div class="my-5 flex items-center gap-3 text-xs text-muted"><span class="h-px flex-1 bg-line"></span>ou<span class="h-px flex-1 bg-line"></span></div>
 
-      <label for="auth-email" class="text-sm font-medium">Adresse e-mail</label>
+      <label for="auth-email" class="text-sm font-medium" data-i18n="accueil.adresse_e_mail">Adresse e-mail</label>
       <input id="auth-email" type="email" autocomplete="email" placeholder="vous@exemple.fr"
         class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
-      <button id="btn-lien-magique" type="button" class="mt-3 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90">
+      <button id="btn-lien-magique" type="button" class="mt-3 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.recevoir_un_lien_de_connexion">
         Recevoir un lien de connexion
       </button>
       <p id="auth-message" class="mt-3 text-sm text-muted"></p>
@@ -731,8 +744,8 @@
       <button type="button" data-fermer class="absolute right-4 top-4 rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
-      <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight">Tes progrès<br>t'attendent</h3>
-      <p class="mt-3 text-sm leading-relaxed text-muted">Continue à travailler tes oraux là où tu t'étais arrêté.</p>
+      <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight" data-i18n="titre.tes_progres">Tes progrès<br>t'attendent</h3>
+      <p class="mt-3 text-sm leading-relaxed text-muted" data-i18n="accueil.continue_a_travailler_tes_oraux_la_ou_tu_t_etais_arr">Continue à travailler tes oraux là où tu t'étais arrêté.</p>
       <ul class="mt-7 space-y-4 text-sm">
         <li class="flex gap-3">
           <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-mint/15 text-mint"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
@@ -755,7 +768,7 @@
 <div id="modal-legal" class="modale fixed inset-0 z-50 grid place-items-center bg-ink/85 p-4 backdrop-blur" hidden>
   <div class="entree flex max-h-[85vh] w-full max-w-2xl flex-col rounded-3xl border border-line bg-surface shadow-carte" role="dialog" aria-modal="true" aria-labelledby="legal-titre">
     <div class="flex items-start justify-between gap-4 border-b border-line/70 p-5 sm:p-6">
-      <h2 id="legal-titre" class="font-display text-xl font-extrabold">Mentions légales</h2>
+      <h2 id="legal-titre" class="font-display text-xl font-extrabold" data-i18n="accueil.mentions_legales">Mentions légales</h2>
       <button type="button" data-fermer class="rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
@@ -767,8 +780,8 @@
 <!-- Déclaration d'âge (art. 45 loi Informatique et Libertés) -->
 <div id="modal-age" class="modale fixed inset-0 z-[55] grid place-items-center bg-ink/85 p-4 backdrop-blur" hidden>
   <div class="entree w-full max-w-md rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-7" role="dialog" aria-modal="true" aria-labelledby="age-titre">
-    <h2 id="age-titre" class="font-display text-xl font-extrabold tracking-tight">Quel âge avez-vous ?</h2>
-    <p class="mt-2 text-sm leading-relaxed text-muted">
+    <h2 id="age-titre" class="font-display text-xl font-extrabold tracking-tight" data-i18n="accueil.quel_age_avez_vous">Quel âge avez-vous ?</h2>
+    <p class="mt-2 text-sm leading-relaxed text-muted" data-i18n="accueil.preporal_s_adresse_aussi_a_des_collegiens_et_lyceens">
       PrepOral s'adresse aussi à des collégiens et lycéens. La loi française fixe des règles
       différentes selon l'âge : nous demandons une tranche, jamais votre date de naissance.
     </p>
@@ -776,8 +789,8 @@
     <div id="choix-age" class="mt-5 grid gap-2"></div>
 
     <div id="bloc-parent" class="mt-4 hidden">
-      <label for="email-parent" class="text-sm font-medium">E-mail de votre parent ou responsable légal</label>
-      <p class="mt-1 text-xs leading-relaxed text-muted">
+      <label for="email-parent" class="text-sm font-medium" data-i18n="accueil.e_mail_de_votre_parent_ou_responsable_legal">E-mail de votre parent ou responsable légal</label>
+      <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.en_dessous_de_15_ans_son_accord_est_necessaire_pour_">
         En dessous de 15 ans, son accord est nécessaire pour que nous puissions traiter vos données.
       </p>
       <input id="email-parent" type="email" autocomplete="off" placeholder="parent@exemple.fr"
@@ -785,10 +798,10 @@
     </div>
 
     <button id="btn-valider-age" type="button" disabled
-      class="mt-6 w-full rounded-xl bg-inverse px-5 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted">
+      class="mt-6 w-full rounded-xl bg-inverse px-5 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted" data-i18n="accueil.continuer">
       Continuer
     </button>
-    <p class="mt-3 text-center text-xs text-muted">
+    <p class="mt-3 text-center text-xs text-muted" data-i18n="accueil.cette_information_sert_uniquement_a_appliquer_la_reg">
       Cette information sert uniquement à appliquer la réglementation. Elle n'est jamais partagée.
     </p>
   </div>
@@ -804,8 +817,8 @@
       <button type="button" data-legal="cookies" class="underline underline-offset-2 hover:text-soft">En savoir plus</button>
     </p>
     <div class="flex shrink-0 gap-2">
-      <button id="btn-cookies-refuser" type="button" class="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-iris/50">Refuser</button>
-      <button id="btn-cookies-accepter" type="button" class="rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-sur-inverse transition hover:opacity-90">Accepter</button>
+      <button id="btn-cookies-refuser" type="button" class="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-iris/50" data-i18n="accueil.refuser">Refuser</button>
+      <button id="btn-cookies-accepter" type="button" class="rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-sur-inverse transition hover:opacity-90" data-i18n="accueil.accepter">Accepter</button>
     </div>
   </div>
 </div>
@@ -814,8 +827,8 @@
   <div class="entree flex max-h-[88vh] w-full max-w-3xl flex-col rounded-3xl border border-line bg-surface shadow-carte" role="dialog" aria-modal="true" aria-labelledby="relecture-titre">
     <div class="flex items-start justify-between gap-4 border-b border-line/70 p-5 sm:p-6">
       <div>
-        <p class="text-xs text-muted">Simulation passée</p>
-        <h2 id="relecture-titre" class="mt-0.5 font-display text-xl font-extrabold">Relecture</h2>
+        <p class="text-xs text-muted" data-i18n="accueil.simulation_passee">Simulation passée</p>
+        <h2 id="relecture-titre" class="mt-0.5 font-display text-xl font-extrabold" data-i18n="accueil.relecture">Relecture</h2>
       </div>
       <button type="button" data-fermer class="shrink-0 rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>

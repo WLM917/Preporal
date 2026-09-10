@@ -201,7 +201,7 @@ function brancherDepot() {
 }
 
 /* ── Démarrage ─────────────────────────────────────────────── */
-brancherNavigation();
+await brancherNavigation();
 brancherDepot();
 charger();
 

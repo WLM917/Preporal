@@ -72,8 +72,9 @@ export const OFFRES = {
     accroche: 'Toute une année scolaire',
     detail: "Six mois d'accès complet, payés une seule fois. Pensé pour préparer plusieurs échéances.",
     // Repère honnête : 54,90 / 6 mois contre 9,90 par mois.
-    equivalentMensuel: '9,15 € par mois',
-    economie: 'soit 4,50 € de moins que six mois au tarif mensuel'
+    // Montants séparés de leur libellé : la traduction ne touche pas aux euros.
+    equivalentMensuel: '9,15 €',
+    economie: '4,50 €'
   }
 };
 

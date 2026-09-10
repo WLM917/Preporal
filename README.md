@@ -23,8 +23,9 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 9. [Modération des avis](#modération-des-avis)
 10. [Âge et consentement parental](#âge-et-consentement-parental)
 11. [Coût par simulation](#coût-par-simulation)
-12. [Compatibilité navigateurs](#compatibilité-navigateurs)
-13. [À faire avant de vendre](#à-faire-avant-de-vendre)
+12. [Langues et accessibilité](#langues-et-accessibilité)
+13. [Compatibilité navigateurs](#compatibilité-navigateurs)
+14. [À faire avant de vendre](#à-faire-avant-de-vendre)
 
 ---
 
@@ -66,6 +67,8 @@ prepOral/
 │   ├── reviews.js                 témoignages et dépôt d'avis
 │   ├── coach.js                   onglet Coach IA (chat écrit et vocal)
 │   ├── theme.js                   bascule clair / sombre, bandeau cookies
+│   ├── i18n.js                    langue de l'interface
+│   ├── langues/en.js · es.js      traductions anglaise et espagnole
 │   ├── age.js                     déclaration d'âge et consentement parental
 │   └── legal.js                   mentions légales, CGV, RGPD, cookies
 ├── api/
@@ -359,6 +362,44 @@ chiffres ci-dessus dépendent directement de la longueur des CV déposés.
 
 ---
 
+## Langues et accessibilité
+
+Le site s'affiche en **français, anglais et espagnol**. Le sélecteur est dans
+l'en-tête ; le choix est mémorisé, et à défaut la langue du navigateur est
+suivie.
+
+Le français reste la langue de référence : il est écrit directement dans le
+HTML, les autres langues sont des dictionnaires (`js/langues/`). Une clé sans
+traduction retombe donc sur le français plutôt que d'afficher une clé brute —
+et un test refuse qu'une clé du balisage manque à un dictionnaire, pour éviter
+les pages moitié françaises moitié anglaises.
+
+Trois points comptent pour l'accessibilité, et sont vérifiés par les tests :
+
+- l'attribut `lang` de `<html>` suit la langue choisie, sans quoi un lecteur
+  d'écran prononce l'anglais avec un accent français ;
+- la **synthèse vocale** utilise le code de voix de la langue (`fr-FR`,
+  `en-US`, `es-ES`) ;
+- le coach et la correction sont **rédigés** dans la langue choisie : elle est
+  transmise à `/api/coach` et `/api/feedback`.
+
+Chaque réponse du coach, le bilan de simulation et chaque correction question
+par question portent un bouton **Écouter** : la lecture se déclenche à la
+demande, s'arrête d'un second clic, et une seule lecture tourne à la fois.
+C'est utile pour préparer un oral — et nécessaire pour qui ne peut pas lire
+l'écran.
+
+> **Les textes légaux restent en français.** Mentions légales, CGV et politique
+> de confidentialité sont des documents de droit français : une traduction
+> approximative y ferait plus de mal que de bien. Faites-les traduire par un
+> juriste si vous vendez hors de France.
+
+**Ajouter une langue** : créez `js/langues/<code>.js` sur le modèle de `en.js`,
+puis déclarez le code dans `LANGUES` (`js/i18n.js`) avec son étiquette, son
+drapeau et son code de voix.
+
+---
+
 ## Compatibilité navigateurs
 
 | Fonction | Chrome / Edge | Safari | Firefox |
@@ -409,8 +450,10 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 - **Coût mesuré** : chaque appel journalise ses jetons et son coût estimé.
 - **Référencement et partage** : Open Graph, carte Twitter, JSON-LD,
   `robots.txt`, `sitemap.xml`, image de partage.
-- **Suite de tests** : 34 tests, dont un qui aurait évité que la politique de
+- **Suite de tests** : 44 tests, dont un qui aurait évité que la politique de
   sécurité casse l'import de documents.
+- **Trois langues** (français, anglais, espagnol) avec voix et rédaction de l'IA
+  qui suivent le choix, et lecture à voix haute de chaque réponse et correction.
 
 ### À votre charge
 

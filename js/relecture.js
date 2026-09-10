@@ -13,6 +13,8 @@
 import { typeParId } from './config.js';
 import { $, echappe, formaterTemps, couleurNote, ouvrirModale, fermerModale } from './ui.js';
 import { lireSimulation, estRelisible } from './history.js';
+import { t } from './i18n.js';
+import { boutonEcoute, arreterEcoute } from './speech.js';
 
 const note = (v, sur = 20) =>
   `<span class="font-display font-extrabold tabular-nums" style="color:${couleurNote(sur === 20 ? v * 5 : v)}">${v}</span>`
@@ -74,6 +76,7 @@ function reponse(r, d, i) {
 
 /** Ouvre la relecture complète d'une simulation. */
 export function ouvrirRelecture(id) {
+  arreterEcoute();
   const s = lireSimulation(id);
   const zone = $('#relecture-contenu');
   const titre = $('#relecture-titre');
@@ -151,6 +154,25 @@ export function ouvrirRelecture(id) {
         ${s.reponses.map((r, i) => reponse(r, (s.details || [])[i], i)).join('')}
       </div>
     </div>`;
+
+  // Le bilan relu peut aussi être écouté.
+  const zoneEcoute = document.createElement('div');
+  zoneEcoute.className = 'mb-1';
+  const b = boutonEcoute({
+    libelle: t('ecoute.bilan', 'Écouter cette simulation'),
+    libelleArret: t('ecoute.arreter', 'Arrêter'),
+    classes: 'px-3 py-1.5',
+    texte: () => [
+      `Simulation du ${d.toLocaleDateString('fr-FR')}. Note globale : ${s.score} sur 100.`,
+      s.verdict,
+      ...s.reponses.map((r, i) => {
+        const det = (s.details || [])[i] || {};
+        return `Question ${i + 1}. ${r.question} Note : ${det.note} sur 20.`
+          + (det.axes?.length ? ` À renforcer : ${det.axes.join('. ')}.` : '');
+      })
+    ].filter(Boolean).join(' ')
+  });
+  if (b) { zoneEcoute.appendChild(b); $('#relecture-contenu').prepend(zoneEcoute); }
 
   ouvrirModale('modal-relecture');
 }

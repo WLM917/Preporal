@@ -2,6 +2,7 @@
    feedback.js — correction des réponses + analyse d'éloquence
    ═══════════════════════════════════════════════════════════ */
 
+import { langue } from './i18n.js';
 import { CONFIG, typeParId } from './config.js';
 import { compterMots } from './ui.js';
 
@@ -16,7 +17,7 @@ export async function evaluer({ typeId, sousChoix, champA, champB, questions, re
     const r = await fetch(`${CONFIG.api}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(jeton ? { Authorization: 'Bearer ' + jeton } : {}) },
-      body: JSON.stringify({ typeId, sousChoix, champA, champB, questions, reponses, mesures: eloquence.mesures })
+      body: JSON.stringify({ typeId, sousChoix, champA, champB, questions, reponses, mesures: eloquence.mesures , langue: langue() })
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();

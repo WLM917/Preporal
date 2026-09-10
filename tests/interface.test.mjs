@@ -210,3 +210,41 @@ test('les trois offres sont cohérentes entre elles', async () => {
   assert.ok(OFFRES.extra.equivalentMensuel.includes(equivalent),
     `équivalent mensuel annoncé ≠ ${equivalent} €`);
 });
+
+test('les traductions couvrent toutes les clés du balisage', async () => {
+  /* Une clé présente dans le HTML mais absente d'un dictionnaire
+     retombe silencieusement sur le français : la page devient un
+     mélange des deux langues, ce qui est pire qu'une page non
+     traduite. On vérifie donc la couverture, pas seulement la
+     validité des fichiers. */
+  const cles = new Set();
+  for (const { fichier } of PAGES) {
+    for (const m of lire(fichier).matchAll(/data-i18n="([^"]+)"/g)) cles.add(m[1]);
+    for (const m of lire(fichier).matchAll(/data-i18n-attr="([^"]+)"/g)) {
+      m[1].split(',').forEach(p => { const c = p.split(':')[1]; if (c) cles.add(c.trim()); });
+    }
+  }
+  assert.ok(cles.size > 100, `trop peu de chaînes marquées : ${cles.size}`);
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    const manquantes = [...cles].filter(c => !(c in dico));
+    assert.deepEqual(manquantes.slice(0, 8), [],
+      `${langue} : ${manquantes.length} clé(s) sans traduction`);
+
+    const vides = Object.entries(dico).filter(([, v]) => !String(v).trim());
+    assert.deepEqual(vides.map(([k]) => k), [], `${langue} : traductions vides`);
+  }
+});
+
+test('chaque langue déclare ce qu\'il faut pour la voix et le balisage', async () => {
+  const { LANGUES } = await import('../js/i18n.js');
+  for (const [code, l] of Object.entries(LANGUES)) {
+    assert.equal(l.code, code);
+    // Sans htmlLang, un lecteur d'écran prononce la page avec le mauvais accent.
+    assert.match(l.htmlLang, /^[a-z]{2}$/, `${code} : htmlLang invalide`);
+    // Sans voix, la synthèse vocale lirait l'anglais avec un accent français.
+    assert.match(l.voix, /^[a-z]{2}-[A-Z]{2}$/, `${code} : code de voix invalide`);
+    assert.ok(l.etiquette && l.drapeau, `${code} : libellé ou drapeau manquant`);
+  }
+});

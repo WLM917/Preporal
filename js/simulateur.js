@@ -407,8 +407,8 @@ $('#btn-rejouer').addEventListener('click', () => {
 
 
 /* ═══ Démarrage ═══ */
-function demarrer() {
-  brancherNavigation({ auChangementDeCompte: verifierFormulaire });
+async function demarrer() {
+  await brancherNavigation({ auChangementDeCompte: verifierFormulaire });
 
   brancherReglages(etat, () => verifierFormulaire());
   rendreTypes();

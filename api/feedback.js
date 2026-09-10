@@ -28,12 +28,16 @@ export default async function handler(req, res) {
     const verdict = await verifierQuota(req);
     if (!verdict.autorise && verdict.code === 'connexion') return refuserQuota(res, verdict);
 
-    const { typeId = 'entretien', sousChoix = '', champA = '', champB = '', reponses = [], mesures = {} } = req.body || {};
+    const { typeId = 'entretien', sousChoix = '', champA = '', champB = '', reponses = [], mesures = {}, langue = 'fr' } = req.body || {};
     if (!Array.isArray(reponses) || !reponses.length) throw new ErreurIA('Aucune réponse à corriger.', 400);
 
     const criteres = CRITERES[typeId] || CRITERES.entretien;
 
-    const systeme = `Tu es un coach d'oral français, exigeant et utile. Tu corriges la prestation d'un candidat.
+    const LANGUES = { fr: 'français', en: 'anglais', es: 'espagnol' };
+    const langueRedaction = LANGUES[langue] || LANGUES.fr;
+
+    const systeme = `Tu es un coach d'oral français, exigeant et utile.
+Rédige toute la correction en ${langueRedaction}. Tu corriges la prestation d'un candidat.
 
 Épreuve : ${typeId}${sousChoix ? ' — ' + sousChoix : ''}.
 

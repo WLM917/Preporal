@@ -14,6 +14,7 @@
 
 import { CONFIG } from './config.js';
 import { $, stock, echappe, toast } from './ui.js';
+import { t, surChangementLangue } from './i18n.js';
 import { supabase, session } from './auth.js';
 
 const etoiles = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
@@ -91,6 +92,8 @@ const carte = (a, enAttente = false) => `
     </figcaption>
   </figure>`;
 
+surChangementLangue(() => rendreAvis());
+
 export function rendreAvis() {
   rendreNoteMoyenne();
 
@@ -102,11 +105,10 @@ export function rendreAvis() {
   if (!avisPublies.length && !locaux.length) {
     zone.innerHTML = `
       <div class="rounded-2xl border border-dashed border-line bg-surface/50 p-8 text-center sm:col-span-2 lg:col-span-3">
-        <p class="font-display font-bold">Pas encore d'avis publié.</p>
+        <p class="font-display font-bold">${echappe(t('avis.vide_titre', "Pas encore d'avis publié."))}</p>
         <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-          Les retours affichés ici seront ceux de vraies personnes ayant passé une simulation,
-          vérifiés avant publication. Vous venez de terminer un oral ?
-          <a href="./temoignages.html#deposer" class="text-iris2 underline underline-offset-2">Votre avis peut être le premier.</a>
+          ${echappe(t('avis.vide_texte', 'Les retours affichés ici seront ceux de vraies personnes ayant passé une simulation, vérifiés avant publication. Vous venez de terminer un oral ?'))}
+          <a href="./temoignages.html#deposer" class="text-iris2 underline underline-offset-2">${echappe(t('avis.vide_lien', 'Votre avis peut être le premier.'))}</a>
         </p>
       </div>`;
     return;

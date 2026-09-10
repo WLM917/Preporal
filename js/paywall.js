@@ -5,6 +5,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG, OFFRES, ORDRE_OFFRES, OFFRE_RECOMMANDEE } from './config.js';
+import { t, surChangementLangue } from './i18n.js';
 import { $, $$, stock, echappe, ouvrirModale, fermerModale, toast } from './ui.js';
 import { session, profil } from './auth.js';
 import { messagePaiement } from './age.js';
@@ -32,13 +33,15 @@ export function majJauge() {
   const el = $('#jauge-quota');
   if (!el) return;
   if (estPremium()) {
-    el.textContent = 'Premium · simulations illimitées';
+    el.textContent = t('quota.premium', 'Premium · simulations illimitées');
     el.className = 'rounded-md bg-iris/15 px-2 py-1 text-iris2';
   } else {
     const r = quotaRestant();
     el.textContent = r > 0
-      ? `${r} simulation${r > 1 ? 's' : ''} gratuite${r > 1 ? 's' : ''} restante${r > 1 ? 's' : ''}`
-      : 'Simulations gratuites épuisées';
+      ? t(r > 1 ? 'quota.restantes' : 'quota.restante',
+          `${r} simulation${r > 1 ? 's' : ''} gratuite${r > 1 ? 's' : ''} restante${r > 1 ? 's' : ''}`)
+          .replace('{n}', r)
+      : t('quota.epuisees', 'Simulations gratuites épuisées');
     el.className = 'rounded-md bg-raised px-2 py-1 tabular-nums';
   }
 }
@@ -58,17 +61,19 @@ export function rendreOffres() {
     <button type="button" data-plan="${o.id}"
       class="plan relative flex h-full flex-col rounded-2xl border p-5 text-left transition disabled:cursor-not-allowed disabled:opacity-50
         ${vedette ? 'border-iris bg-iris/10 hover:brightness-110' : 'border-line bg-ink/50 hover:border-iris/60'}">
-      ${vedette ? '<span class="absolute -top-2.5 left-5 rounded-full bg-iris px-2.5 py-0.5 text-[11px] font-semibold text-white">Recommandé</span>' : ''}
-      <span class="text-xs font-medium ${vedette ? 'text-iris2' : 'text-muted'}">${echappe(o.accroche)}</span>
+      ${vedette ? `<span class="absolute -top-2.5 left-5 rounded-full bg-iris px-2.5 py-0.5 text-[11px] font-semibold text-white">${echappe(t('offre.recommande', 'Recommandé'))}</span>` : ''}
+      <span class="text-xs font-medium ${vedette ? 'text-iris2' : 'text-muted'}">${echappe(t(`offre.${o.id}.accroche`, o.accroche))}</span>
       <span class="mt-1 block font-display text-lg font-bold leading-tight">${echappe(o.nom)}</span>
       <span class="mt-3 block">
         <span class="whitespace-nowrap font-display text-2xl font-extrabold">${echappe(o.prix)}</span>
-        <span class="ml-1.5 whitespace-nowrap text-xs text-muted">${echappe(o.periode)}</span>
+        <span class="ml-1.5 whitespace-nowrap text-xs text-muted">${echappe(t('offre.periode.' + o.periode.replace(/[^a-z0-9]+/gi, '_'), o.periode))}</span>
       </span>
       ${o.equivalentMensuel
-        ? `<span class="mt-1 block text-xs text-mint">${echappe(o.equivalentMensuel)} · ${echappe(o.economie)}</span>`
+        ? `<span class="mt-1 block text-xs text-mint">${echappe(
+            t('offre.equivalent', '{m} par mois · soit {e} de moins que six mois au tarif mensuel')
+              .replace('{m}', o.equivalentMensuel).replace('{e}', o.economie))}</span>`
         : ''}
-      <span class="mt-3 block text-sm leading-relaxed text-muted">${echappe(o.detail)}</span>
+      <span class="mt-3 block text-sm leading-relaxed text-muted">${echappe(t(`offre.${o.id}.detail`, o.detail))}</span>
     </button>`;
   }).join('');
 
@@ -224,6 +229,9 @@ export async function traiterRetourPaiement() {
 
 export function brancherPaywall() {
   rendreOffres();
+  // Les offres et la jauge sont dessinées en JavaScript : elles doivent
+  // être redessinées quand la langue change.
+  surChangementLangue(() => { rendreOffres(); majJauge(); });
   $('#confirmation-age')?.addEventListener('change', majEtatOffres);
   $('#btn-premium')?.addEventListener('click', () => ouvrirPaywall('fin'));
   $('#btn-portail')?.addEventListener('click', ouvrirPortail);

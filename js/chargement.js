@@ -12,6 +12,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { $, echappe } from './ui.js';
+import { t } from './i18n.js';
 
 const SEQUENCES = {
   questions: {
@@ -66,11 +67,11 @@ export function demarrerChargement(type = 'questions') {
   const barre = $('#barre-chargement');
   const conseil = $('#conseil-chargement');
 
-  if (titre) titre.textContent = sequence.titre;
+  if (titre) titre.textContent = t(`chargement.${type}.titre`, sequence.titre);
 
   if (conseil) {
-    const c = sequence.conseils[Math.floor(Math.random() * sequence.conseils.length)];
-    conseil.textContent = c;
+    const i = Math.floor(Math.random() * sequence.conseils.length);
+    conseil.textContent = t(`chargement.${type}.conseil${i}`, sequence.conseils[i]);
   }
 
   if (liste) {
@@ -79,7 +80,7 @@ export function demarrerChargement(type = 'questions') {
         <span data-puce class="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-line text-[10px]">
           ${i === 0 ? '<span class="h-2 w-2 rounded-full bg-iris vivant"></span>' : ''}
         </span>
-        <span data-texte class="${i === 0 ? 'text-soft' : 'text-muted'}">${echappe(e.texte)}</span>
+        <span data-texte class="${i === 0 ? 'text-soft' : 'text-muted'}">${echappe(t(`chargement.${type}.etape${i}`, e.texte))}</span>
       </li>`).join('');
   }
 

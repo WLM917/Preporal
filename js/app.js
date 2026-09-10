@@ -15,7 +15,9 @@ import { brancherRelecture } from './relecture.js';
 import { rendreAvis, chargerAvisPublies } from './reviews.js';
 import { initCoach, arreterCoach } from './coach.js';
 import { chargerAgeProfil } from './age.js';
-import { brancherNavigation } from './nav.js';
+import { surChangementLangue, infoLangue } from './i18n.js';
+import { reglerLangueCoach } from './coach.js';
+import { brancherNavigation, marquerPageCourante } from './nav.js';
 
 /* ═══ Navigation entre vues ═══ */
 const VUES = ['accueil', 'coach', 'compte'];
@@ -24,6 +26,9 @@ function allerVue(nom, { historique = true } = {}) {
   if (!VUES.includes(nom)) nom = 'accueil';
 
   VUES.forEach(v => $('#vue-' + v)?.classList.toggle('hidden', v !== nom));
+
+  // Le menu suit la vue affichée, pas seulement l'URL au chargement.
+  marquerPageCourante(nom);
 
   if (nom !== 'coach') arreterCoach();
   if (nom !== 'coach') Voix.stop();
@@ -55,8 +60,8 @@ function brancherLiensDeVue() {
 }
 
 /* ═══ Démarrage ═══ */
-function demarrer() {
-  brancherNavigation({ auChangementDeCompte: majJauge });
+async function demarrer() {
+  await brancherNavigation({ auChangementDeCompte: majJauge });
 
   brancherLiensDeVue();
   brancherPaywall();
@@ -64,6 +69,10 @@ function demarrer() {
   brancherRelecture();
   rendreAvis();
   initCoach();
+
+  // La voix du coach suit la langue de l'interface.
+  reglerLangueCoach(infoLangue().voix);
+  surChangementLangue((_, info) => reglerLangueCoach(info.voix));
 
   surChangementCompte(() => {
     chargerDepuisServeur();

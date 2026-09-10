@@ -188,7 +188,7 @@
 </head>
 <body class="min-h-full font-sans antialiased">
 
-<a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-xl focus:bg-iris focus:px-4 focus:py-2 focus:font-medium focus:text-white">Aller au contenu</a>
+<a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-xl focus:bg-iris focus:px-4 focus:py-2 focus:font-medium focus:text-white" data-i18n="accueil.aller_au_contenu">Aller au contenu</a>
 
 <!-- ══════════════════════════════════════════════════════════
      EN-TÊTE  (identique sur toutes les pages)
@@ -202,20 +202,33 @@
     </a>
 
     <nav class="hidden items-center gap-1 md:flex" aria-label="Navigation principale">
-      <a href="./index.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Accueil</a>
-      <a href="./simulateur.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Simulateur</a>
-      <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Coach IA</a>
-      <a href="./temoignages.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Témoignages</a>
-      <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft">Mon espace</a>
+      <a href="./index.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.accueil">Accueil</a>
+      <a href="./simulateur.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.simulateur">Simulateur</a>
+      <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.coach_ia">Coach IA</a>
+      <a href="./temoignages.html" data-page class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.temoignages">Témoignages</a>
+      <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="rounded-lg px-3.5 py-2 text-sm text-muted transition hover:text-soft" data-i18n="accueil.mon_espace">Mon espace</a>
     </nav>
 
     <div class="flex shrink-0 items-center gap-2">
+      <!-- Choix de la langue -->
+      <div class="relative">
+        <button id="btn-langue" type="button" aria-haspopup="listbox" aria-expanded="false"
+          class="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-2 text-sm text-muted transition hover:border-iris/50 hover:text-soft"
+          aria-label="Changer de langue">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>
+          </svg>
+          <span id="langue-courante" class="hidden sm:inline">FR</span>
+        </button>
+        <ul id="menu-langue" role="listbox" aria-label="Langues disponibles"
+          class="absolute right-0 z-50 mt-2 hidden w-44 overflow-hidden rounded-xl border border-line bg-surface shadow-carte"></ul>
+      </div>
       <button id="btn-theme" type="button" class="rounded-lg border border-line p-2 text-muted transition hover:border-iris/50 hover:text-soft" aria-label="Changer de thème">
         <svg data-icone="sombre" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
         <svg data-icone="clair" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
-      <button id="btn-compte" type="button" class="hidden rounded-lg px-3 py-2 text-sm text-muted transition hover:text-soft sm:block">Connexion</button>
-      <a href="./simulateur.html" id="btn-essai" class="rounded-xl bg-inverse px-4 py-2.5 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90">
+      <button id="btn-compte" type="button" class="hidden rounded-lg px-3 py-2 text-sm text-muted transition hover:text-soft sm:block" data-i18n="accueil.connexion">Connexion</button>
+      <a href="./simulateur.html" id="btn-essai" class="rounded-xl bg-inverse px-4 py-2.5 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.essayer_gratuitement">
         Essayer gratuitement
       </a>
     </div>
@@ -225,11 +238,11 @@
 <!-- Menu compact -->
 <nav class="border-b border-line md:hidden" aria-label="Navigation">
   <div class="rail flex gap-1 overflow-x-auto px-4 py-2">
-    <a href="./index.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Accueil</a>
-    <a href="./simulateur.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Simulateur</a>
-    <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Coach IA</a>
-    <a href="./temoignages.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Témoignages</a>
-    <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted">Mon espace</a>
+    <a href="./index.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.accueil">Accueil</a>
+    <a href="./simulateur.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.simulateur">Simulateur</a>
+    <a href="./index.html?vue=coach" data-page data-vue-lien="coach" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.coach_ia">Coach IA</a>
+    <a href="./temoignages.html" data-page class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.temoignages">Témoignages</a>
+    <a href="./index.html?vue=compte" data-page data-vue-lien="compte" class="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted" data-i18n="accueil.mon_espace">Mon espace</a>
   </div>
 </nav>
 
@@ -240,17 +253,17 @@
   <div id="ecran-accueil" class="entree">
 
     <div class="pt-10 text-center sm:pt-14">
-      <h1 class="titre-geant mx-auto max-w-3xl">
+      <h1 class="titre-geant mx-auto max-w-3xl" data-i18n="titre.hero_simulateur">
         Ton oral en <span class="marqueur">trois étapes</span>.
       </h1>
-      <p class="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted">
+      <p class="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted" data-i18n="sim.choisis_ton_epreuve_depose_tes_documents_regle_le_fo">
         Choisis ton épreuve, dépose tes documents, règle le format.
         La première question tombe trente secondes plus tard.
       </p>
       <div class="mx-auto mt-7 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted">
         <span class="flex items-center gap-1.5">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
-          Documents lus dans votre navigateur, jamais stockés
+          <span data-i18n="sim.documents_lus_navigateur">Documents lus dans votre navigateur, jamais stockés</span>
         </span>
         <span id="jauge-quota" class="rounded-md bg-raised px-2 py-1 tabular-nums"></span>
       </div>
@@ -263,12 +276,12 @@
         <div>
           <div class="flex items-center gap-3">
             <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">1</span>
-            <h3 class="font-display text-lg font-bold tracking-tight">Quel oral prépares-tu ?</h3>
+            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.quel_oral_prepares_tu">Quel oral prépares-tu ?</h3>
           </div>
           <div id="grille-types" class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
 
           <div id="zone-sous-choix" class="mt-4 hidden">
-            <label id="label-sous-choix" for="sous-choix" class="text-sm font-medium">Matière</label>
+            <label id="label-sous-choix" for="sous-choix" class="text-sm font-medium" data-i18n="sim.matiere">Matière</label>
             <select id="sous-choix" class="mt-2 w-full rounded-xl border border-line bg-ink px-4 py-3 text-sm focus:border-iris focus:outline-none sm:max-w-xs"></select>
           </div>
         </div>
@@ -279,9 +292,9 @@
         <div>
           <div class="flex items-center gap-3">
             <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">2</span>
-            <h3 class="font-display text-lg font-bold tracking-tight">Tes documents</h3>
+            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.tes_documents">Tes documents</h3>
           </div>
-          <p class="mt-2 text-sm text-muted">PDF, Word, image ou texte collé. Tes fichiers sont lus dans ton navigateur, jamais stockés.</p>
+          <p class="mt-2 text-sm text-muted" data-i18n="sim.pdf_word_image_ou_texte_colle_tes_fichiers_sont_lus_">PDF, Word, image ou texte collé. Tes fichiers sont lus dans ton navigateur, jamais stockés.</p>
 
           <div class="mt-5 grid gap-4 lg:grid-cols-2">
             <!-- Champ A -->
@@ -292,8 +305,8 @@
                     <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
                   </span>
                   <div>
-                    <p id="label-A" class="font-display font-bold leading-tight">Votre CV</p>
-                    <p id="aide-A" class="mt-0.5 text-xs text-muted">Parcours, missions, résultats</p>
+                    <p id="label-A" class="font-display font-bold leading-tight" data-i18n="sim.votre_cv">Votre CV</p>
+                    <p id="aide-A" class="mt-0.5 text-xs text-muted" data-i18n="sim.parcours_missions_resultats">Parcours, missions, résultats</p>
                   </div>
                 </div>
                 <span id="compteur-A" class="shrink-0 text-xs tabular-nums text-muted">0</span>
@@ -306,7 +319,7 @@
               </label>
 
               <textarea id="champA" rows="7" class="mt-3 w-full rounded-xl border border-line bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none" placeholder="Collez ou importez votre CV…"></textarea>
-              <p id="min-A" class="mt-2 text-xs text-muted">Minimum 200 caractères.</p>
+              <p id="min-A" class="mt-2 text-xs text-muted" data-i18n="sim.minimum_200_caracteres">Minimum 200 caractères.</p>
             </div>
 
             <!-- Champ B -->
@@ -317,8 +330,8 @@
                     <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </span>
                   <div>
-                    <p id="label-B" class="font-display font-bold leading-tight">L'offre d'emploi</p>
-                    <p id="aide-B" class="mt-0.5 text-xs text-muted">Intitulé, missions, profil recherché</p>
+                    <p id="label-B" class="font-display font-bold leading-tight" data-i18n="sim.l_offre_d_emploi">L'offre d'emploi</p>
+                    <p id="aide-B" class="mt-0.5 text-xs text-muted" data-i18n="sim.intitule_missions_profil_recherche">Intitulé, missions, profil recherché</p>
                   </div>
                 </div>
                 <span id="compteur-B" class="shrink-0 text-xs tabular-nums text-muted">0</span>
@@ -331,7 +344,7 @@
               </label>
 
               <textarea id="champB" rows="7" class="mt-3 w-full rounded-xl border border-line bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none" placeholder="Collez l'annonce complète…"></textarea>
-              <p id="min-B" class="mt-2 text-xs text-muted">Minimum 150 caractères.</p>
+              <p id="min-B" class="mt-2 text-xs text-muted" data-i18n="sim.minimum_150_caracteres">Minimum 150 caractères.</p>
             </div>
           </div>
         </div>
@@ -342,12 +355,12 @@
         <div>
           <div class="flex items-center gap-3">
             <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-iris text-xs font-bold text-white">3</span>
-            <h3 class="font-display text-lg font-bold tracking-tight">Le format de l'épreuve</h3>
+            <h3 class="font-display text-lg font-bold tracking-tight" data-i18n="sim.le_format_de_l_epreuve">Le format de l'épreuve</h3>
           </div>
 
           <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <span class="text-sm font-medium">Nombre de questions</span>
+              <span class="text-sm font-medium" data-i18n="sim.nombre_de_questions">Nombre de questions</span>
               <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="nbQuestions">
                 <button type="button" data-valeur="3" class="opt rounded-md px-3 py-1.5 text-sm">3</button>
                 <button type="button" data-valeur="5" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut>5</button>
@@ -355,19 +368,19 @@
               </div>
             </div>
             <div>
-              <span class="text-sm font-medium">Temps par réponse</span>
+              <span class="text-sm font-medium" data-i18n="sim.temps_par_reponse">Temps par réponse</span>
               <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="duree">
-                <button type="button" data-valeur="60" class="opt rounded-md px-3 py-1.5 text-sm">1 min</button>
-                <button type="button" data-valeur="120" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut>2 min</button>
-                <button type="button" data-valeur="300" class="opt rounded-md px-3 py-1.5 text-sm">5 min</button>
+                <button type="button" data-valeur="60" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.1_min">1 min</button>
+                <button type="button" data-valeur="120" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut data-i18n="sim.2_min">2 min</button>
+                <button type="button" data-valeur="300" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.5_min">5 min</button>
               </div>
             </div>
             <div>
-              <span class="text-sm font-medium">Ton de l'examinateur</span>
+              <span class="text-sm font-medium" data-i18n="sim.ton_de_l_examinateur">Ton de l'examinateur</span>
               <div class="mt-2 inline-flex rounded-lg border border-line bg-ink/60 p-1" data-reglage="niveau">
-                <button type="button" data-valeur="bienveillant" class="opt rounded-md px-3 py-1.5 text-sm">Bienveillant</button>
-                <button type="button" data-valeur="standard" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut>Standard</button>
-                <button type="button" data-valeur="exigeant" class="opt rounded-md px-3 py-1.5 text-sm">Exigeant</button>
+                <button type="button" data-valeur="bienveillant" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.bienveillant">Bienveillant</button>
+                <button type="button" data-valeur="standard" class="opt rounded-md px-3 py-1.5 text-sm" data-defaut data-i18n="sim.standard">Standard</button>
+                <button type="button" data-valeur="exigeant" class="opt rounded-md px-3 py-1.5 text-sm" data-i18n="sim.exigeant">Exigeant</button>
               </div>
             </div>
           </div>
@@ -393,10 +406,10 @@
         <hr class="my-8 border-line">
 
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p id="aide-action" class="text-sm text-muted">Complétez les deux champs pour démarrer.</p>
+          <p id="aide-action" class="text-sm text-muted" data-i18n="sim.completez_les_deux_champs_pour_demarrer">Complétez les deux champs pour démarrer.</p>
           <button id="btn-lancer" type="button" disabled
             class="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-inverse px-7 py-4 font-display text-base font-bold text-sur-inverse transition enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted sm:w-auto">
-            Lancer ma simulation
+            <span data-i18n="cta.lancer_simulation">Lancer ma simulation</span>
             <span class="transition-transform group-hover:translate-x-1">→</span>
           </button>
         </div>
@@ -417,8 +430,8 @@
           </svg>
         </span>
         <div class="min-w-0">
-          <p id="titre-chargement" class="font-display text-lg font-bold leading-tight">Préparation de votre oral</p>
-          <p class="mt-0.5 text-sm text-muted">Quelques secondes, l'examinateur se prépare.</p>
+          <p id="titre-chargement" class="font-display text-lg font-bold leading-tight" data-i18n="sim.preparation_de_votre_oral">Préparation de votre oral</p>
+          <p class="mt-0.5 text-sm text-muted" data-i18n="sim.quelques_secondes_l_examinateur_se_prepare">Quelques secondes, l'examinateur se prépare.</p>
         </div>
       </div>
 
@@ -429,7 +442,7 @@
       <ul id="etapes-chargement" class="mt-6 space-y-3"></ul>
 
       <div class="mt-7 rounded-2xl border border-line bg-ink/40 p-4">
-        <p class="text-xs font-medium text-iris2">Pendant que vous attendez</p>
+        <p class="text-xs font-medium text-iris2" data-i18n="sim.pendant_que_vous_attendez">Pendant que vous attendez</p>
         <p id="conseil-chargement" class="mt-1.5 text-sm leading-relaxed text-muted"></p>
       </div>
     </div>
@@ -438,14 +451,14 @@
   <div id="ecran-simulation" class="hidden pt-8">
     <div class="flex items-center justify-between gap-4">
       <p class="text-sm text-muted">Question <span id="num-question" class="font-semibold text-soft">1</span> sur <span id="total-questions">5</span></p>
-      <button id="btn-abandon" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline">Quitter</button>
+      <button id="btn-abandon" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="sim.quitter">Quitter</button>
     </div>
     <div id="segments" class="mt-3 flex gap-1.5"></div>
 
     <div class="mt-8 grid gap-4 lg:grid-cols-[1fr_260px]">
       <div class="rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
         <div class="flex flex-wrap items-center gap-3">
-          <span id="categorie" class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-3 py-1 text-xs font-medium text-iris2">Question</span>
+          <span id="categorie" class="inline-flex rounded-full border border-iris/40 bg-iris/10 px-3 py-1 text-xs font-medium text-iris2" data-i18n="sim.question">Question</span>
           <button id="btn-relire" type="button" class="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-3 py-1 text-xs transition hover:border-iris/60">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
             Réécouter la question
@@ -459,13 +472,13 @@
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
             <span id="libelle-micro">Répondre à l'oral</span>
           </button>
-          <p id="etat-micro" class="mt-3 text-sm text-muted">Parlez normalement : votre réponse s'écrit toute seule.</p>
+          <p id="etat-micro" class="mt-3 text-sm text-muted" data-i18n="sim.parlez_normalement_votre_reponse_s_ecrit_toute_seule">Parlez normalement : votre réponse s'écrit toute seule.</p>
           <p id="interim" class="mt-2 min-h-[1.25rem] text-sm italic text-iris2"></p>
         </div>
 
         <div class="mt-6 flex items-baseline justify-between">
-          <label for="reponse" class="text-sm font-medium">Votre réponse</label>
-          <span id="compteur-reponse" class="text-xs tabular-nums text-muted">0 mot</span>
+          <label for="reponse" class="text-sm font-medium" data-i18n="sim.votre_reponse">Votre réponse</label>
+          <span id="compteur-reponse" class="text-xs tabular-nums text-muted" data-i18n="sim.0_mot">0 mot</span>
         </div>
         <textarea id="reponse" rows="7"
           class="mt-2 w-full rounded-xl border border-line/70 bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none"
@@ -473,15 +486,15 @@
 
         <div class="mt-5 flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
           <button id="btn-suivant" type="button"
-            class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110">
+            class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.valider_et_continuer">
             Valider et continuer
           </button>
-          <button id="btn-passer" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline">Passer cette question</button>
+          <button id="btn-passer" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="sim.passer_cette_question">Passer cette question</button>
         </div>
       </div>
 
       <aside class="rounded-2xl border border-line bg-surface p-5 text-center shadow-carte">
-        <p class="text-sm text-muted">Temps de parole</p>
+        <p class="text-sm text-muted" data-i18n="sim.temps_de_parole">Temps de parole</p>
         <div class="relative mx-auto mt-4 h-[132px] w-[132px]">
           <svg viewBox="0 0 120 120" class="anneau h-full w-full">
             <circle cx="60" cy="60" r="52" fill="none" stroke="rgb(var(--line))" stroke-width="8"/>
@@ -491,8 +504,8 @@
             <span id="chrono" role="timer" class="font-display text-3xl font-extrabold tabular-nums">2:00</span>
           </div>
         </div>
-        <p id="etat-chrono" class="mt-4 text-sm text-muted">Le chrono tourne.</p>
-        <button id="btn-pause" type="button" class="mt-4 w-full rounded-lg border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/50">Mettre en pause</button>
+        <p id="etat-chrono" class="mt-4 text-sm text-muted" data-i18n="sim.le_chrono_tourne">Le chrono tourne.</p>
+        <button id="btn-pause" type="button" class="mt-4 w-full rounded-lg border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/50" data-i18n="sim.mettre_en_pause">Mettre en pause</button>
       </aside>
     </div>
   </div>
@@ -507,18 +520,21 @@
           <div class="absolute inset-0 grid place-items-center text-center">
             <div>
               <span id="score-global" class="font-display text-4xl font-extrabold tabular-nums">0</span>
-              <span class="block text-xs text-muted">sur 100</span>
+              <span class="block text-xs text-muted" data-i18n="sim.sur_100">sur 100</span>
             </div>
           </div>
         </div>
         <div>
-          <p id="type-rapport" class="text-sm text-muted">Simulation</p>
-          <h2 id="verdict" class="mt-1 font-display text-3xl font-extrabold tracking-tight">Rapport de simulation</h2>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p id="type-rapport" class="text-sm text-muted" data-i18n="sim.simulation">Simulation</p>
+            <div id="ecoute-bilan" class="sans-impression"></div>
+          </div>
+          <h2 id="verdict" class="mt-1 font-display text-3xl font-extrabold tracking-tight" data-i18n="sim.rapport_de_simulation">Rapport de simulation</h2>
           <p id="verdict-detail" class="mt-2 max-w-lg leading-relaxed text-muted">…</p>
           <dl class="mt-6 grid grid-cols-3 gap-3 text-center">
-            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted">Questions</dt><dd id="stat-questions" class="font-display text-xl font-bold tabular-nums">0</dd></div>
-            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted">Temps de parole</dt><dd id="stat-temps" class="font-display text-xl font-bold tabular-nums">0:00</dd></div>
-            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted">Mots / réponse</dt><dd id="stat-mots" class="font-display text-xl font-bold tabular-nums">0</dd></div>
+            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.questions">Questions</dt><dd id="stat-questions" class="font-display text-xl font-bold tabular-nums">0</dd></div>
+            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.temps_de_parole">Temps de parole</dt><dd id="stat-temps" class="font-display text-xl font-bold tabular-nums">0:00</dd></div>
+            <div class="rounded-xl border border-line bg-ink/50 p-3"><dt class="text-xs text-muted" data-i18n="sim.mots_reponse">Mots / réponse</dt><dd id="stat-mots" class="font-display text-xl font-bold tabular-nums">0</dd></div>
           </dl>
         </div>
       </div>
@@ -528,48 +544,48 @@
     <!-- Éloquence -->
     <div class="mt-6 rounded-2xl border border-line bg-surface p-5 shadow-carte sm:p-8">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h3 class="font-display text-xl font-bold">Éloquence et voix</h3>
+        <h3 class="font-display text-xl font-bold" data-i18n="sim.eloquence_et_voix">Éloquence et voix</h3>
         <span id="eloq-note" class="rounded-full border border-line bg-raised px-3 py-1 font-display text-sm font-bold tabular-nums">– / 20</span>
       </div>
       <div class="mt-5 grid gap-3 sm:grid-cols-3">
-        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted">Débit de parole</p><p id="eloq-debit" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-debit-note" class="text-xs text-muted"></p></div>
-        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted">Richesse du vocabulaire</p><p id="eloq-richesse" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-richesse-note" class="text-xs text-muted"></p></div>
-        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted">Clarté</p><p id="eloq-clarte" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-clarte-note" class="text-xs text-muted"></p></div>
+        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.debit_de_parole">Débit de parole</p><p id="eloq-debit" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-debit-note" class="text-xs text-muted"></p></div>
+        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.richesse_du_vocabulaire">Richesse du vocabulaire</p><p id="eloq-richesse" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-richesse-note" class="text-xs text-muted"></p></div>
+        <div class="rounded-xl border border-line bg-ink/50 p-4"><p class="text-xs text-muted" data-i18n="sim.clarte">Clarté</p><p id="eloq-clarte" class="mt-1 font-display text-lg font-bold">–</p><p id="eloq-clarte-note" class="text-xs text-muted"></p></div>
       </div>
       <ul id="eloq-conseils" class="mt-5 space-y-2 text-sm text-muted"></ul>
     </div>
 
-    <h3 class="mt-12 font-display text-xl font-bold">Réponse par réponse</h3>
+    <h3 class="mt-12 font-display text-xl font-bold" data-i18n="sim.reponse_par_reponse">Réponse par réponse</h3>
     <div id="detail-reponses" class="mt-4 space-y-4"></div>
 
     <!-- Fin de simulation : on renvoie vers l'historique, où tout se relit. -->
     <div class="sans-impression mt-10 rounded-2xl border border-iris/30 bg-iris/5 p-5 sm:p-6">
-      <h3 class="font-display text-lg font-bold">Ce bilan est enregistré</h3>
-      <p class="mt-1.5 text-sm leading-relaxed text-muted">
+      <h3 class="font-display text-lg font-bold" data-i18n="sim.ce_bilan_est_enregistre">Ce bilan est enregistré</h3>
+      <p class="mt-1.5 text-sm leading-relaxed text-muted" data-i18n="sim.retrouvez_le_quand_vous_voulez_dans_mes_simulations_">
         Retrouvez-le quand vous voulez dans « Mes simulations passées », avec les questions
         posées, vos réponses et la correction complète de l'examinateur.
       </p>
       <a id="btn-mes-simulations" href="./index.html?vue=compte"
         class="group mt-4 inline-flex items-center gap-2 rounded-xl bg-inverse px-6 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90">
-        Voir mes simulations passées
+        <span data-i18n="cta.mes_simulations">Voir mes simulations passées</span>
         <span class="transition-transform group-hover:translate-x-1">→</span>
       </a>
     </div>
 
     <div class="sans-impression mt-6 flex flex-col gap-3 sm:flex-row">
-      <button id="btn-rejouer" type="button" class="rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110">Refaire une simulation</button>
-      <button id="btn-pdf" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50">Télécharger le bilan en PDF</button>
-      <button id="btn-modifier" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50">Modifier mes documents</button>
+      <button id="btn-rejouer" type="button" class="rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.refaire_une_simulation">Refaire une simulation</button>
+      <button id="btn-pdf" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50" data-i18n="sim.telecharger_le_bilan_en_pdf">Télécharger le bilan en PDF</button>
+      <button id="btn-modifier" type="button" class="rounded-xl border border-line bg-raised px-6 py-3.5 font-medium transition hover:border-iris/50" data-i18n="sim.modifier_mes_documents">Modifier mes documents</button>
     </div>
 
     <!-- Invitation à déposer un avis : c'est ainsi que la page Témoignages se remplit. -->
     <div id="invite-avis" class="sans-impression mt-6 hidden rounded-2xl border border-line bg-surface p-5 sm:p-6">
-      <h3 class="font-display font-bold">Ça vous a servi ?</h3>
-      <p class="mt-1.5 text-sm leading-relaxed text-muted">
+      <h3 class="font-display font-bold" data-i18n="sim.ca_vous_a_servi">Ça vous a servi ?</h3>
+      <p class="mt-1.5 text-sm leading-relaxed text-muted" data-i18n="sim.votre_retour_aide_les_prochains_candidats_a_se_lance">
         Votre retour aide les prochains candidats à se lancer. Il est vérifié avant publication.
       </p>
       <a href="./temoignages.html#deposer"
-        class="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-raised px-5 py-3 text-sm font-medium transition hover:border-iris/60">
+        class="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-raised px-5 py-3 text-sm font-medium transition hover:border-iris/60" data-i18n="sim.laisser_un_avis">
         Laisser un avis
       </a>
     </div>
@@ -589,7 +605,7 @@
           <img src="assets/logo.svg" alt="" width="28" height="28" class="h-7 w-7 rounded-lg">
           <span class="font-display text-base font-extrabold tracking-tight">Prep<span class="text-iris2">Oral</span></span>
         </div>
-        <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted">
+        <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted" data-i18n="accueil.le_moyen_le_plus_rapide_de_passer_son_oral_une_premi">
           Le moyen le plus rapide de passer son oral une première fois, en privé.
           Tes CV, sujets et enregistrements sont traités le temps de la simulation, puis supprimés :
           ils ne sont ni conservés, ni revendus, ni utilisés pour entraîner un modèle.
@@ -597,7 +613,7 @@
       </div>
 
       <nav aria-label="Produit">
-        <p class="font-display text-sm font-bold">Produit</p>
+        <p class="font-display text-sm font-bold" data-i18n="accueil.produit">Produit</p>
         <ul class="mt-4 space-y-2.5 text-sm text-muted">
           <li><button type="button" data-vue="simulateur" class="transition hover:text-soft">Simulateur d'oral</button></li>
           <li><button type="button" data-vue="coach" class="transition hover:text-soft">Coach IA</button></li>
@@ -607,7 +623,7 @@
       </nav>
 
       <nav aria-label="Informations légales">
-        <p class="font-display text-sm font-bold">Légal</p>
+        <p class="font-display text-sm font-bold" data-i18n="accueil.legal">Légal</p>
         <ul class="mt-4 space-y-2.5 text-sm text-muted">
           <li><button type="button" data-legal="mentions" class="transition hover:text-soft">Mentions légales</button></li>
           <li><button type="button" data-legal="cgv" class="transition hover:text-soft">CGV</button></li>
@@ -634,8 +650,8 @@
   <div class="entree w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-8" role="dialog" aria-modal="true" aria-labelledby="paywall-titre">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <p class="text-sm text-iris2">Vos 2 simulations gratuites sont utilisées</p>
-        <h2 id="paywall-titre" class="mt-1 font-display text-2xl font-extrabold tracking-tight">Continuez à vous entraîner</h2>
+        <p class="text-sm text-iris2" data-i18n="accueil.vos_2_simulations_gratuites_sont_utilisees">Vos 2 simulations gratuites sont utilisées</p>
+        <h2 id="paywall-titre" class="mt-1 font-display text-2xl font-extrabold tracking-tight" data-i18n="accueil.continuez_a_vous_entrainer">Continuez à vous entraîner</h2>
       </div>
       <button type="button" data-fermer class="shrink-0 rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
@@ -660,7 +676,7 @@
       <svg viewBox="0 0 24 24" width="14" height="14" class="shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
       Paiement sécurisé par Stripe · Résiliable en un clic · Aucune donnée bancaire sur nos serveurs
     </p>
-    <button type="button" data-fermer class="mt-4 w-full text-center text-sm text-muted underline-offset-4 hover:text-soft hover:underline">Plus tard</button>
+    <button type="button" data-fermer class="mt-4 w-full text-center text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="accueil.plus_tard">Plus tard</button>
   </div>
 </div>
 
@@ -670,12 +686,12 @@
 
     <div class="p-6 sm:p-8">
       <div class="flex items-start justify-between gap-4">
-        <h2 id="auth-titre" class="font-display text-xl font-extrabold">Connexion / Inscription</h2>
+        <h2 id="auth-titre" class="font-display text-xl font-extrabold" data-i18n="accueil.connexion_inscription">Connexion / Inscription</h2>
         <button type="button" data-fermer class="rounded-lg p-1 text-muted hover:text-soft md:hidden" aria-label="Fermer">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p class="mt-2 text-sm text-muted">Votre statut Premium et votre historique vous suivent sur tous vos appareils.</p>
+      <p class="mt-2 text-sm text-muted" data-i18n="accueil.votre_statut_premium_et_votre_historique_vous_suiven">Votre statut Premium et votre historique vous suivent sur tous vos appareils.</p>
 
       <button id="btn-google" type="button" class="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-raised px-4 py-3 font-medium transition hover:border-iris/50">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M23 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.2a5.3 5.3 0 0 1-2.3 3.5v2.9h3.7c2.2-2 3.4-5 3.4-8.6z"/><path fill="#34A853" d="M12 24c3.1 0 5.7-1 7.6-2.8l-3.7-2.9c-1 .7-2.3 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.8v3A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.6 14.7a7.2 7.2 0 0 1 0-4.6v-3H1.8a12 12 0 0 0 0 10.6l3.8-3z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.2.6 4.4 1.7l3.3-3.3A11.6 11.6 0 0 0 12 0 12 12 0 0 0 1.8 6.1l3.8 3C6.5 6.7 9 4.8 12 4.8z"/></svg>
@@ -684,10 +700,10 @@
 
       <div class="my-5 flex items-center gap-3 text-xs text-muted"><span class="h-px flex-1 bg-line"></span>ou<span class="h-px flex-1 bg-line"></span></div>
 
-      <label for="auth-email" class="text-sm font-medium">Adresse e-mail</label>
+      <label for="auth-email" class="text-sm font-medium" data-i18n="accueil.adresse_e_mail">Adresse e-mail</label>
       <input id="auth-email" type="email" autocomplete="email" placeholder="vous@exemple.fr"
         class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
-      <button id="btn-lien-magique" type="button" class="mt-3 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90">
+      <button id="btn-lien-magique" type="button" class="mt-3 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.recevoir_un_lien_de_connexion">
         Recevoir un lien de connexion
       </button>
       <p id="auth-message" class="mt-3 text-sm text-muted"></p>
@@ -702,8 +718,8 @@
       <button type="button" data-fermer class="absolute right-4 top-4 rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
-      <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight">Tes progrès<br>t'attendent</h3>
-      <p class="mt-3 text-sm leading-relaxed text-muted">Continue à travailler tes oraux là où tu t'étais arrêté.</p>
+      <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight" data-i18n="titre.tes_progres">Tes progrès<br>t'attendent</h3>
+      <p class="mt-3 text-sm leading-relaxed text-muted" data-i18n="accueil.continue_a_travailler_tes_oraux_la_ou_tu_t_etais_arr">Continue à travailler tes oraux là où tu t'étais arrêté.</p>
       <ul class="mt-7 space-y-4 text-sm">
         <li class="flex gap-3">
           <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-mint/15 text-mint"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
@@ -726,7 +742,7 @@
 <div id="modal-legal" class="modale fixed inset-0 z-50 grid place-items-center bg-ink/85 p-4 backdrop-blur" hidden>
   <div class="entree flex max-h-[85vh] w-full max-w-2xl flex-col rounded-3xl border border-line bg-surface shadow-carte" role="dialog" aria-modal="true" aria-labelledby="legal-titre">
     <div class="flex items-start justify-between gap-4 border-b border-line/70 p-5 sm:p-6">
-      <h2 id="legal-titre" class="font-display text-xl font-extrabold">Mentions légales</h2>
+      <h2 id="legal-titre" class="font-display text-xl font-extrabold" data-i18n="accueil.mentions_legales">Mentions légales</h2>
       <button type="button" data-fermer class="rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
@@ -738,8 +754,8 @@
 <!-- Déclaration d'âge (art. 45 loi Informatique et Libertés) -->
 <div id="modal-age" class="modale fixed inset-0 z-[55] grid place-items-center bg-ink/85 p-4 backdrop-blur" hidden>
   <div class="entree w-full max-w-md rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-7" role="dialog" aria-modal="true" aria-labelledby="age-titre">
-    <h2 id="age-titre" class="font-display text-xl font-extrabold tracking-tight">Quel âge avez-vous ?</h2>
-    <p class="mt-2 text-sm leading-relaxed text-muted">
+    <h2 id="age-titre" class="font-display text-xl font-extrabold tracking-tight" data-i18n="accueil.quel_age_avez_vous">Quel âge avez-vous ?</h2>
+    <p class="mt-2 text-sm leading-relaxed text-muted" data-i18n="accueil.preporal_s_adresse_aussi_a_des_collegiens_et_lyceens">
       PrepOral s'adresse aussi à des collégiens et lycéens. La loi française fixe des règles
       différentes selon l'âge : nous demandons une tranche, jamais votre date de naissance.
     </p>
@@ -747,8 +763,8 @@
     <div id="choix-age" class="mt-5 grid gap-2"></div>
 
     <div id="bloc-parent" class="mt-4 hidden">
-      <label for="email-parent" class="text-sm font-medium">E-mail de votre parent ou responsable légal</label>
-      <p class="mt-1 text-xs leading-relaxed text-muted">
+      <label for="email-parent" class="text-sm font-medium" data-i18n="accueil.e_mail_de_votre_parent_ou_responsable_legal">E-mail de votre parent ou responsable légal</label>
+      <p class="mt-1 text-xs leading-relaxed text-muted" data-i18n="accueil.en_dessous_de_15_ans_son_accord_est_necessaire_pour_">
         En dessous de 15 ans, son accord est nécessaire pour que nous puissions traiter vos données.
       </p>
       <input id="email-parent" type="email" autocomplete="off" placeholder="parent@exemple.fr"
@@ -756,10 +772,10 @@
     </div>
 
     <button id="btn-valider-age" type="button" disabled
-      class="mt-6 w-full rounded-xl bg-inverse px-5 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted">
+      class="mt-6 w-full rounded-xl bg-inverse px-5 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted" data-i18n="accueil.continuer">
       Continuer
     </button>
-    <p class="mt-3 text-center text-xs text-muted">
+    <p class="mt-3 text-center text-xs text-muted" data-i18n="accueil.cette_information_sert_uniquement_a_appliquer_la_reg">
       Cette information sert uniquement à appliquer la réglementation. Elle n'est jamais partagée.
     </p>
   </div>
@@ -775,8 +791,8 @@
       <button type="button" data-legal="cookies" class="underline underline-offset-2 hover:text-soft">En savoir plus</button>
     </p>
     <div class="flex shrink-0 gap-2">
-      <button id="btn-cookies-refuser" type="button" class="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-iris/50">Refuser</button>
-      <button id="btn-cookies-accepter" type="button" class="rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-sur-inverse transition hover:opacity-90">Accepter</button>
+      <button id="btn-cookies-refuser" type="button" class="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-iris/50" data-i18n="accueil.refuser">Refuser</button>
+      <button id="btn-cookies-accepter" type="button" class="rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-sur-inverse transition hover:opacity-90" data-i18n="accueil.accepter">Accepter</button>
     </div>
   </div>
 </div>
