@@ -4,8 +4,8 @@
    foi côté serveur (statut Premium en base, voir api/webhook.js).
    ═══════════════════════════════════════════════════════════ */
 
-import { CONFIG, OFFRES } from './config.js';
-import { $, $$, stock, ouvrirModale, fermerModale, toast } from './ui.js';
+import { CONFIG, OFFRES, ORDRE_OFFRES, OFFRE_RECOMMANDEE } from './config.js';
+import { $, $$, stock, echappe, ouvrirModale, fermerModale, toast } from './ui.js';
 import { session, profil } from './auth.js';
 import { messagePaiement } from './age.js';
 
@@ -43,8 +43,48 @@ export function majJauge() {
   }
 }
 
+/* ── Rendu des offres ───────────────────────────────────────
+   Les tarifs viennent de config.js et ne sont écrits qu'à un seul
+   endroit : un prix affiché qui ne correspond pas à celui facturé
+   est une pratique commerciale trompeuse. */
+export function rendreOffres() {
+  const zone = $('#grille-offres');
+  if (!zone) return;
+
+  zone.innerHTML = ORDRE_OFFRES.map(id => {
+    const o = OFFRES[id];
+    const vedette = id === OFFRE_RECOMMANDEE;
+    return `
+    <button type="button" data-plan="${o.id}"
+      class="plan relative flex h-full flex-col rounded-2xl border p-5 text-left transition disabled:cursor-not-allowed disabled:opacity-50
+        ${vedette ? 'border-iris bg-iris/10 hover:brightness-110' : 'border-line bg-ink/50 hover:border-iris/60'}">
+      ${vedette ? '<span class="absolute -top-2.5 left-5 rounded-full bg-iris px-2.5 py-0.5 text-[11px] font-semibold text-white">Recommandé</span>' : ''}
+      <span class="text-xs font-medium ${vedette ? 'text-iris2' : 'text-muted'}">${echappe(o.accroche)}</span>
+      <span class="mt-1 block font-display text-lg font-bold leading-tight">${echappe(o.nom)}</span>
+      <span class="mt-3 block">
+        <span class="whitespace-nowrap font-display text-2xl font-extrabold">${echappe(o.prix)}</span>
+        <span class="ml-1.5 whitespace-nowrap text-xs text-muted">${echappe(o.periode)}</span>
+      </span>
+      ${o.equivalentMensuel
+        ? `<span class="mt-1 block text-xs text-mint">${echappe(o.equivalentMensuel)} · ${echappe(o.economie)}</span>`
+        : ''}
+      <span class="mt-3 block text-sm leading-relaxed text-muted">${echappe(o.detail)}</span>
+    </button>`;
+  }).join('');
+
+  // La confirmation d'âge conditionne l'activation des boutons.
+  $$('[data-plan]').forEach(b => b.addEventListener('click', () => lancerCheckout(b.dataset.plan)));
+  majEtatOffres();
+}
+
+function majEtatOffres() {
+  const coche = $('#confirmation-age')?.checked;
+  $$('[data-plan]').forEach(b => { b.disabled = !coche; });
+}
+
 /** @param {'quota'|'fin'} raison */
 export function ouvrirPaywall(raison = 'quota') {
+  rendreOffres();
   const titre = $('#paywall-titre');
   const sur = titre?.previousElementSibling;
   if (raison === 'fin') {
@@ -183,12 +223,8 @@ export async function traiterRetourPaiement() {
 }
 
 export function brancherPaywall() {
-  $$('[data-plan]').forEach(b => b.addEventListener('click', () => lancerCheckout(b.dataset.plan)));
-
-  const confirmation = $('#confirmation-age');
-  const majOffres = () => $$('[data-plan]').forEach(b => { b.disabled = !confirmation?.checked; });
-  confirmation?.addEventListener('change', majOffres);
-  majOffres();
+  rendreOffres();
+  $('#confirmation-age')?.addEventListener('change', majEtatOffres);
   $('#btn-premium')?.addEventListener('click', () => ouvrirPaywall('fin'));
   $('#btn-portail')?.addEventListener('click', ouvrirPortail);
   traiterRetourPaiement();   // asynchrone : n'immobilise pas le démarrage

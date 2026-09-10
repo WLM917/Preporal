@@ -169,3 +169,13 @@ comment on column public.profils.tranche_age is
   'Tranche déclarée par l''utilisateur : moins_15 | 15_17 | majeur';
 comment on column public.profils.consentement_parental is
   'Accord du représentant légal, requis sous 15 ans et pour tout paiement par un mineur';
+
+-- ── Épreuve concernée par un avis ──────────────────────────
+-- Permet de regrouper les témoignages par type d'oral sur la
+-- page dédiée : un candidat au brevet ne cherche pas le retour
+-- d'un candidat en école de commerce.
+alter table public.avis
+  add column if not exists type_oral text;
+
+comment on column public.avis.type_oral is
+  'Identifiant d''épreuve (entretien, grand-oral, brevet, concours, pitch, matiere, langue)';

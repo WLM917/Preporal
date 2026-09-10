@@ -25,7 +25,14 @@ const corpsBrut = req => new Promise((ok, ko) => {
   req.on('error', ko);
 });
 
-const DUREE_PASS_48H = 48 * 60 * 60 * 1000;
+const JOUR = 24 * 60 * 60 * 1000;
+
+/* Durée d'accès des offres à paiement unique. L'abonnement mensuel
+   n'y figure pas : son échéance vient des évènements subscription.*. */
+const DUREES = {
+  pass48: 48 * 60 * 60 * 1000,
+  extra: 183 * JOUR            // six mois
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end('Méthode non autorisée.');
@@ -53,8 +60,9 @@ export default async function handler(req, res) {
         const utilisateurId = s.client_reference_id || s.metadata?.utilisateur_id || null;
         const plan = s.metadata?.plan || (s.mode === 'subscription' ? 'mensuel' : 'pass48');
 
-        const jusquA = plan === 'pass48'
-          ? new Date(Date.now() + DUREE_PASS_48H).toISOString()
+        const duree = DUREES[plan];
+        const jusquA = duree
+          ? new Date(Date.now() + duree).toISOString()
           : null;   // l'abonnement est piloté par les évènements subscription.*
 
         if (utilisateurId) {

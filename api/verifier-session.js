@@ -17,7 +17,8 @@
 import Stripe from 'stripe';
 import { limiter } from './_lib/ia.js';
 
-const DUREE_PASS_48H = 48 * 60 * 60 * 1000;
+const JOUR = 24 * 60 * 60 * 1000;
+const DUREES = { pass48: 48 * 60 * 60 * 1000, extra: 183 * JOUR };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ erreur: 'Méthode non autorisée.' });
@@ -43,8 +44,8 @@ export default async function handler(req, res) {
     }
 
     const plan = session.metadata?.plan || (session.mode === 'subscription' ? 'mensuel' : 'pass48');
-    // Le pass 48 h est daté ; l'abonnement est piloté par les évènements Stripe.
-    const jusquA = plan === 'pass48' ? Date.now() + DUREE_PASS_48H : null;
+    // Les offres à paiement unique sont datées ; l'abonnement suit les évènements Stripe.
+    const jusquA = DUREES[plan] ? Date.now() + DUREES[plan] : null;
 
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ paye: true, plan, jusquA });

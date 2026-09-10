@@ -125,7 +125,10 @@
             <span class="font-medium">${echappe(a.nom)}</span>
             <span class="text-xs text-muted"> · ${echappe(a.statut || '—')}</span>
           </div>
-          <span class="text-amber">${etoiles(a.note)}</span>
+          <div class="flex items-center gap-2">
+            ${a.type_oral ? `<span class="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted">${echappe(a.type_oral)}</span>` : ''}
+            <span class="text-amber">${etoiles(a.note)}</span>
+          </div>
         </div>
         <blockquote class="mt-3 text-sm leading-relaxed text-muted">« ${echappe(a.texte)} »</blockquote>
         <div class="mt-4 flex items-center gap-2">

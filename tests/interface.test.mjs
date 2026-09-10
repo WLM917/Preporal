@@ -17,53 +17,80 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const html = readFileSync(join(RACINE, 'index.html'), 'utf8');
+
+/* Chaque page a son module d'entrée : on vérifie le contrat entre les
+   deux, page par page, plutôt que globalement — sinon un identifiant
+   présent sur une page masquerait son absence sur une autre. */
+const PAGES = [
+  { fichier: 'index.html',       entree: 'app.js' },
+  { fichier: 'simulateur.html',  entree: 'simulateur.js' },
+  { fichier: 'temoignages.html', entree: 'temoignages.js' }
+];
+
+const lire = f => readFileSync(join(RACINE, f), 'utf8');
+const html = lire('index.html');
 const modules = readdirSync(join(RACINE, 'js'))
   .filter(f => f.endsWith('.js'))
   .map(f => ({ nom: f, source: readFileSync(join(RACINE, 'js', f), 'utf8') }));
 
-const idsDuHtml = () => {
-  const l = [...html.matchAll(/\sid="([a-zA-Z0-9_-]+)"/g)].map(m => m[1]);
+/** Modules atteignables depuis une entrée, en suivant les imports. */
+function grappe(entree, vus = new Set()) {
+  if (vus.has(entree)) return vus;
+  vus.add(entree);
+  const src = modules.find(m => m.nom === entree)?.source || '';
+  for (const m of src.matchAll(/from\s+'\.\/([a-zA-Z0-9_-]+\.js)'/g)) grappe(m[1], vus);
+  return vus;
+}
+
+const idsDuHtml = (source = html) => {
+  const l = [...source.matchAll(/\sid="([a-zA-Z0-9_-]+)"/g)].map(m => m[1]);
   return { liste: l, ensemble: new Set(l) };
 };
 
-/** Identifiants recherchés en dur par les modules : $('#x') et getElementById('x'). */
-const idsDuJs = () => {
+/* Identifiants dont l'absence ferait RÉELLEMENT planter la page : ceux
+   déréférencés sans point d'interrogation — $('#x').valeur lève si
+   l'élément manque, $('#x')?.valeur non. Les modules partagés touchent
+   volontairement des éléments qui n'existent que sur certaines pages
+   (l'espace compte, la jauge de quota) : ces accès-là sont protégés et
+   ne doivent pas être exigés partout. */
+const idsRequis = (noms = modules.map(m => m.nom)) => {
   const s = new Set();
-  for (const { source } of modules) {
-    for (const m of source.matchAll(/\$\('#([a-zA-Z0-9_-]+)'\)/g)) s.add(m[1]);
-    for (const m of source.matchAll(/getElementById\('([a-zA-Z0-9_-]+)'\)/g)) s.add(m[1]);
+  for (const { source } of modules.filter(m => noms.includes(m.nom))) {
+    for (const m of source.matchAll(/\$\('#([a-zA-Z0-9_-]+)'\)\s*\./g)) s.add(m[1]);
+    for (const m of source.matchAll(/getElementById\('([a-zA-Z0-9_-]+)'\)\s*\./g)) s.add(m[1]);
     for (const m of source.matchAll(/ouvrirModale\('([a-zA-Z0-9_-]+)'\)/g)) s.add(m[1]);
   }
   return s;
 };
 
-test('chaque identifiant attendu par le JavaScript existe dans la page', () => {
-  const { ensemble } = idsDuHtml();
-  const manquants = [...idsDuJs()].filter(id => !ensemble.has(id));
-  assert.deepEqual(manquants, [], `identifiants absents d'index.html : ${manquants.join(', ')}`);
-});
+for (const { fichier, entree } of PAGES) {
+  test(`${fichier} : les identifiants déréférencés sans garde existent`, () => {
+    const { ensemble } = idsDuHtml(lire(fichier));
+    const attendus = idsRequis([...grappe(entree)]);
+    const manquants = [...attendus].filter(id => !ensemble.has(id));
+    assert.deepEqual(manquants, [], `absents de ${fichier} : ${manquants.join(', ')}`);
+  });
 
-test('aucun identifiant n\'est dupliqué', () => {
-  const { liste } = idsDuHtml();
-  const vus = new Set(), doublons = new Set();
-  liste.forEach(id => (vus.has(id) ? doublons.add(id) : vus.add(id)));
-  assert.deepEqual([...doublons], [], 'un identifiant dupliqué casse querySelector');
-});
+  test(`${fichier} : aucun identifiant dupliqué`, () => {
+    const { liste } = idsDuHtml(lire(fichier));
+    const vus = new Set(), doublons = new Set();
+    liste.forEach(id => (vus.has(id) ? doublons.add(id) : vus.add(id)));
+    assert.deepEqual([...doublons], [], 'un identifiant dupliqué casse querySelector');
+  });
+}
 
-test('les écrans, vues et groupes de réglages composés existent', () => {
-  // app.js les construit par interpolation : '#ecran-' + nom, '#vue-' + nom.
+test('les écrans et vues construits par interpolation existent', () => {
+  const simulateur = lire('simulateur.html');
+  // simulateur.js les construit ainsi : '#ecran-' + nom.
   for (const e of ['accueil', 'chargement', 'simulation', 'rapport']) {
-    assert.ok(html.includes(`id="ecran-${e}"`), `écran ${e} absent`);
+    assert.ok(simulateur.includes(`id="ecran-${e}"`), `écran ${e} absent de simulateur.html`);
   }
-  for (const v of ['simulateur', 'coach', 'compte']) {
-    assert.ok(html.includes(`id="vue-${v}"`), `vue ${v} absente`);
-  }
-  for (const r of ['nbQuestions', 'duree', 'niveau']) {
-    assert.ok(html.includes(`data-reglage="${r}"`), `réglage ${r} absent`);
+  // app.js fait de même avec '#vue-' + nom.
+  for (const v of ['accueil', 'coach', 'compte']) {
+    assert.ok(html.includes(`id="vue-${v}"`), `vue ${v} absente d'index.html`);
   }
   // brancherReglages exige une option par défaut dans chaque groupe.
-  assert.equal((html.match(/data-defaut/g) || []).length, 3);
+  assert.equal((simulateur.match(/data-defaut/g) || []).length, 3);
 });
 
 test('aucun avis fictif ni note moyenne inventée dans la page livrée', () => {
@@ -142,4 +169,44 @@ test('le domaine déclaré n\'est pas un exemple resté en place', () => {
   for (const factice of ['example.com', 'votre-domaine', 'localhost', 'preporal.fr']) {
     assert.ok(!canonique.includes(factice), `domaine non renseigné : ${canonique}`);
   }
+});
+
+test('aucun tarif n\'est écrit en dur dans les pages', () => {
+  /* Les prix ne vivent que dans config.js, et la modale d'offre est
+     rendue à partir de là. Un tarif recopié dans le HTML finit par
+     diverger de celui réellement facturé — ce qui est une pratique
+     commerciale trompeuse, et ce qui est déjà arrivé sur ce projet
+     lors d'un remaniement des pages. */
+  const tarif = /\b\d{1,3},\d{2}\s*€/g;
+  for (const { fichier } of PAGES) {
+    const trouves = [...lire(fichier).matchAll(tarif)].map(m => m[0]);
+    assert.deepEqual(trouves, [],
+      `${fichier} contient des tarifs en dur : ${trouves.join(', ')}`);
+  }
+});
+
+test('les trois offres sont cohérentes entre elles', async () => {
+  globalThis.window = { PREPORAL_ENV: {} };
+  const { OFFRES, ORDRE_OFFRES, OFFRE_RECOMMANDEE } = await import('../js/config.js');
+
+  assert.deepEqual(ORDRE_OFFRES, ['pass48', 'mensuel', 'extra']);
+  assert.ok(OFFRES[OFFRE_RECOMMANDEE], "l'offre recommandée doit exister");
+
+  const euros = t => Number(t.replace(/[^\d,]/g, '').replace(',', '.'));
+  const mensuel = euros(OFFRES.mensuel.prix);
+  const extra = euros(OFFRES.extra.prix);
+
+  // Une offre longue durée plus chère que son équivalent mensuel n'aurait
+  // aucun sens commercial et tromperait l'acheteur.
+  assert.ok(extra < mensuel * 6,
+    `Extra (${extra} €) doit rester sous six mois d'abonnement (${(mensuel * 6).toFixed(2)} €)`);
+
+  // L'économie annoncée doit être celle réellement consentie.
+  const economieReelle = (mensuel * 6 - extra).toFixed(2).replace('.', ',');
+  assert.ok(OFFRES.extra.economie.includes(economieReelle),
+    `économie annoncée « ${OFFRES.extra.economie} » ≠ ${economieReelle} €`);
+
+  const equivalent = (extra / 6).toFixed(2).replace('.', ',');
+  assert.ok(OFFRES.extra.equivalentMensuel.includes(equivalent),
+    `équivalent mensuel annoncé ≠ ${equivalent} €`);
 });

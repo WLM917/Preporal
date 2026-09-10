@@ -127,7 +127,9 @@ export function majInterface() {
       textePremium.textContent = profil.premiumJusquA
         ? 'Actif jusqu\'au ' + new Date(profil.premiumJusquA).toLocaleDateString('fr-FR')
         : 'Abonnement actif. Merci !';
-      $('#btn-premium').textContent = 'Gérer mon abonnement';
+      // Ce bouton n'existe que sur la page qui porte « Mon espace ».
+      const btnPremium = $('#btn-premium');
+      if (btnPremium) btnPremium.textContent = 'Gérer mon abonnement';
     }
   }
 }

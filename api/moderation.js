@@ -55,7 +55,7 @@ export default async function handler(req, res) {
       const publies = (req.query?.etat || 'attente') === 'publies';
       const { data, error } = await sb
         .from('avis')
-        .select('id, nom, statut, note, texte, publie, cree_le')
+        .select('id, nom, statut, note, texte, type_oral, publie, cree_le')
         .eq('publie', publies)
         .order('cree_le', { ascending: false })
         .limit(100);
