@@ -247,12 +247,17 @@ Le compteur `localStorage` ne sert plus qu'à l'affichage. `/api/questions`,
 `/api/feedback` et `/api/coach` refusent la requête avec un **402** quand le
 quota est épuisé ; le front ouvre alors la modale d'offre.
 
-> **Point d'attention.** L'empreinte anonyme se contourne avec un VPN, une
-> navigation privée ou un autre appareil. Elle relève le seuil, elle ne
-> l'étanchéifie pas. Pour un blocage strict, passez `EXIGER_CONNEXION=true` :
-> un compte gratuit devient obligatoire dès la première simulation, et le
-> quota est alors rattaché à un identifiant stable. C'est un arbitrage
-> commercial (friction à l'entrée) autant que technique.
+> **Compte obligatoire, par défaut.** `EXIGER_CONNEXION` vaut `true` sauf si
+> vous écrivez explicitement `false`. Un compte gratuit est donc demandé dès la
+> première simulation, et les deux simulations offertes sont rattachées à
+> l'identifiant du compte. C'est le seul moyen d'empêcher le tour de passe-passe
+> évident : vider son navigateur pour repartir à zéro. Le front s'aligne — le
+> bouton « Lancer ma simulation » ouvre la modale d'inscription tant qu'aucune
+> session n'existe (`exigerCompte()` dans `js/auth.js`).
+>
+> À `false`, le quota anonyme repose sur une empreinte IP + navigateur, que
+> contournent un VPN, une navigation privée ou un autre appareil : cela relève
+> le seuil sans l'étanchéifier.
 
 Le quota n'est décompté **qu'après une génération réussie** : une panne du
 modèle ne coûte plus une simulation au candidat.
@@ -481,9 +486,10 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 3. **Vérification du consentement parental.** L'adresse du responsable légal
    est collectée sous 15 ans, mais aucun message ne lui est envoyé : le
    consentement reste déclaratif.
-4. **Quota anonyme contournable.** L'empreinte IP + navigateur relève le seuil
-   sans l'étanchéifier (un VPN suffit). `EXIGER_CONNEXION=true` rend le blocage
-   réel, au prix d'un compte obligatoire dès la première simulation.
+4. **Friction à l'inscription.** `EXIGER_CONNEXION` vaut désormais `true` par
+   défaut : le quota gratuit est étanche, mais un compte est demandé avant la
+   première simulation. Surveillez le taux d'abandon sur cette étape ; le
+   repli `EXIGER_CONNEXION=false` existe, au prix d'un quota contournable.
 5. **Prix.** Voir « Coût par simulation » : à 9,99 € sur `claude-opus-5`, un
    abonné devient déficitaire au-delà d'une cinquantaine de simulations par
    mois. Décidez entre un modèle moins cher, une limite d'usage équitable

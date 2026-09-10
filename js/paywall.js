@@ -7,15 +7,21 @@
 import { CONFIG, OFFRES, ORDRE_OFFRES, OFFRE_RECOMMANDEE } from './config.js';
 import { t, surChangementLangue } from './i18n.js';
 import { $, $$, stock, echappe, ouvrirModale, fermerModale, toast } from './ui.js';
-import { session, profil } from './auth.js';
+import { session, profil, surChangementCompte } from './auth.js';
 import { messagePaiement } from './age.js';
 
-export const quotaUtilise = () => Number(stock.lire(CONFIG.cles.quota, 0)) || 0;
+/* Le compteur est rattaché au compte, pas au navigateur : chaque
+   inscription ouvre bien ses deux simulations offertes, et un même
+   navigateur partagé ne mélange pas les quotas de deux candidats.
+   Il reste un confort d'affichage — api/_lib/quota.js fait foi. */
+const cleQuota = () => session.id ? `${CONFIG.cles.quota}.${session.id}` : CONFIG.cles.quota;
+
+export const quotaUtilise = () => Number(stock.lire(cleQuota(), 0)) || 0;
 export const quotaRestant = () => Math.max(0, CONFIG.simulationsGratuites - quotaUtilise());
 
 export function consommerSimulation() {
   if (estPremium()) return;
-  stock.ecrire(CONFIG.cles.quota, quotaUtilise() + 1);
+  stock.ecrire(cleQuota(), quotaUtilise() + 1);
   majJauge();
 }
 
@@ -93,11 +99,12 @@ export function ouvrirPaywall(raison = 'quota') {
   const titre = $('#paywall-titre');
   const sur = titre?.previousElementSibling;
   if (raison === 'fin') {
-    if (sur) sur.textContent = 'Belle première simulation';
-    if (titre) titre.textContent = 'Passez au niveau au-dessus';
+    if (sur) sur.textContent = t('paywall.sur_fin', 'Belle simulation');
+    if (titre) titre.textContent = t('paywall.titre_fin', 'Passez au niveau au-dessus');
   } else {
-    if (sur) sur.textContent = `Vos ${CONFIG.simulationsGratuites} simulations gratuites sont utilisées`;
-    if (titre) titre.textContent = 'Continuez à vous entraîner';
+    if (sur) sur.textContent = t('paywall.sur_quota', 'Vos {n} simulations gratuites sont utilisées')
+      .replace('{n}', CONFIG.simulationsGratuites);
+    if (titre) titre.textContent = t('paywall.titre_quota', 'Continuez à vous entraîner');
   }
   // Rappel explicite quand l'utilisateur a déclaré être mineur.
   const avis = $('#avis-mineur');
@@ -236,7 +243,8 @@ export function brancherPaywall() {
   $('#btn-premium')?.addEventListener('click', () => ouvrirPaywall('fin'));
   $('#btn-portail')?.addEventListener('click', ouvrirPortail);
   traiterRetourPaiement();   // asynchrone : n'immobilise pas le démarrage
-  majJauge();
+  // Le quota est rattaché au compte : il se redessine à chaque connexion.
+  surChangementCompte(majJauge);
 }
 
 export { fermerModale };

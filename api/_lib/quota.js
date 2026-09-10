@@ -9,12 +9,13 @@
    Trois cas :
      • Premium (abonnement actif ou pass 48 h valide) → illimité
      • Connecté sans premium → quota compté dans « usages »
-     • Anonyme → quota compté dans « usages_anonymes », par
-       empreinte IP + navigateur
+     • Anonyme → refusé par défaut
 
-   L'empreinte anonyme n'est pas infaillible (VPN, navigation
-   privée, autre appareil). Pour un blocage strict, passez
-   EXIGER_CONNEXION=true : plus aucune simulation anonyme.
+   Le quota anonyme reposait sur une empreinte IP + navigateur, que
+   n'importe quel VPN ou fenêtre privée contourne : les deux
+   simulations offertes se reprenaient à l'infini. Elles sont donc
+   désormais rattachées à un compte. EXIGER_CONNEXION=false rétablit
+   l'ancien comportement (empreinte), à ses risques.
    ═══════════════════════════════════════════════════════════ */
 
 import { createHash } from 'node:crypto';
@@ -22,7 +23,7 @@ import { supabaseAdmin, utilisateurDepuisJeton } from './supabaseAdmin.js';
 import { ipDe } from './ia.js';
 
 export const SIMULATIONS_GRATUITES = Number(process.env.SIMULATIONS_GRATUITES || 2);
-const EXIGER_CONNEXION = process.env.EXIGER_CONNEXION === 'true';
+const EXIGER_CONNEXION = process.env.EXIGER_CONNEXION !== 'false';
 
 /** Empreinte stable et non réversible d'un visiteur anonyme. */
 function empreinteAnonyme(req) {
@@ -72,7 +73,7 @@ export async function verifierQuota(req) {
   if (!utilisateurId && EXIGER_CONNEXION) {
     return { autorise: false, premium: false, utilisateurId: null, empreinte: null,
              utilisees: 0, restant: 0, code: 'connexion',
-             motif: 'Créez un compte gratuit pour lancer une simulation.' };
+             motif: `Créez un compte gratuit pour lancer une simulation : vos ${SIMULATIONS_GRATUITES} simulations offertes y sont rattachées.` };
   }
 
   let utilisees = 0;

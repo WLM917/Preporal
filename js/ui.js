@@ -48,6 +48,8 @@ export function fermerModale(id) {
   m.hidden = true;
   document.body.style.overflow = '';
   if (derniereFocus) derniereFocus.focus({ preventScroll: true });
+  // Certaines actions attendent la fermeture d'une modale (voir exigerCompte).
+  document.dispatchEvent(new CustomEvent('preporal:modale-fermee', { detail: { id: m.id } }));
 }
 
 document.addEventListener('click', e => {

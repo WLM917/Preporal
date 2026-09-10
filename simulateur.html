@@ -157,6 +157,11 @@
   :focus-visible { outline:2px solid rgb(var(--iris2)); outline-offset:3px; border-radius:6px; }
   details > summary::-webkit-details-marker { display:none; }
   .modale[hidden] { display:none; }
+  /* Le bandeau cookies est collé en bas de l'écran : sans cette règle
+     il recouvre le bas des modales, et le bouton « Créer mon compte »
+     devient inatteignable pour un visiteur qui arrive pour la
+     première fois. Une modale passe donc toujours devant. */
+  .modale { z-index: 60; }
   .verre { background:var(--verre); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 
   /* Cartes de l'éventail « chaque oral a ses codes ». */
@@ -227,7 +232,11 @@
         <svg data-icone="sombre" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
         <svg data-icone="clair" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
-      <button id="btn-compte" type="button" class="hidden rounded-lg px-3 py-2 text-sm text-muted transition hover:text-soft sm:block" data-i18n="accueil.connexion">Connexion</button>
+      <div class="relative">
+        <button id="btn-compte" type="button" class="hidden rounded-lg px-3 py-2 text-sm text-muted transition hover:text-soft sm:block" aria-expanded="false" data-i18n="accueil.connexion">Connexion</button>
+        <div id="menu-compte" role="menu" aria-label="Mon compte"
+          class="absolute right-0 z-50 mt-2 hidden w-64 overflow-hidden rounded-xl border border-line bg-surface text-left shadow-carte"></div>
+      </div>
       <a href="./simulateur.html" id="btn-essai" class="rounded-xl bg-inverse px-4 py-2.5 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.essayer_gratuitement">
         Essayer gratuitement
       </a>
@@ -680,37 +689,90 @@
   </div>
 </div>
 
-<!-- Authentification -->
+<!-- Authentification : deux parcours distincts -->
 <div id="modal-auth" class="modale fixed inset-0 z-50 grid place-items-center bg-ink/85 p-4 backdrop-blur" hidden>
   <div class="entree grid w-full max-w-3xl overflow-hidden rounded-3xl border border-line bg-surface shadow-carte md:grid-cols-2" role="dialog" aria-modal="true" aria-labelledby="auth-titre">
 
     <div class="p-6 sm:p-8">
       <div class="flex items-start justify-between gap-4">
-        <h2 id="auth-titre" class="font-display text-xl font-extrabold" data-i18n="accueil.connexion_inscription">Connexion / Inscription</h2>
+        <h2 id="auth-titre" class="font-display text-xl font-extrabold">Se connecter</h2>
         <button type="button" data-fermer class="rounded-lg p-1 text-muted hover:text-soft md:hidden" aria-label="Fermer">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p class="mt-2 text-sm text-muted" data-i18n="accueil.votre_statut_premium_et_votre_historique_vous_suiven">Votre statut Premium et votre historique vous suivent sur tous vos appareils.</p>
 
-      <button id="btn-google" type="button" class="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-raised px-4 py-3 font-medium transition hover:border-iris/50">
+      <p id="auth-raison" class="mt-4 hidden rounded-xl border border-iris/40 bg-iris/10 px-4 py-3 text-sm leading-relaxed text-soft" role="status"></p>
+
+      <!-- Onglets -->
+      <div class="mt-5 inline-flex rounded-xl border border-line bg-ink/60 p-1" role="tablist">
+        <button type="button" data-onglet-auth="connexion" role="tab" aria-selected="true"
+          class="rounded-lg px-4 py-2 text-sm font-medium transition" data-i18n="auth.se_connecter">Se connecter</button>
+        <button type="button" data-onglet-auth="inscription" role="tab" aria-selected="false"
+          class="rounded-lg px-4 py-2 text-sm font-medium text-muted transition" data-i18n="auth.inscription">Inscription</button>
+      </div>
+
+      <button id="btn-google" type="button" class="mt-5 flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-raised px-4 py-3 font-medium transition hover:border-iris/50">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M23 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.2a5.3 5.3 0 0 1-2.3 3.5v2.9h3.7c2.2-2 3.4-5 3.4-8.6z"/><path fill="#34A853" d="M12 24c3.1 0 5.7-1 7.6-2.8l-3.7-2.9c-1 .7-2.3 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.8v3A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.6 14.7a7.2 7.2 0 0 1 0-4.6v-3H1.8a12 12 0 0 0 0 10.6l3.8-3z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.2.6 4.4 1.7l3.3-3.3A11.6 11.6 0 0 0 12 0 12 12 0 0 0 1.8 6.1l3.8 3C6.5 6.7 9 4.8 12 4.8z"/></svg>
-        Continuer avec Google
+        <span data-i18n="auth.continuer_google">Continuer avec Google</span>
       </button>
 
-      <div class="my-5 flex items-center gap-3 text-xs text-muted"><span class="h-px flex-1 bg-line"></span>ou<span class="h-px flex-1 bg-line"></span></div>
+      <div class="my-5 flex items-center gap-3 text-xs text-muted"><span class="h-px flex-1 bg-line"></span><span data-i18n="auth.ou">ou</span><span class="h-px flex-1 bg-line"></span></div>
 
-      <label for="auth-email" class="text-sm font-medium" data-i18n="accueil.adresse_e_mail">Adresse e-mail</label>
-      <input id="auth-email" type="email" autocomplete="email" placeholder="vous@exemple.fr"
-        class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
-      <button id="btn-lien-magique" type="button" class="mt-3 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.recevoir_un_lien_de_connexion">
-        Recevoir un lien de connexion
-      </button>
-      <p id="auth-message" class="mt-3 text-sm text-muted"></p>
+      <!-- ── Connexion ── -->
+      <div id="form-connexion">
+        <label for="auth-email" class="text-sm font-medium" data-i18n="auth.adresse_email">Adresse e-mail</label>
+        <input id="auth-email" type="email" autocomplete="email" placeholder="vous@exemple.fr"
+          class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+
+        <div class="mt-4 flex items-baseline justify-between">
+          <label for="auth-motdepasse" class="text-sm font-medium" data-i18n="auth.mot_de_passe">Mot de passe</label>
+          <button id="btn-oubli" type="button" class="text-xs text-muted underline-offset-2 hover:text-soft hover:underline" data-i18n="auth.mot_de_passe_oublie">Mot de passe oublié ?</button>
+        </div>
+        <input id="auth-motdepasse" type="password" autocomplete="current-password" placeholder="••••••••"
+          class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+
+        <button id="btn-connexion-mdp" type="button" class="mt-5 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="auth.se_connecter">Se connecter</button>
+
+        <button id="btn-lien-magique" type="button" class="mt-3 w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-iris/50" data-i18n="auth.lien_sans_mot_de_passe">Recevoir un lien, sans mot de passe</button>
+      </div>
+
+      <!-- ── Inscription ── -->
+      <div id="form-inscription" class="hidden">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label for="inscr-prenom" class="text-sm font-medium" data-i18n="auth.prenom">Prénom</label>
+            <input id="inscr-prenom" type="text" autocomplete="given-name" maxlength="40" placeholder="Camille"
+              class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+          </div>
+          <div>
+            <label for="inscr-nom" class="text-sm font-medium" data-i18n="auth.nom">Nom</label>
+            <input id="inscr-nom" type="text" autocomplete="family-name" maxlength="40" placeholder="Dupont"
+              class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+          </div>
+        </div>
+
+        <label for="inscr-email" class="mt-4 block text-sm font-medium" data-i18n="auth.adresse_email">Adresse e-mail</label>
+        <input id="inscr-email" type="email" autocomplete="email" placeholder="vous@exemple.fr"
+          class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+
+        <label for="inscr-motdepasse" class="mt-4 block text-sm font-medium" data-i18n="auth.mot_de_passe">Mot de passe</label>
+        <input id="inscr-motdepasse" type="password" autocomplete="new-password" placeholder="8 caractères minimum"
+          class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+        <p id="force-motdepasse" class="mt-2 text-xs text-muted"></p>
+
+        <label for="inscr-confirmation" class="mt-4 block text-sm font-medium" data-i18n="auth.confirmer_mot_de_passe">Confirmer le mot de passe</label>
+        <input id="inscr-confirmation" type="password" autocomplete="new-password" placeholder="••••••••"
+          class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
+
+        <button id="btn-inscrire" type="button" class="mt-5 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="auth.creer_mon_compte">Créer mon compte</button>
+      </div>
+
+      <p id="auth-message" class="mt-3 text-sm text-muted" role="status"></p>
       <p class="mt-4 text-xs leading-relaxed text-muted">
-        En continuant, vous acceptez les
-        <button type="button" data-legal="cgv" class="underline underline-offset-2 hover:text-soft">CGV</button> et la
-        <button type="button" data-legal="confidentialite" class="underline underline-offset-2 hover:text-soft">politique de confidentialité</button>.
+        <span data-i18n="auth.en_continuant">En continuant, vous acceptez les</span>
+        <button type="button" data-legal="cgv" class="underline underline-offset-2 hover:text-soft">CGV</button>
+        <span data-i18n="auth.et_la">et la</span>
+        <button type="button" data-legal="confidentialite" class="underline underline-offset-2 hover:text-soft" data-i18n="auth.politique_confidentialite">politique de confidentialité</button>.
       </p>
     </div>
 
@@ -718,20 +780,24 @@
       <button type="button" data-fermer class="absolute right-4 top-4 rounded-lg p-1 text-muted hover:text-soft" aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
-      <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight" data-i18n="titre.tes_progres">Tes progrès<br>t'attendent</h3>
-      <p class="mt-3 text-sm leading-relaxed text-muted" data-i18n="accueil.continue_a_travailler_tes_oraux_la_ou_tu_t_etais_arr">Continue à travailler tes oraux là où tu t'étais arrêté.</p>
+      <h3 class="font-display text-2xl font-extrabold leading-tight tracking-tight" data-i18n="titre.auth_volet">Un compte, et<br>le jury peut attendre.</h3>
+      <p class="mt-3 text-sm leading-relaxed text-muted" data-i18n="auth.volet_intro">Deux simulations complètes offertes à la création du compte, sans carte bancaire.</p>
       <ul class="mt-7 space-y-4 text-sm">
         <li class="flex gap-3">
           <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-mint/15 text-mint"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
-          <span>Retrouver tes simulations passées</span>
+          <span data-i18n="auth.avantage_deux_simulations">2 simulations gratuites, à la création du compte</span>
         </li>
         <li class="flex gap-3">
           <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-mint/15 text-mint"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
-          <span>Suivre ta courbe de progression</span>
+          <span data-i18n="auth.avantage_relire">Relire vos corrections quand vous voulez</span>
         </li>
         <li class="flex gap-3">
           <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-mint/15 text-mint"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
-          <span>Synchroniser ton accès sur tous tes appareils</span>
+          <span data-i18n="auth.avantage_progression">Suivre votre courbe de progression</span>
+        </li>
+        <li class="flex gap-3">
+          <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-mint/15 text-mint"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+          <span data-i18n="auth.avantage_appareils">Retrouver votre accès sur tous vos appareils</span>
         </li>
       </ul>
     </div>
