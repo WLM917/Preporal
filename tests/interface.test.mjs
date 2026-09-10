@@ -12,7 +12,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +24,8 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = [
   { fichier: 'index.html',       entree: 'app.js' },
   { fichier: 'simulateur.html',  entree: 'simulateur.js' },
-  { fichier: 'temoignages.html', entree: 'temoignages.js' }
+  { fichier: 'temoignages.html', entree: 'temoignages.js' },
+  { fichier: 'compte.html',      entree: 'compte.js' }
 ];
 
 const lire = f => readFileSync(join(RACINE, f), 'utf8');
@@ -281,6 +282,81 @@ test('chaque champ de mot de passe peut être révélé', () => {
       assert.match(balise[0], /type="password"/, `${id} n'est pas un champ mot de passe dans ${fichier}`);
     }
   }
+});
+
+test("les bibliothèques de lecture de documents sont servies par le site", () => {
+  /* Elles venaient d'un CDN : injoignable, l'import de PDF et de DOCX
+     restait bloqué sur « Lecture de… » indéfiniment, sans message.
+     Reproduit dans un navigateur avant correction. */
+  const src = modules.find(m => m.nom === 'upload.js').source;
+  for (const fichier of ['pdf.min.js', 'pdf.worker.min.js', 'mammoth.browser.min.js']) {
+    assert.ok(existsSync(join(RACINE, 'assets', 'vendor', fichier)),
+      `assets/vendor/${fichier} manquant`);
+    assert.ok(src.includes(`assets/vendor/${fichier}`),
+      `upload.js ne pointe pas sur assets/vendor/${fichier}`);
+  }
+  assert.ok(!/cdnjs\.cloudflare\.com/.test(src),
+    'pdf.js et mammoth ne doivent plus dépendre de cdnjs');
+
+  // Et le chargement doit rester borné, sinon on retrouve le blocage.
+  assert.match(src, /DELAI_SCRIPT/, 'le délai de garde du chargement a disparu');
+  assert.match(src, /scriptsCharges\.delete/,
+    'un échec mémorisé condamnerait l\'import jusqu\'au rechargement');
+});
+
+test('les deux champs de documents acceptent la dictée', () => {
+  const src = modules.find(m => m.nom === 'upload.js').source;
+  assert.match(src, /brancherDicteeChamp/, 'la dictée des champs a disparu');
+  assert.match(src, /dicteeSupportee/,
+    'un navigateur sans reconnaissance vocale doit être prévenu, pas laissé avec un bouton mort');
+  // brancherDepot est appelé pour les deux champs : la dictée suit.
+  const sim = modules.find(m => m.nom === 'simulateur.js').source;
+  for (const champ of ['champA', 'champB']) {
+    assert.ok(sim.includes(`idCible: '${champ}'`), `${champ} n'est plus branché`);
+  }
+});
+
+test('les CGV décrivent les offres réellement vendues', async () => {
+  /* Les tarifs et les conditions de reconduction étaient recopiés à la
+     main dans les CGV. L'offre six mois y est restée « paiement unique,
+     sans reconduction » alors qu'elle était devenue un abonnement —
+     c'est le genre d'écart qui relève de l'art. L121-2. */
+  const src = modules.find(m => m.nom === 'legal.js').source;
+
+  assert.match(src, /OFFRES/, 'les CGV doivent lire les offres, pas les recopier');
+  const tarif = /\b\d{1,3},\d{2}\s*€/g;
+  const enDur = [...src.matchAll(tarif)].map(m => m[0]);
+  assert.deepEqual(enDur, [], `tarifs recopiés dans les CGV : ${enDur.join(', ')}`);
+
+  // Toute offre reconduite doit l'annoncer, et rappeler l'art. L215-1.
+  globalThis.window = globalThis.window || { PREPORAL_ENV: {} };
+  const { OFFRES } = await import('../js/config.js');
+  const reconduits = Object.values(OFFRES).filter(o => o.mode === 'subscription');
+  assert.ok(reconduits.length, 'au moins une offre est un abonnement');
+  assert.match(src, /reconduit automatiquement/,
+    'une offre reconduite doit annoncer sa reconduction');
+  assert.match(src, /L215-1/,
+    "l'information avant reconduction est une obligation légale, elle doit figurer aux CGV");
+
+  // Une offre à essai doit dire ce qu'il advient pendant l'essai.
+  if (reconduits.some(o => o.essaiJours > 0)) {
+    assert.match(src, /essai/, "les CGV doivent décrire la période d'essai");
+  }
+});
+
+test("le plan d'un abonnement se lit sur son tarif", () => {
+  /* Écrit en dur, « mensuel » étiquetait tout abonné six mois comme
+     mensuel dès son premier changement de formule dans le portail. */
+  const webhook = readFileSync(join(RACINE, 'api', 'webhook.js'), 'utf8');
+
+  /* On vérifie l'appel, pas l'import : retirer l'appel en laissant
+     l'import laissait le test au vert — constaté en cassant le code. */
+  assert.match(webhook, /planDeLAbonnement\s*\(/,
+    'le plan doit être déduit du tarif souscrit, pas écrit en dur');
+  assert.ok(!/\bplan\s*[:=]\s*'mensuel'/.test(webhook),
+    'un plan « mensuel » écrit en dur étiquette mal tout abonné six mois');
+  assert.match(webhook, /customer\.subscription\.created/,
+    "l'abonnement ouvert en essai arrive par « created »");
 });
 
 test('aucune page ne promet des simulations « sans compte »', async () => {

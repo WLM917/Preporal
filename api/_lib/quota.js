@@ -23,6 +23,12 @@ import { supabaseAdmin, utilisateurDepuisJeton } from './supabaseAdmin.js';
 import { ipDe } from './ia.js';
 
 export const SIMULATIONS_GRATUITES = Number(process.env.SIMULATIONS_GRATUITES || 2);
+
+/* Le coach se goûte avant de s'acheter : quelques échanges par jour
+   suffisent à juger s'il apporte quelque chose, sans ouvrir un canal
+   illimité vers le modèle. Le compteur repart chaque jour, ce qui
+   ramène aussi les candidats le lendemain. */
+export const MESSAGES_COACH_PAR_JOUR = Number(process.env.MESSAGES_COACH_PAR_JOUR || 5);
 const EXIGER_CONNEXION = process.env.EXIGER_CONNEXION !== 'false';
 
 /** Empreinte stable et non réversible d'un visiteur anonyme. */
@@ -137,4 +143,70 @@ export function refuserQuota(res, verdict) {
     code: verdict.code || 'quota',
     restant: 0
   });
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Coach IA : une poignée d'échanges par jour hors abonnement
+   ═══════════════════════════════════════════════════════════ */
+
+/** Jour courant en UTC, « 2026-09-10 » : clé de comptage stable. */
+const jourCourant = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * @returns {Promise<{autorise:boolean, premium:boolean, code?:string,
+ *                    motif?:string, utilisateurId:string|null,
+ *                    jour:string, utilises:number, restant:number}>}
+ */
+export async function verifierQuotaCoach(req) {
+  const sb = supabaseAdmin();
+  const utilisateur = await utilisateurDepuisJeton(req);
+  const utilisateurId = utilisateur?.id || null;
+  const jour = jourCourant();
+
+  if (!sb) {
+    return { autorise: true, premium: false, utilisateurId, jour,
+             utilises: 0, restant: MESSAGES_COACH_PAR_JOUR, sansBase: true };
+  }
+
+  if (utilisateurId && await estPremium(utilisateurId)) {
+    return { autorise: true, premium: true, utilisateurId, jour, utilises: 0, restant: Infinity };
+  }
+
+  if (!utilisateurId) {
+    return { autorise: false, premium: false, utilisateurId: null, jour,
+             utilises: 0, restant: 0, code: 'connexion',
+             motif: `Créez un compte gratuit pour parler au coach : ${MESSAGES_COACH_PAR_JOUR} échanges par jour vous sont offerts.` };
+  }
+
+  const { data } = await sb.from('usages_coach').select('messages')
+    .eq('utilisateur_id', utilisateurId).eq('jour', jour).maybeSingle();
+  const utilises = Number(data?.messages || 0);
+  const restant = Math.max(0, MESSAGES_COACH_PAR_JOUR - utilises);
+
+  if (restant > 0) {
+    return { autorise: true, premium: false, utilisateurId, jour, utilises, restant };
+  }
+
+  return {
+    autorise: false, premium: false, utilisateurId, jour, utilises, restant: 0,
+    code: 'coach',
+    motif: `Vos ${MESSAGES_COACH_PAR_JOUR} échanges du jour avec le coach sont utilisés. Revenez demain, ou passez au Premium pour un accès illimité.`
+  };
+}
+
+/** À n'appeler qu'après une réponse réellement produite. */
+export async function consommerQuotaCoach(verdict) {
+  const sb = supabaseAdmin();
+  if (!sb || !verdict || verdict.premium || verdict.sansBase || !verdict.utilisateurId) return;
+  try {
+    await sb.from('usages_coach').upsert({
+      utilisateur_id: verdict.utilisateurId,
+      jour: verdict.jour,
+      messages: (verdict.utilises || 0) + 1,
+      maj_le: new Date().toISOString()
+    }, { onConflict: 'utilisateur_id,jour' });
+  } catch (e) {
+    console.warn('Quota coach non incrémenté', e?.message || e);
+  }
 }

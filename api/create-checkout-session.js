@@ -1,19 +1,12 @@
 /* ═══════════════════════════════════════════════════════════
    POST /api/create-checkout-session
-   Entrée : { plan: 'mensuel' | 'pass48', email?, userId?, origine? }
+   Entrée : { plan: 'mensuel' | 'pass48' | 'extra', email?, userId?, origine? }
    Sortie : { url }  → le navigateur est redirigé vers Stripe
    ═══════════════════════════════════════════════════════════ */
 
 import Stripe from 'stripe';
 import { utilisateurDepuisJeton } from './_lib/supabaseAdmin.js';
-
-const PLANS = {
-  mensuel: { env: 'STRIPE_PRICE_MENSUEL', mode: 'subscription', nom: 'PrepOral Premium' },
-  pass48:  { env: 'STRIPE_PRICE_PASS48',  mode: 'payment',      nom: 'Pass 48 heures' },
-  // Paiement unique couvrant six mois : ce n'est pas un abonnement,
-  // rien n'est reconduit et l'échéance est posée par le webhook.
-  extra:   { env: 'STRIPE_PRICE_EXTRA',   mode: 'payment',      nom: 'PrepOral Extra' }
-};
+import { PLANS } from './_lib/plans.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ erreur: 'Méthode non autorisée.' });
@@ -45,7 +38,14 @@ export default async function handler(req, res) {
       client_reference_id: identifiant || undefined,
       metadata: { plan, utilisateur_id: identifiant || '' },
       ...(config.mode === 'subscription'
-        ? { subscription_data: { metadata: { plan, utilisateur_id: identifiant || '' } } }
+        ? {
+            subscription_data: {
+              metadata: { plan, utilisateur_id: identifiant || '' },
+              /* Essai gratuit : Stripe ne débite qu'à la fin. Le webhook
+                 accorde déjà l'accès pendant « trialing ». */
+              ...(config.essaiJours > 0 ? { trial_period_days: config.essaiJours } : {})
+            }
+          }
         : { payment_intent_data: { metadata: { plan, utilisateur_id: identifiant || '' } } }),
       allow_promotion_codes: true,
       locale: 'fr',

@@ -16,8 +16,8 @@ import { CONFIG } from './config.js';
 import { $, $$, echappe, toast, ouvrirModale, fermerModale } from './ui.js';
 import { langue, t, surChangementLangue } from './i18n.js';
 
-export const session = { id: null, email: null, jeton: null, prenom: '', nom: '', avatar: '' };
-export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null };
+export const session = { id: null, email: null, jeton: null, prenom: '', nom: '', pseudo: '', avatar: '', couleur: '' };
+export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null, telephone: '' };
 
 export let supabase = null;
 export const configure = () => Boolean(CONFIG.supabase.url && CONFIG.supabase.anonKey);
@@ -30,8 +30,23 @@ export const surChangementCompte = fn => { abonnes.push(fn); fn(); };
 const prevenir = () => abonnes.forEach(fn => fn());
 
 /** Nom affiché : prénom si connu, sinon la partie locale de l'e-mail. */
-export const nomAffiche = () =>
-  session.prenom || (session.email ? session.email.split('@')[0] : '');
+/**
+ * Nom affiché en haut de page, par ordre de préférence :
+ *   1. le pseudonyme, s'il en a choisi un ;
+ *   2. « Prénom N. » — l'initiale du nom suffit, et personne n'a envie
+ *      de voir son adresse e-mail affichée en permanence ;
+ *   3. le prénom seul, puis la partie locale de l'adresse en dernier
+ *      recours (compte Google sans prénom renseigné, par exemple).
+ */
+export function nomAffiche() {
+  if (session.pseudo) return session.pseudo;
+
+  const prenom = (session.prenom || '').trim();
+  const initiale = (session.nom || '').trim().charAt(0).toUpperCase();
+  if (prenom && initiale) return `${prenom} ${initiale}.`;
+  if (prenom) return prenom;
+  return session.email ? session.email.split('@')[0] : '';
+}
 
 /* ── Erreurs renvoyées par les liens Supabase ───────────────
    Un lien de connexion périmé, déjà cliqué, ou pré-chargé par un
@@ -125,10 +140,12 @@ async function appliquerSession(s) {
     session.nom = m.nom || m.last_name || m.family_name || '';
     // Google renseigne avatar_url ou picture ; ailleurs, on affiche une silhouette.
     session.avatar = m.avatar_url || m.picture || '';
+    session.pseudo = (m.pseudo || '').trim();
+    session.couleur = m.couleur || '';
     await chargerProfil();
   } else {
     session.id = session.email = session.jeton = null;
-    session.prenom = session.nom = session.avatar = '';
+    session.prenom = session.nom = session.pseudo = session.avatar = session.couleur = '';
     profil.premium = false; profil.plan = null; profil.premiumJusquA = null;
   }
   majInterface();
@@ -146,7 +163,7 @@ async function chargerProfil() {
   try {
     const { data } = await supabase
       .from('profils')
-      .select('premium, plan, premium_jusqu_au, stripe_client_id')
+      .select('premium, plan, premium_jusqu_au, stripe_client_id, telephone, pseudo, couleur, avatar_url')
       .eq('id', session.id)
       .maybeSingle();
     if (data) {
@@ -155,6 +172,14 @@ async function chargerProfil() {
       profil.plan = data.plan || null;
       profil.premiumJusquA = data.premium_jusqu_au || null;
       profil.stripeClientId = data.stripe_client_id || null;
+      profil.telephone = data.telephone || '';
+
+      /* La base complète ce que les métadonnées ne portent pas : un
+         compte créé avant l'ajout du pseudonyme, ou modifié depuis un
+         autre appareil, retrouve ainsi ses réglages. */
+      session.pseudo = session.pseudo || data.pseudo || '';
+      session.couleur = session.couleur || data.couleur || '';
+      session.avatar = session.avatar || data.avatar_url || '';
     }
   } catch (e) { console.warn('Profil non chargé', e); }
 }
@@ -197,12 +222,12 @@ export async function connexionGoogle() {
 
 /** Inscription par e-mail et mot de passe.
     @returns {Promise<false|{confirmationRequise:boolean, dejaInscrit?:boolean}>} */
-export async function inscription({ prenom, nom, email, motDePasse }) {
+export async function inscription({ prenom, nom, pseudo, email, motDePasse }) {
   if (!supabase) { toast("Inscription indisponible : Supabase n'est pas configuré.", 'erreur'); return false; }
   const { data, error } = await supabase.auth.signUp({
     email,
     password: motDePasse,
-    options: { data: donnees({ prenom, nom }), emailRedirectTo: retour() }
+    options: { data: donnees({ prenom, nom, pseudo: (pseudo || '').trim() }), emailRedirectTo: retour() }
   });
   if (error) { toast(lisible(error), 'erreur'); return false; }
 
@@ -344,15 +369,43 @@ export function majInterface() {
 /* Silhouette par défaut : le jour où une photo de profil sera
    téléversée, il suffira de renseigner session.avatar. Les comptes
    Google en apportent déjà une. */
-const SILHOUETTE = '<svg viewBox="0 0 24 24" width="60%" height="60%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+/* La silhouette occupait 60 % de la pastille : trop grande, elle
+   débordait visuellement du cercle. 52 % la laisse respirer. */
+const SILHOUETTE = '<svg viewBox="0 0 24 24" width="52%" height="52%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
-/** Pastille de compte : photo si on en a une, silhouette sinon. */
+/* Huit teintes, toutes assez sombres pour qu'une silhouette blanche
+   s'y détache. Deux personnes peuvent partager la même : le but est
+   de ne pas voir huit pastilles violettes identiques, pas d'attribuer
+   une couleur unique à chacun. */
+export const COULEURS_AVATAR = {
+  iris:   '#7C5CFF',
+  ocean:  '#2563EB',
+  menthe: '#0E9F6E',
+  ambre:  '#B45309',
+  corail: '#DC2626',
+  rose:   '#DB2777',
+  prune:  '#7E22CE',
+  ardoise:'#475569'
+};
+const NOMS_COULEURS = Object.keys(COULEURS_AVATAR);
+
+/** Couleur d'un compte : celle qu'il a choisie, sinon une tirée de son identifiant. */
+export function couleurAvatar(id = session.id, choix = session.couleur) {
+  if (choix && COULEURS_AVATAR[choix]) return COULEURS_AVATAR[choix];
+  const graine = String(id || session.email || '?');
+  let somme = 0;
+  for (let i = 0; i < graine.length; i++) somme = (somme * 31 + graine.charCodeAt(i)) >>> 0;
+  return COULEURS_AVATAR[NOMS_COULEURS[somme % NOMS_COULEURS.length]];
+}
+
+/** Pastille de compte : photo si on en a une, silhouette colorée sinon. */
 function avatar(taille) {
   if (session.avatar) {
     return `<img src="${echappe(session.avatar)}" alt="" referrerpolicy="no-referrer"
       class="${taille} shrink-0 rounded-full border border-line object-cover">`;
   }
-  return `<span class="${taille} grid shrink-0 place-items-center rounded-full bg-iris text-white">${SILHOUETTE}</span>`;
+  return `<span class="${taille} grid shrink-0 place-items-center rounded-full text-white"
+    style="background:${couleurAvatar()}">${SILHOUETTE}</span>`;
 }
 
 /** Le bouton d'en-tête devient un menu de compte une fois connecté. */
@@ -395,7 +448,8 @@ function majBoutonCompte(connecte) {
         </p>
       </div>
     </div>
-    <a href="./index.html?vue=compte" role="menuitem" class="block px-4 py-2.5 text-sm text-muted transition hover:bg-raised hover:text-soft">${echappe(t('compte.gerer_mon_compte', 'Gérer mon compte'))}</a>
+    <a href="./compte.html" role="menuitem" class="block px-4 py-2.5 text-sm text-muted transition hover:bg-raised hover:text-soft">${echappe(t('compte.gerer_mon_compte', 'Gérer mon compte'))}</a>
+    <a href="./index.html?vue=compte" role="menuitem" class="block px-4 py-2.5 text-sm text-muted transition hover:bg-raised hover:text-soft">${echappe(t('accueil.mes_simulations_passees', 'Mes simulations passées'))}</a>
     <button type="button" data-compte="abonnement" role="menuitem" class="block w-full px-4 py-2.5 text-left text-sm text-muted transition hover:bg-raised hover:text-soft">
       ${echappe(profil.premium
         ? t('accueil.gerer_mon_abonnement', 'Gérer mon abonnement')
@@ -456,6 +510,9 @@ function brancherBoutons() {
   $('#btn-deconnexion')?.addEventListener('click', deconnexion);
 
   brancherModale();
+
+  // compte.html modifie le profil : l'en-tête doit suivre sans rechargement.
+  document.addEventListener('preporal:compte-modifie', majInterface);
 }
 
 /* ── Afficher / masquer un mot de passe ─────────────────────
@@ -570,6 +627,7 @@ function brancherModale() {
   btnInscrire?.addEventListener('click', async () => {
     const prenom = $('#inscr-prenom')?.value.trim() || '';
     const nom = $('#inscr-nom')?.value.trim() || '';
+    const pseudo = $('#inscr-pseudo')?.value.trim() || '';
     const email = $('#inscr-email')?.value.trim() || '';
     const mdp = $('#inscr-motdepasse')?.value || '';
     const confirmation = $('#inscr-confirmation')?.value || '';
@@ -582,7 +640,7 @@ function brancherModale() {
       return dire(t('auth.confirmation_differente', 'Les deux mots de passe ne correspondent pas.'), true, '#inscr-confirmation');
 
     await pendant(btnInscrire, t('auth.creation_en_cours', 'Création du compte…'), async () => {
-      const r = await inscription({ prenom, nom, email, motDePasse: mdp });
+      const r = await inscription({ prenom, nom, pseudo, email, motDePasse: mdp });
       if (!r) return;
 
       if (r.dejaInscrit) {

@@ -5,7 +5,8 @@
 import { CONFIG } from './config.js';
 import { $, echappe, toast } from './ui.js';
 import { Voix, Dictee, dicteeSupportee, boutonEcoute, arreterEcoute } from './speech.js';
-import { session } from './auth.js';
+import { session, exigerCompte } from './auth.js';
+import { ouvrirPaywall } from './paywall.js';
 import { langue, t } from './i18n.js';
 
 const historique = [];
@@ -69,6 +70,15 @@ async function envoyer(texteSaisi) {
       headers: { 'Content-Type': 'application/json', ...(session.jeton ? { Authorization: 'Bearer ' + session.jeton } : {}) },
       body: JSON.stringify({ messages: historique.slice(-16), langue: langue() })
     });
+    /* 402 : le serveur refuse, il ne panne pas. Servir malgré tout une
+       réponse hors ligne reviendrait à contourner la limite qu'on vient
+       de poser — c'est exactement ce que faisait ce bloc. */
+    if (r.status === 402) {
+      const data = await r.json().catch(() => ({}));
+      attente.remove();
+      historique.pop();                       // la question n'a pas été traitée
+      return refuser(data.code, data.erreur);
+    }
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     const reponse = (data.reponse || '').trim();
@@ -77,15 +87,42 @@ async function envoyer(texteSaisi) {
     attente.remove();
     bulle('assistant', reponse);
     historique.push({ role: 'assistant', content: reponse });
+    majSolde(data.restant);
     if (lectureAuto) Voix.parler(reponse.replace(/[*#•]/g, ''), { langue: langueVoix, debit: 1 });
   } catch {
     attente.remove();
-    const repli = "Le coach n'est pas joignable pour le moment (l'API n'est pas configurée ou le réseau a coupé). En attendant, une méthode qui marche presque toujours : une phrase d'accroche, trois idées annoncées, un exemple daté et chiffré par idée, puis une conclusion qui répond à la question posée.";
+    const repli = t('coach.repli', "Le coach n'est pas joignable pour le moment (l'API n'est pas configurée ou le réseau a coupé). En attendant, une méthode qui marche presque toujours : une phrase d'accroche, trois idées annoncées, un exemple daté et chiffré par idée, puis une conclusion qui répond à la question posée.");
     bulle('assistant', repli);
     if (lectureAuto) Voix.parler(repli, { langue: langueVoix });
   } finally {
     occupe = false;
   }
+}
+
+/** Refus du serveur : compte manquant, ou échanges du jour épuisés. */
+function refuser(code, message) {
+  const texte = message || t('coach.limite_atteinte',
+    'Vos échanges du jour avec le coach sont utilisés.');
+  bulle('assistant', texte);
+
+  if (code === 'connexion') {
+    exigerCompte(t('coach.raison_compte',
+      'Créez votre compte gratuit pour parler au coach : quelques échanges par jour vous sont offerts.'));
+  } else {
+    setTimeout(() => ouvrirPaywall('quota'), 600);
+  }
+}
+
+/** Rappel discret du solde du jour, sous la zone de saisie. */
+function majSolde(restant) {
+  const el = $('#solde-coach');
+  if (!el) return;
+  if (restant === null || restant === undefined) { el.textContent = ''; return; }
+  el.textContent = restant > 0
+    ? t(restant > 1 ? 'coach.echanges_restants' : 'coach.echange_restant',
+        `${restant} échange${restant > 1 ? 's' : ''} offert${restant > 1 ? 's' : ''} aujourd'hui`)
+        .replace('{n}', restant)
+    : t('coach.dernier_echange', 'Dernier échange offert du jour.');
 }
 
 function brancherMicro() {

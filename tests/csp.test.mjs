@@ -6,9 +6,12 @@
 
    Ce test existe parce qu'une CSP trop stricte avait cassé
    l'import de PDF, de DOCX et la lecture optique : les scripts
-   étaient chargés depuis cdnjs.cloudflare.com, absent de la
-   directive script-src. Rien ne le signalait au build — la page
-   se chargeait, seul l'import échouait silencieusement.
+   étaient chargés depuis un CDN absent de script-src. Rien ne le
+   signalait au build — la page se chargeait, seul l'import
+   échouait silencieusement.
+
+   pdf.js et mammoth sont depuis servis par le site (assets/vendor).
+   Seule la lecture optique reste distante.
    ═══════════════════════════════════════════════════════════ */
 
 import { test } from 'node:test';
@@ -47,7 +50,7 @@ function hotesReferences() {
     .filter(e => e.isFile() && e.name.endsWith('.js'))
     .map(e => join(RACINE, 'js', 'langues', e.name));
   const fichiers = [join(RACINE, 'index.html'), join(RACINE, 'simulateur.html'),
-    join(RACINE, 'temoignages.html'), ...modules, ...traductions];
+    join(RACINE, 'temoignages.html'), join(RACINE, 'compte.html'), ...modules, ...traductions];
   const hotes = new Set();
   for (const f of fichiers) {
     for (const m of readFileSync(f, 'utf8').matchAll(/https:\/\/([a-zA-Z0-9.-]+)/g)) {
@@ -83,7 +86,6 @@ test('chaque hôte externe utilisé par le front est autorisé quelque part', ()
     'https://fonts.googleapis.com': 'style-src',
     'https://fonts.gstatic.com': 'font-src',
     'https://esm.sh': 'script-src',
-    'https://cdnjs.cloudflare.com': 'script-src',
     'https://cdn.jsdelivr.net': 'script-src'
   };
   for (const hote of hotesReferences()) {
@@ -95,11 +97,16 @@ test('chaque hôte externe utilisé par le front est autorisé quelque part', ()
 });
 
 test('les bibliothèques d\'extraction de documents peuvent être chargées', () => {
-  // pdf.js et mammoth viennent de cdnjs ; tesseract.js de jsdelivr.
-  for (const hote of ['https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net']) {
+  // Seule la lecture optique vient encore d'un CDN.
+  for (const hote of ['https://cdn.jsdelivr.net']) {
     assert.ok(autorise('script-src', hote), `${hote} absent de script-src`);
     assert.ok(autorise('connect-src', hote), `${hote} absent de connect-src`);
     assert.ok(autorise('worker-src', hote), `${hote} absent de worker-src`);
+  }
+  // pdf.js et mammoth sont servis par le site : 'self' suffit, et le
+  // worker de pdf.js est désormais de même origine.
+  for (const d of ['script-src', 'worker-src']) {
+    assert.ok((directives[d] || []).includes("'self'"), `${d} doit autoriser 'self'`);
   }
   // La lecture optique télécharge ses données de langue à l'exécution.
   assert.ok(autorise('connect-src', 'https://tessdata.projectnaptha.com'),

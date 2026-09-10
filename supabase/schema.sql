@@ -12,6 +12,10 @@ create table if not exists public.profils (
   email             text,
   prenom            text,
   nom               text,
+  pseudo            text,                       -- affiché à la place de l'adresse
+  telephone         text,                       -- facultatif
+  couleur           text,                       -- teinte de la pastille sans photo
+  avatar_url        text,
   langue            text,                       -- 'fr' | 'en' | 'es'
   premium           boolean not null default false,
   plan              text,                       -- 'mensuel' | 'pass48'
@@ -24,6 +28,10 @@ create table if not exists public.profils (
 -- Pour un projet créé avant l'ajout du formulaire d'inscription.
 alter table public.profils add column if not exists prenom text;
 alter table public.profils add column if not exists nom text;
+alter table public.profils add column if not exists pseudo text;
+alter table public.profils add column if not exists telephone text;
+alter table public.profils add column if not exists couleur text;
+alter table public.profils add column if not exists avatar_url text;
 alter table public.profils add column if not exists langue text;
 
 alter table public.profils enable row level security;
@@ -48,19 +56,27 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profils (id, email, prenom, nom, langue)
+  insert into public.profils (id, email, prenom, nom, pseudo, couleur, avatar_url, langue)
   values (
     new.id,
     new.email,
     nullif(new.raw_user_meta_data->>'prenom', ''),
     nullif(new.raw_user_meta_data->>'nom', ''),
+    nullif(new.raw_user_meta_data->>'pseudo', ''),
+    nullif(new.raw_user_meta_data->>'couleur', ''),
+    -- Google et les autres fournisseurs apportent déjà une photo.
+    coalesce(nullif(new.raw_user_meta_data->>'avatar_url', ''),
+             nullif(new.raw_user_meta_data->>'picture', '')),
     nullif(new.raw_user_meta_data->>'langue', '')
   )
   on conflict (id) do update set
-    email  = excluded.email,
-    prenom = coalesce(excluded.prenom, public.profils.prenom),
-    nom    = coalesce(excluded.nom,    public.profils.nom),
-    langue = coalesce(excluded.langue, public.profils.langue);
+    email      = excluded.email,
+    prenom     = coalesce(excluded.prenom,     public.profils.prenom),
+    nom        = coalesce(excluded.nom,        public.profils.nom),
+    pseudo     = coalesce(excluded.pseudo,     public.profils.pseudo),
+    couleur    = coalesce(excluded.couleur,    public.profils.couleur),
+    avatar_url = coalesce(excluded.avatar_url, public.profils.avatar_url),
+    langue     = coalesce(excluded.langue,     public.profils.langue);
   return new;
 end;
 $$;
@@ -203,3 +219,57 @@ alter table public.avis
 
 comment on column public.avis.type_oral is
   'Identifiant d''épreuve (entretien, grand-oral, brevet, concours, pitch, matiere, langue)';
+
+
+-- ── Échanges avec le coach, par jour ───────────────────────
+-- Hors abonnement, le coach s'essaie : quelques échanges par
+-- jour, comptés ici. La clé porte le jour, le compteur repart
+-- donc seul le lendemain, sans tâche de nettoyage.
+create table if not exists public.usages_coach (
+  utilisateur_id  uuid not null references auth.users(id) on delete cascade,
+  jour            date not null,
+  messages        integer not null default 0,
+  maj_le          timestamptz not null default now(),
+  primary key (utilisateur_id, jour)
+);
+
+alter table public.usages_coach enable row level security;
+
+drop policy if exists "usage coach visible par son proprietaire" on public.usages_coach;
+create policy "usage coach visible par son proprietaire"
+  on public.usages_coach for select using (auth.uid() = utilisateur_id);
+
+-- L'écriture passe par la clé de service : le compteur ne doit pas
+-- être modifiable depuis le navigateur.
+
+-- ── Photos de profil ───────────────────────────────────────
+-- Un compartiment public en lecture (l'URL d'une photo n'a rien de
+-- secret), mais où chacun n'écrit que dans son propre dossier :
+-- les fichiers sont rangés sous « <identifiant>/… ».
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 2097152,
+        array['image/jpeg','image/png','image/webp','image/gif'])
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 2097152,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif'];
+
+drop policy if exists "photos de profil visibles de tous" on storage.objects;
+create policy "photos de profil visibles de tous"
+  on storage.objects for select
+  using (bucket_id = 'avatars');
+
+drop policy if exists "chacun depose sa photo" on storage.objects;
+create policy "chacun depose sa photo"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "chacun remplace sa photo" on storage.objects;
+create policy "chacun remplace sa photo"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "chacun supprime sa photo" on storage.objects;
+create policy "chacun supprime sa photo"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);

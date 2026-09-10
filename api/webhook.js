@@ -15,6 +15,7 @@
 
 import Stripe from 'stripe';
 import { majProfil, profilParClientStripe } from './_lib/supabaseAdmin.js';
+import { planDeLAbonnement } from './_lib/plans.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -25,13 +26,16 @@ const corpsBrut = req => new Promise((ok, ko) => {
   req.on('error', ko);
 });
 
-const JOUR = 24 * 60 * 60 * 1000;
 
 /* Durée d'accès des offres à paiement unique. L'abonnement mensuel
    n'y figure pas : son échéance vient des évènements subscription.*. */
+/* Durées des offres à paiement unique. « extra » n'y figure plus :
+   c'est un abonnement semestriel depuis l'ajout de la semaine
+   d'essai, et son échéance vient de current_period_end. L'y laisser
+   aurait figé une date à six mois, quels que soient l'essai en cours
+   ou une résiliation ultérieure. */
 const DUREES = {
-  pass48: 48 * 60 * 60 * 1000,
-  extra: 183 * JOUR            // six mois
+  pass48: 48 * 60 * 60 * 1000
 };
 
 export default async function handler(req, res) {
@@ -59,6 +63,8 @@ export default async function handler(req, res) {
         const s = evenement.data.object;
         const utilisateurId = s.client_reference_id || s.metadata?.utilisateur_id || null;
         const plan = s.metadata?.plan || (s.mode === 'subscription' ? 'mensuel' : 'pass48');
+        /* Un abonnement pose son échéance via les évènements
+           subscription.* : on ne lui invente pas de date ici. */
 
         const duree = DUREES[plan];
         const jusquA = duree
@@ -78,19 +84,30 @@ export default async function handler(req, res) {
         break;
       }
 
+      /* « created » compte autant que « updated » : un abonnement ouvert
+         avec une semaine d'essai arrive en statut « trialing », et c'est
+         cet évènement-là qui l'annonce. */
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = evenement.data.object;
         const actif = ['active', 'trialing', 'past_due'].includes(sub.status);
         const utilisateurId = sub.metadata?.utilisateur_id
           || (await profilParClientStripe(String(sub.customer)))?.id;
+
+        /* L'offre se lit sur le tarif souscrit. Écrire « mensuel » en dur
+           étiquetait tout abonné Extra comme mensuel dès qu'il changeait
+           de formule depuis le portail client. */
+        const plan = planDeLAbonnement(sub) || 'mensuel';
+
         if (utilisateurId) {
           await majProfil(utilisateurId, {
             premium: actif,
-            plan: 'mensuel',
+            plan,
             premium_jusqu_au: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
             stripe_client_id: String(sub.customer)
           });
         }
+        console.log('Abonnement', { plan, statut: sub.status, utilisateurId });
         break;
       }
 

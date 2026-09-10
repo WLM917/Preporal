@@ -584,7 +584,10 @@
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m0 0-6-6m6 6-6 6"/></svg>
         </button>
       </div>
-      <p id="etat-micro-coach" class="mt-2 text-xs text-muted" data-i18n="accueil.appuyez_sur_le_micro_pour_parler_a_votre_coach">Appuyez sur le micro pour parler à votre coach.</p>
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <p id="etat-micro-coach" class="text-xs text-muted" data-i18n="accueil.appuyez_sur_le_micro_pour_parler_a_votre_coach">Appuyez sur le micro pour parler à votre coach.</p>
+        <p id="solde-coach" class="text-xs text-muted tabular-nums" role="status"></p>
+      </div>
     </div>
   </div>
 </section>
@@ -777,6 +780,15 @@
               class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
           </div>
         </div>
+
+        <label for="inscr-pseudo" class="mt-4 block text-sm font-medium">
+          <span data-i18n="auth.pseudonyme">Pseudonyme</span>
+          <span class="ml-1 text-xs font-normal text-muted" data-i18n="auth.facultatif">(facultatif)</span>
+        </label>
+        <input id="inscr-pseudo" type="text" autocomplete="nickname" maxlength="24" placeholder="Cam"
+          class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none"
+          data-i18n-attr="placeholder:auth.pseudonyme_exemple">
+        <p class="mt-2 text-xs text-muted" data-i18n="auth.pseudonyme_aide">Affiché en haut de page à la place de votre adresse. Sans pseudonyme, ce sera « Prénom N. ».</p>
 
         <label for="inscr-email" class="mt-4 block text-sm font-medium" data-i18n="auth.adresse_email">Adresse e-mail</label>
         <input id="inscr-email" type="email" autocomplete="email" placeholder="vous@exemple.fr"
