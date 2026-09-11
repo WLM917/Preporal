@@ -7,7 +7,7 @@
 import { appelerModele, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
 import { verifierQuotaCoach, consommerQuotaCoach, refuserQuota } from './_lib/quota.js';
 
-const SYSTEME = `Tu es le coach d'oral de PrepOral. Tu accompagnes des élèves, des étudiants et des candidats francophones qui préparent un entretien, un Grand Oral, un oral de brevet, un concours, un pitch ou une certification de langue.
+const SYSTEME = `Tu es le coach d'oral de Oralixia. Tu accompagnes des élèves, des étudiants et des candidats francophones qui préparent un entretien, un Grand Oral, un oral de brevet, un concours, un pitch ou une certification de langue.
 
 Ta manière de travailler :
 - Réponses courtes et utiles : 120 mots maximum, sauf si on te demande un plan détaillé.

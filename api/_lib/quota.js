@@ -33,7 +33,7 @@ const EXIGER_CONNEXION = process.env.EXIGER_CONNEXION !== 'false';
 
 /** Empreinte stable et non réversible d'un visiteur anonyme. */
 function empreinteAnonyme(req) {
-  const sel = process.env.SEL_EMPREINTE || process.env.SUPABASE_SERVICE_ROLE_KEY || 'prepOral';
+  const sel = process.env.SEL_EMPREINTE || process.env.SUPABASE_SERVICE_ROLE_KEY || 'oralixia';
   const brut = [ipDe(req), req.headers['user-agent'] || '', req.headers['accept-language'] || ''].join('|');
   return createHash('sha256').update(sel + brut).digest('hex').slice(0, 40);
 }

@@ -1,4 +1,4 @@
-# PrepOral
+# Oralixia
 
 Simulateur d'oraux assisté par IA : entretien d'embauche ou de stage, Grand Oral,
 oral du brevet, concours et grandes écoles, pitch, oral de matière, certifications
@@ -20,14 +20,16 @@ chronomètre, puis rend un bilan noté avec une analyse d'éloquence et un expor
 6. [Configuration Supabase](#configuration-supabase)
 7. [Mise en production](#mise-en-production)
 8. [Import de documents et dictée](#import-de-documents-et-dictée)
-9. [Comptes et inscription](#comptes-et-inscription)
-10. [Fonctionnement du paywall](#fonctionnement-du-paywall)
-11. [Modération des avis](#modération-des-avis)
-12. [Âge et consentement parental](#âge-et-consentement-parental)
-13. [Coût par simulation](#coût-par-simulation)
-14. [Langues et accessibilité](#langues-et-accessibilité)
-15. [Compatibilité navigateurs](#compatibilité-navigateurs)
-16. [À faire avant de vendre](#à-faire-avant-de-vendre)
+9. [Voix, appel et oral](#voix-appel-et-oral)
+10. [Comptes et inscription](#comptes-et-inscription)
+11. [Fonctionnement du paywall](#fonctionnement-du-paywall)
+12. [Modération des avis](#modération-des-avis)
+13. [Âge et consentement parental](#âge-et-consentement-parental)
+14. [Coût par simulation](#coût-par-simulation)
+15. [Langues et accessibilité](#langues-et-accessibilité)
+16. [Compatibilité navigateurs](#compatibilité-navigateurs)
+17. [Brancher oralixia.com](#brancher-oralixiacom)
+18. [À faire avant de vendre](#à-faire-avant-de-vendre)
 
 ---
 
@@ -172,8 +174,8 @@ La suite couvre ce qui casse en silence :
    | Produit | Type de tarif | Montant | Variable |
    |---|---|---|---|
    | **Pass 48 heures** | ponctuel | 4,90 € TTC | `STRIPE_PRICE_PASS48` |
-   | **PrepOral Premium** | récurrent mensuel | 9,90 € TTC | `STRIPE_PRICE_MENSUEL` |
-   | **PrepOral Extra** | ponctuel | 54,90 € TTC | `STRIPE_PRICE_EXTRA` |
+   | **Oralixia Premium** | récurrent mensuel | 9,90 € TTC | `STRIPE_PRICE_MENSUEL` |
+   | **Oralixia Extra** | ponctuel | 54,90 € TTC | `STRIPE_PRICE_EXTRA` |
 
    L'offre Extra est un **paiement unique** couvrant six mois, pas un abonnement :
    rien n'est reconduit et l'échéance est posée par `api/webhook.js`.
@@ -213,7 +215,7 @@ Carte de test : `4242 4242 4242 4242`, date future, CVC quelconque.
    compte avec l'adresse d'un tiers.
 4. Reportez `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` dans les variables
    d'environnement Vercel.
-5. Dans `index.html`, renseignez le bloc `window.PREPORAL_ENV` avec l'URL du
+5. Dans `index.html`, renseignez le bloc `window.ORALIXIA_ENV` avec l'URL du
    projet et la clé **anon public** (ces deux valeurs sont publiques par
    conception ; la clé `service_role`, elle, ne doit jamais y figurer).
 
@@ -262,6 +264,44 @@ Vérifications, dans l'ordre, si le symptôme persiste :
 4. Google OAuth : l'URL `https://<projet>.supabase.co/auth/v1/callback` doit
    figurer dans les *Authorized redirect URIs* de la console Google Cloud.
 
+### Activer la connexion Google
+
+Tant que le fournisseur n'est pas activé, le bouton Google ne mène nulle part :
+Supabase répond `{"error_code":"validation_failed","msg":"Unsupported provider:
+provider is not enabled"}`, que le navigateur affiche tel quel — sur un écran
+sombre, cela ressemble à une page noire. `js/auth.js` sonde désormais l'URL
+avant de quitter la page et affiche un message clair, mais seule la
+configuration ci-dessous rend le bouton utile.
+
+**1. Côté Google Cloud** (console.cloud.google.com) :
+
+| Étape | Valeur |
+|---|---|
+| Créer un projet | *Oralixia* |
+| APIs & Services → OAuth consent screen | Externe, nom de l'application, e-mail de contact, lien vers les CGV et la politique de confidentialité |
+| Credentials → Create → OAuth client ID | Type **Web application** |
+| Authorized JavaScript origins | `https://preporal.vercel.app` (puis votre domaine) |
+| Authorized redirect URIs | `https://<projet>.supabase.co/auth/v1/callback` |
+
+L'URI de redirection est celle de **Supabase**, pas celle de votre site : c'est
+Supabase qui reçoit le retour de Google, puis vous renvoie chez vous.
+
+**2. Côté Supabase** : Authentication → Sign In / Providers → Google → activez,
+collez le *Client ID* et le *Client Secret*, enregistrez.
+
+**3. Vérifiez** sans ouvrir le navigateur :
+
+```bash
+curl -s "https://<projet>.supabase.co/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fvotre-site%2F" | head -c 200
+```
+
+Une erreur JSON signifie que le fournisseur n'est toujours pas actif. Une
+réponse vide avec une redirection signifie que tout est en place.
+
+> Tant que l'écran de consentement Google est en mode **Test**, seuls les
+> comptes ajoutés en *Test users* peuvent se connecter. Passez-le en
+> **Production** avant d'ouvrir les inscriptions.
+
 ### « Je m'inscris et je ne reçois aucun message »
 
 Trois causes, dans l'ordre de fréquence.
@@ -301,17 +341,17 @@ const donnees = (extra = {}) => ({ langue: langue(), ...extra });
   <h2>Confirm your account</h2>
   <p>Hi {{ .Data.prenom }}, one click and your two free sessions are yours.</p>
   <p><a href="{{ .ConfirmationURL }}">Confirm my email address</a></p>
-  <p>Didn't sign up for PrepOral? Ignore this message.</p>
+  <p>Didn't sign up for Oralixia? Ignore this message.</p>
 {{ else if eq .Data.langue "es" }}
   <h2>Confirma tu cuenta</h2>
   <p>Hola {{ .Data.prenom }}: un clic y tus dos simulaciones gratuitas son tuyas.</p>
   <p><a href="{{ .ConfirmationURL }}">Confirmar mi correo</a></p>
-  <p>¿No te has registrado en PrepOral? Ignora este mensaje.</p>
+  <p>¿No te has registrado en Oralixia? Ignora este mensaje.</p>
 {{ else }}
   <h2>Confirmez votre compte</h2>
   <p>Bonjour {{ .Data.prenom }}, un clic et vos deux simulations offertes sont à vous.</p>
   <p><a href="{{ .ConfirmationURL }}">Confirmer mon adresse</a></p>
-  <p>Vous n'avez pas créé de compte PrepOral ? Ignorez ce message.</p>
+  <p>Vous n'avez pas créé de compte Oralixia ? Ignorez ce message.</p>
 {{ end }}
 ```
 
@@ -322,7 +362,7 @@ mieux qu'un message vide.
 L'objet du message se règle juste au-dessus du corps, dans le même onglet.
 La documentation Supabase ne dit rien de l'usage des conditions dans ce champ :
 testez-le sur votre projet avant de compter dessus, et prévoyez à défaut un
-objet qui passe dans les trois langues — « PrepOral · confirmation /
+objet qui passe dans les trois langues — « Oralixia · confirmation /
 confirmación » — plutôt qu'un objet anglais devant un corps français.
 
 Quatre points d'attention :
@@ -458,6 +498,81 @@ clavier sur un téléphone décourage avant même d'avoir commencé. Un bouton
 « Dicter » sous chaque zone de dépôt écrit la parole dans le champ, où elle
 reste modifiable, dans la langue de l'interface. Les navigateurs sans
 reconnaissance vocale l'annoncent au lieu d'afficher un bouton mort.
+
+---
+
+## Voix, appel et oral
+
+### Qualité de la voix
+
+Une voix de synthèse paraît robotique pour trois raisons. Deux se corrigent
+sans rien payer, et `js/speech.js` s'en charge :
+
+1. **La mauvaise voix est choisie.** Les systèmes récents embarquent des voix
+   neuronales bien meilleures que celle par défaut, mais elles ne sont pas en
+   tête de liste. Les voix sont donc **classées** : `localService === false`
+   (voix servie par le réseau, donc presque toujours neuronale) pèse lourd, les
+   marqueurs `neural`, `enhanced`, `premium`, `siri`, `wavenet` aussi, et les
+   voix `compact` ou `espeak` sont reléguées.
+2. **Le texte est lu d'un bloc, sans respiration.** Il est découpé en phrases,
+   et une question monte légèrement en fin de phrase — ce que fait une voix
+   humaine, et dont l'absence donne le ton monocorde.
+3. **Le moteur lui-même est limité.** Cette part ne se corrige pas côté
+   navigateur.
+
+> **Sur iPhone et iPad**, la meilleure voix française n'est pas installée par
+> défaut. Réglages → Accessibilité → Contenu énoncé → Voix → Français →
+> téléchargez une voix **Améliorée** ou **Premium**. Le gain est immédiat et
+> vaut tous les réglages logiciels.
+
+**Pour aller plus loin — voix neuronale distante.** Pour une voix de niveau
+Gemini ou Claude, il faut un service de synthèse côté serveur, et cela se paie
+à l'usage. Ordres de grandeur, sur une réponse de coach de 600 caractères :
+
+| Service | Tarif indicatif | Coût par réponse |
+|---|---|---|
+| Google Cloud TTS (Neural2) | ~16 $ / million de caractères | ~0,01 $ |
+| Amazon Polly (Neural) | ~16 $ / million de caractères | ~0,01 $ |
+| ElevenLabs | variable selon l'offre | le plus cher, le plus naturel |
+
+À une dizaine de réponses par simulation, la voix coûterait environ autant que
+le modèle lui-même : à décider avec les tarifs, pas avant. Les tarifs
+ci-dessus sont des ordres de grandeur — vérifiez-les chez le fournisseur avant
+d'arbitrer.
+
+### Appeler le coach, passer l'oral à la voix
+
+`js/appel.js` tient une conversation entièrement orale : on parle, on se tait,
+la réponse arrive à voix haute, l'écoute reprend.
+
+La boucle alterne **strictement** écoute et parole, jamais les deux ensemble :
+le micro entendrait la voix de synthèse et se répondrait à lui-même. C'est
+cette contrainte qui dicte toute la mécanique. La fin d'un tour se devine au
+silence — une seconde et demie par défaut : plus court, on coupe la parole de
+quelqu'un qui réfléchit ; plus long, la conversation traîne.
+
+| Où | Bouton | Ce qui se passe |
+|---|---|---|
+| Coach IA | téléphone vert, à gauche du micro | conversation libre, comptée dans le quota du coach |
+| Simulateur, pendant une question | « Passer tout l'entretien à l'oral » | l'examinateur pose, le candidat répond, la question suivante enchaîne |
+
+Les réponses dictées sont tout de même écrites dans le champ : le rapport les
+relit, et le candidat garde de quoi corriger s'il quitte le mode oral.
+
+Un appel passe par `/api/coach` comme le clavier : il est donc soumis au même
+quota. Une porte dérobée vers le modèle n'aurait pas de sens.
+
+### Emporter une simulation
+
+Depuis la relecture d'une simulation passée, dans *Mon espace* :
+
+- **Télécharger en PDF** — la fenêtre d'impression du navigateur, avec une
+  feuille de style dédiée. C'est la seule voie vers un PDF sans embarquer un
+  moteur de rendu de deux mégaoctets, et elle donne un vrai PDF sélectionnable.
+- **Analyser avec le coach** — la simulation (questions, réponses, notes, axes)
+  est déposée puis reprise par le coach, qui commence l'analyse. Le CV et
+  l'offre ne sont pas transmis : ils ne sont pas conservés, et le coach n'en a
+  pas besoin pour juger une prestation orale.
 
 ---
 
@@ -786,6 +901,85 @@ Le micro exige **HTTPS** (ou `localhost`).
 
 ---
 
+## Brancher oralixia.com
+
+Le site s'appelle désormais **Oralixia** partout dans le dépôt. Le domaine,
+lui, se branche en dehors : voici l'ordre, et ce que chaque étape casse si on
+l'inverse.
+
+### 1. Acheter le domaine
+
+`oralixia.com` était libre au 11 septembre 2026. Chez n'importe quel bureau
+d'enregistrement (OVH, Gandi, Namecheap, Cloudflare Registrar…), comptez 10 à
+15 € par an. Prenez l'option de **protection des données WHOIS** : sans elle,
+votre nom et votre adresse personnelle deviennent publics.
+
+Si vous hésitez, `oralixia.fr` était libre également — un `.fr` rassure un
+public français et coûte souvent moins cher.
+
+### 2. Ajouter le domaine à Vercel
+
+Vercel → votre projet → Settings → Domains → **Add** → `oralixia.com`.
+Vercel affiche alors les enregistrements DNS à créer chez votre bureau
+d'enregistrement, en général :
+
+| Type | Nom | Valeur |
+|---|---|---|
+| A | `@` | l'adresse IP indiquée par Vercel |
+| CNAME | `www` | `cname.vercel-dns.com` |
+
+Ajoutez aussi `www.oralixia.com` dans Vercel et laissez-le rediriger vers le
+domaine nu — sinon les deux adresses servent le même site, ce que les moteurs
+comptent comme du contenu dupliqué.
+
+Le certificat HTTPS est émis automatiquement, quelques minutes après la
+propagation DNS. **Attendez que `https://oralixia.com` réponde** avant l'étape
+suivante.
+
+### 3. Basculer le site sur le nouveau domaine
+
+Une fois le domaine joignable, trois endroits et une seule valeur :
+
+```js
+// js/config.js
+export const DOMAINE = ENV.DOMAINE || 'oralixia.com';
+```
+
+puis, dans `index.html`, `simulateur.html`, `temoignages.html`, `robots.txt` et
+`sitemap.xml`, remplacez `preporal.vercel.app` par `oralixia.com`. Un test
+refuse que ces fichiers divergent :
+
+```bash
+npm test    # « le domaine est identique dans la page, robots.txt et le plan du site »
+```
+
+### 4. Reporter le domaine dans les services
+
+| Service | Où | Pourquoi |
+|---|---|---|
+| **Supabase** | Authentication → URL Configuration | Site URL et Redirect URLs, sinon la connexion renvoie sur l'ancien domaine |
+| **Google Cloud** | Credentials → votre client OAuth | ajoutez `https://oralixia.com` aux origines autorisées |
+| **Stripe** | Settings → Branding, et le portail client | l'URL de retour après paiement |
+| **Vercel** | `URL_PUBLIQUE` | utilisée par les fonctions serveur pour construire les liens |
+
+### Renommer les projets eux-mêmes
+
+Le dépôt est renommé ; les comptes ne peuvent pas l'être depuis ici. Aucune de
+ces opérations n'est urgente — ce sont des étiquettes, pas des identifiants.
+
+| Service | Chemin | Effet |
+|---|---|---|
+| **GitHub** | Settings → Repository name → `Oralixia` | GitHub redirige l'ancienne URL ; pensez à `git remote set-url origin …` en local |
+| **Vercel** | Settings → General → Project Name | change l'URL `*.vercel.app`, donc **refaites l'étape 4** si vous n'avez pas encore de domaine |
+| **Supabase** | Settings → General → Project name | purement cosmétique : la référence du projet et l'URL `<ref>.supabase.co` **ne changent pas**, vos clés restent valides |
+| **Stripe** | Settings → Business → Public details | c'est ce nom qui apparaît sur la page de paiement et sur le relevé bancaire du client — à faire avant la première vente |
+
+> **Ne renommez pas le projet Supabase en espérant changer son URL.** Ce n'est
+> pas possible : il faudrait créer un nouveau projet, donc de nouvelles clés,
+> et migrer les comptes. Le nom affiché n'a aucun effet technique.
+
+---
+
 ## À faire avant de vendre
 
 Ce qui a été traité, et ce qui reste **à votre charge**.
@@ -830,29 +1024,34 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 
 ### À votre charge
 
-1. **Rappel avant reconduction (offre six mois).** L'art. L215-1 du code de la
+1. **Connexion Google.** Le fournisseur n'est pas activé sur le projet
+   Supabase : le bouton mène à une erreur. Voir *Configuration Supabase →
+   Activer la connexion Google*. Le code sonde désormais l'URL et affiche un
+   message clair au lieu d'une page noire, mais seul l'écran de consentement
+   Google rend le bouton utile.
+2. **Rappel avant reconduction (offre six mois).** L'art. L215-1 du code de la
    consommation impose d'informer le client de sa faculté de ne pas reconduire,
    entre trois mois et un mois avant l'échéance. Stripe ne l'envoie pas. Sans ce
    rappel, l'abonné peut résilier à tout moment et se faire rembourser les
    sommes prélevées après l'échéance.
-2. **Tarif Stripe de l'offre six mois.** `STRIPE_PRICE_EXTRA` doit désormais
+3. **Tarif Stripe de l'offre six mois.** `STRIPE_PRICE_EXTRA` doit désormais
    pointer sur un tarif **récurrent de six mois**, et non plus sur un paiement
    unique. Créez-le dans Stripe avant le déploiement, sinon la souscription
    échoue.
-3. **Portail client Stripe.** Pour que le changement de formule fonctionne :
+4. **Portail client Stripe.** Pour que le changement de formule fonctionne :
    Stripe → Settings → Billing → Customer portal → autorisez la mise à jour
    d'abonnement et listez-y les deux tarifs (mensuel et six mois).
-4. **Compartiment `avatars`.** Créé par `supabase/schema.sql` : relancez le
+5. **Compartiment `avatars`.** Créé par `supabase/schema.sql` : relancez le
    script pour que les photos de profil fonctionnent.
-5. **Modèles d'e-mail Supabase.** Les messages d'authentification partent en
+6. **Modèles d'e-mail Supabase.** Les messages d'authentification partent en
    anglais tant que vous n'avez pas collé les modèles multilingues, et le SMTP
    intégré est limité aux tests. Voir *Configuration Supabase → Des e-mails
    dans la langue du candidat*. C'est le premier contact d'un nouvel inscrit
    avec le service : il ne peut pas rester en anglais sur un site français.
-6. **URL de redirection Supabase.** Ajoutez chaque environnement dans
+7. **URL de redirection Supabase.** Ajoutez chaque environnement dans
    *Authentication → URL Configuration*, sinon la connexion aboutit sur un
    autre domaine que celui où se trouvait le candidat.
-7. **Mentions légales.** Renseignez le bloc `window.PREPORAL_ENV` dans
+8. **Mentions légales.** Renseignez le bloc `window.ORALIXIA_ENV` dans
    `index.html` : `EDITEUR_NOM`, `EDITEUR_STATUT`, `EDITEUR_SIRET`,
    `EDITEUR_TVA`, `EDITEUR_ADRESSE`, `EDITEUR_EMAIL`, `EDITEUR_DIRECTEUR`,
    `EDITEUR_MEDIATEUR`. Tant que c'est incomplet, un bandeau d'avertissement
@@ -860,34 +1059,31 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    manquante. Le médiateur de la consommation est obligatoire dès la première
    vente à un consommateur. **Faites relire par un juriste** : les textes
    fournis sont un modèle, pas un conseil juridique.
-8. **Domaine.** Le site est déclaré sur `https://preporal.vercel.app`, l'URL
-   que sert réellement ce dépôt. Pour passer à un domaine personnalisé,
-   remplacez-le aux trois endroits — `index.html` (canonique, Open Graph,
-   carte Twitter), `robots.txt` et `sitemap.xml` — puis lancez `npm test` :
-   un test vérifie que les trois restent d'accord.
+9. **Domaine `oralixia.com`.** Il est **libre** au 11 septembre 2026
+   (vérifié auprès du registre, pas seulement au DNS) — mais il faut
+   l'acheter : rien ici ne peut le faire à votre place. Voir la section
+   « Brancher oralixia.com » ci-dessous pour la marche à suivre complète.
 
-   > **`preporal.com` sert un autre site.** Il répond, il est hébergé par
-   > Vercel, mais son contenu n'est pas celui de ce dépôt (titre différent,
-   > aucune trace de la feuille de styles générée). Il n'a donc **pas** été
-   > déclaré comme domaine canonique : une balise canonique pointant vers un
-   > autre site revient à demander aux moteurs de recherche de désindexer
-   > celui-ci. Si `preporal.com` doit devenir la vitrine de ce projet,
-   > faites-le pointer vers ce projet Vercel *avant* de changer le domaine ici.
-9. **Vérification du consentement parental.** L'adresse du responsable légal
+   > **Tant que le domaine n'est pas branché, ne touchez pas à la balise
+   > canonique.** Elle pointe sur `preporal.vercel.app`, l'URL réellement
+   > servie. La faire pointer sur un domaine qui ne répond pas dirait aux
+   > moteurs « la vraie version est là-bas » — le moyen le plus sûr de se
+   > désindexer soi-même.
+10. **Vérification du consentement parental.** L'adresse du responsable légal
    est collectée sous 15 ans, mais aucun message ne lui est envoyé : le
    consentement reste déclaratif.
-10. **Friction à l'inscription.** `EXIGER_CONNEXION` vaut désormais `true` par
+11. **Friction à l'inscription.** `EXIGER_CONNEXION` vaut désormais `true` par
    défaut : le quota gratuit est étanche, mais un compte est demandé avant la
    première simulation. Surveillez le taux d'abandon sur cette étape ; le
    repli `EXIGER_CONNEXION=false` existe, au prix d'un quota contournable.
-11. **Prix.** Voir « Coût par simulation » : à 9,90 € sur `claude-opus-5`, un
+12. **Prix.** Voir « Coût par simulation » : à 9,90 € sur `claude-opus-5`, un
    abonné devient déficitaire au-delà d'une cinquantaine de simulations par
    mois. Décidez entre un modèle moins cher, une limite d'usage équitable
    inscrite aux CGV, ou un tarif plus élevé.
-12. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
+13. **Purge des empreintes anonymes.** Planifiez la suppression des lignes de
    `usages_anonymes` inactives depuis plus de 6 mois (minimisation RGPD) ;
    la requête est en commentaire dans `supabase/schema.sql`.
 
 ---
 
-© PrepOral. Ce dépôt est privé et non licencié pour la redistribution.
+© Oralixia. Ce dépôt est privé et non licencié pour la redistribution.

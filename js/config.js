@@ -3,15 +3,31 @@
    Aucune clé secrète ici : ce fichier part dans le navigateur.
    ═══════════════════════════════════════════════════════════ */
 
-const ENV = window.PREPORAL_ENV || {};
+/* L'ancien nom reste accepté : un déploiement qui le porte encore
+   ne doit pas perdre ses clés au changement de marque. */
+const ENV = window.ORALIXIA_ENV || window.PREPORAL_ENV || {};
 
 /* Une URL Supabase avec une barre oblique finale casse la construction
    des URL du client : on la retire systématiquement. */
 const sansBarreFinale = (u = '') => String(u).trim().replace(/\/+$/, '');
 
+/* ── Identité du produit ───────────────────────────────────
+   Le nom et le domaine ne sont écrits qu'ici. Les textes légaux,
+   les e-mails, le titre des PDF et les traductions les lisent :
+   un changement de marque n'est plus une chasse aux occurrences.
+
+   DOMAINE est le domaine sur lequel le site est RÉELLEMENT servi.
+   Le renseigner avant que le domaine ne soit acheté et branché
+   ferait pointer la balise canonique vers un domaine qui ne
+   répond pas — le moyen le plus sûr de se désindexer soi-même. */
+export const NOM_PRODUIT = ENV.NOM_PRODUIT || 'Oralixia';
+export const DOMAINE = ENV.DOMAINE || 'preporal.vercel.app';
+
 export const CONFIG = {
   api: ENV.API_BASE || '/api',
-  /* Renseignés dans le bloc window.PREPORAL_ENV d'index.html.
+  nomProduit: NOM_PRODUIT,
+  domaine: DOMAINE,
+  /* Renseignés dans le bloc window.ORALIXIA_ENV d'index.html.
      Ces deux valeurs sont publiques par conception (la clé « anon »
      part de toute façon dans le navigateur et n'ouvre que ce que les
      règles RLS autorisent). La clé service_role, elle, reste côté
@@ -22,10 +38,12 @@ export const CONFIG = {
   },
   simulationsGratuites: 2,
   cles: {
-    quota: 'prepOral.simulationsUtilisees',
-    historique: 'prepOral.historique',
-    avis: 'prepOral.avis',
-    premiumLocal: 'prepOral.premiumLocal'
+    quota: 'oralixia.simulationsUtilisees',
+    // Simulation confiée au coach, le temps d'un changement de page.
+    aCoacher: 'oralixia.simulationACoacher',
+    historique: 'oralixia.historique',
+    avis: 'oralixia.avis',
+    premiumLocal: 'oralixia.premiumLocal'
   },
 
   /* ── Identité de l'éditeur ────────────────────────────────
@@ -61,13 +79,13 @@ export const OFFRES = {
     detail: 'Accès complet pendant 48 heures. Paiement unique, aucune reconduction.'
   },
   mensuel: {
-    id: 'mensuel', nom: 'PrepOral Premium', prix: '9,90 €', periode: 'par mois',
+    id: 'mensuel', nom: 'Oralixia Premium', prix: '9,90 €', periode: 'par mois',
     mode: 'subscription',
     accroche: 'Le plus souple',
     detail: 'Simulations illimitées, rapports complets, coach IA sans limite. Sans engagement, résiliable en un clic.'
   },
   extra: {
-    id: 'extra', nom: 'PrepOral Extra', prix: '54,90 €', periode: 'pour 6 mois',
+    id: 'extra', nom: 'Oralixia Extra', prix: '54,90 €', periode: 'pour 6 mois',
     /* Abonnement semestriel, et non plus paiement unique : une semaine
        d'essai n'existe chez Stripe que sur un abonnement, et seuls deux
        abonnements peuvent s'échanger l'un pour l'autre dans le portail

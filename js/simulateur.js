@@ -20,6 +20,7 @@ import { brancherAge, demanderAgeSiNecessaire } from './age.js';
 import { brancherNavigation } from './nav.js';
 import { t } from './i18n.js';
 import { demarrerChargement, arreterChargement } from './chargement.js';
+import { ouvrirAppel, Appel } from './appel.js';
 
 const CIRCONFERENCE = 326.73;
 
@@ -346,11 +347,59 @@ function enregistrer(texte) {
   else { clearInterval(etat.timer); terminer(); }
 }
 
+/* ── Entretien entièrement oral ─────────────────────────────
+   L'examinateur pose sa question à voix haute, le candidat
+   répond de vive voix, et la question suivante enchaîne. C'est
+   le seul mode qui ressemble vraiment à un oral : pas de
+   clavier, pas de bouton, et la pression de devoir répondre
+   sans relire ce qu'on écrit.
+
+   Les réponses sont tout de même écrites dans le champ : le
+   rapport les relit, et le candidat garde de quoi corriger s'il
+   sort du mode oral. */
+let appelEnCours = null;
+
+function entretienOral() {
+  if (!Appel.disponible()) {
+    return toast(t('appel.indisponible',
+      "L'oral demande la reconnaissance vocale, absente de ce navigateur. Safari, Chrome et Edge la proposent."), 'erreur');
+  }
+
+  const langue = langueDeLEpreuve(etat.typeId, etat.sousChoix);
+  const questionCourante = () => etat.questions[etat.index]?.texte || '';
+
+  appelEnCours = ouvrirAppel({
+    titre: t('appel.titre_oral', 'Entretien à l\'oral'),
+    sousTitre: t('appel.sous_titre_oral', 'Répondez à voix haute. Une pause, et l\'examinateur enchaîne.'),
+    langue,
+    ouverture: questionCourante(),
+    onFermeture: () => { appelEnCours = null; },
+
+    repondre: async texte => {
+      // La réponse dictée reste visible et modifiable dans le champ.
+      $('#reponse').value = texte;
+      $('#reponse').dispatchEvent(new Event('input', { bubbles: true }));
+
+      const derniere = etat.index === etat.questions.length - 1;
+      enregistrer(texte);
+
+      if (derniere) {
+        // enregistrer() a lancé le rapport : on annonce puis on raccroche.
+        setTimeout(() => appelEnCours?.fermer(), 2600);
+        return t('appel.fin_oral', 'Merci, l\'entretien est terminé. Je prépare votre correction.');
+      }
+      return questionCourante();
+    }
+  });
+}
+
+$('#btn-oral')?.addEventListener('click', entretienOral);
 $('#btn-suivant').addEventListener('click', () => enregistrer($('#reponse').value.trim()));
 $('#btn-passer').addEventListener('click', () => enregistrer(''));
 $('#btn-abandon').addEventListener('click', () => {
   clearInterval(etat.timer);
   etat.dictee?.arreter();
+  appelEnCours?.fermer();
   Voix.stop();
   allerEcran('accueil');
 });

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Témoignages — PrepOral</title>
-<meta name="description" content="Les retours de candidats ayant préparé leur oral avec PrepOral : entretien, Grand Oral, brevet, concours, pitch et certifications de langue. Avis vérifiés avant publication.">
+<title>Témoignages — Oralixia</title>
+<meta name="description" content="Les retours de candidats ayant préparé leur oral avec Oralixia : entretien, Grand Oral, brevet, concours, pitch et certifications de langue. Avis vérifiés avant publication.">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/logo.svg">
 
@@ -16,15 +16,15 @@
 
 <!-- Partage sur les réseaux et messageries -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="PrepOral">
+<meta property="og:site_name" content="Oralixia">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:url" content="https://preporal.vercel.app/temoignages.html">
-<meta property="og:title" content="Témoignages — PrepOral">
+<meta property="og:title" content="Témoignages — Oralixia">
 <meta property="og:description" content="Entraîne-toi en conditions réelles : l'examinateur pose ses questions à voix haute, te chronomètre, puis corrige le fond et la forme. Deux simulations offertes.">
 <meta property="og:image" content="https://preporal.vercel.app/assets/partage.svg">
-<meta property="og:image:alt" content="PrepOral, simulateur d'oraux assisté par IA">
+<meta property="og:image:alt" content="Oralixia, simulateur d'oraux assisté par IA">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="PrepOral — Réussis ton oral du premier coup">
+<meta name="twitter:title" content="Oralixia — Réussis ton oral du premier coup">
 <meta name="twitter:description" content="Entretien, Grand Oral, brevet, concours, pitch, certification de langue. Deux simulations offertes, sans carte bancaire.">
 <meta name="twitter:image" content="https://preporal.vercel.app/assets/partage.svg">
 
@@ -39,7 +39,7 @@
 <script>
   (function () {
     try {
-      var t = localStorage.getItem('prepOral.theme');
+      var t = localStorage.getItem('oralixia.theme');
       if (t !== 'clair' && t !== 'sombre') {
         t = matchMedia('(prefers-color-scheme: light)').matches ? 'clair' : 'sombre';
       }
@@ -57,7 +57,7 @@
 
 <!-- Variables d'environnement publiques (aucune clé secrète ici) -->
 <script>
-  window.PREPORAL_ENV = {
+  window.ORALIXIA_ENV = {
     SUPABASE_URL: 'https://kcebxepykavnamtxosbc.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjZWJ4ZXB5a2F2bmFtdHhvc2JjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjAyODgsImV4cCI6MjEwNDQzNjI4OH0.frsPDwlI7WOoKJygIneBjPnd7t8sa614Mdqucs1E7Bg',
     API_BASE: '/api',
@@ -162,6 +162,19 @@
      devient inatteignable pour un visiteur qui arrive pour la
      première fois. Une modale passe donc toujours devant. */
   .modale { z-index: 60; }
+
+  /* Ondes du panneau d'appel : elles suivent l'état, pour qu'on voie
+     d'un coup d'œil qui a la parole. */
+  .onde { height: .5rem; transition: background .2s; }
+  #panneau-appel[data-etat="ecoute"] .onde { animation: onde 1s ease-in-out infinite; }
+  #panneau-appel[data-etat="parole"] .onde { animation: onde .6s ease-in-out infinite; background: rgb(var(--mint)); }
+  #panneau-appel[data-etat="reflexion"] .onde { animation: pulsation 1.4s ease-in-out infinite; }
+  @keyframes onde { 0%, 100% { height: .5rem; } 50% { height: 2.75rem; } }
+  @keyframes pulsation { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    #panneau-appel .onde { animation: none !important; height: 1rem; }
+  }
+
   .verre { background:var(--verre); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 
   /* Cartes de l'éventail « chaque oral a ses codes ». */
@@ -188,6 +201,22 @@
     #ecran-rapport * { color:#111 !important; border-color:#d8d5e4 !important; box-shadow:none !important; background:#fff !important; }
     #ecran-rapport details { break-inside: avoid; }
     #ecran-rapport details:not([open]) > div { display:block !important; }
+
+    /* Impression d'une simulation passée : la modale de relecture
+       devient la page entière. Sans cette exception, la règle
+       « .modale { display:none } » ci-dessus imprimerait une feuille
+       blanche — ce qui était le cas avant l'ajout du téléchargement. */
+    body.impression-relecture #modal-relecture { display:block !important; position:static !important;
+      background:#fff !important; padding:0 !important; backdrop-filter:none !important; }
+    body.impression-relecture #modal-relecture > div { max-width:none !important; max-height:none !important;
+      border:0 !important; box-shadow:none !important; background:#fff !important; }
+    body.impression-relecture #modal-relecture * { color:#111 !important; border-color:#d8d5e4 !important;
+      box-shadow:none !important; background:#fff !important; }
+    body.impression-relecture #modal-relecture .sans-impression,
+    body.impression-relecture #modal-relecture [data-fermer] { display:none !important; }
+    body.impression-relecture #modal-relecture > div > div { overflow:visible !important; }
+    body.impression-relecture #relecture-contenu > div,
+    body.impression-relecture #relecture-contenu details { break-inside: avoid; }
   }
 </style>
 </head>
@@ -203,7 +232,7 @@
 
     <a href="./index.html" class="flex shrink-0 items-center gap-2.5">
       <img src="assets/logo.svg" alt="" width="32" height="32" class="h-8 w-8 rounded-lg">
-      <span class="font-display text-lg font-extrabold tracking-tight">Prep<span class="text-iris2">Oral</span></span>
+      <span class="font-display text-lg font-extrabold tracking-tight">Oral<span class="text-iris2">ixia</span></span>
     </a>
 
     <nav class="hidden items-center gap-1 md:flex" aria-label="Navigation principale">
@@ -343,7 +372,7 @@
       <div class="lg:col-span-2">
         <div class="flex items-center gap-2.5">
           <img src="assets/logo.svg" alt="" width="28" height="28" class="h-7 w-7 rounded-lg">
-          <span class="font-display text-base font-extrabold tracking-tight">Prep<span class="text-iris2">Oral</span></span>
+          <span class="font-display text-base font-extrabold tracking-tight">Oral<span class="text-iris2">ixia</span></span>
         </div>
         <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted" data-i18n="accueil.le_moyen_le_plus_rapide_de_passer_son_oral_une_premi">
           Le moyen le plus rapide de passer son oral une première fois, en privé.
@@ -377,7 +406,7 @@
     <p id="alerte-editeur" class="mt-10 hidden rounded-xl border border-amber/40 bg-amber/10 p-4 text-sm leading-relaxed text-amber"></p>
 
     <p class="mt-10 border-t border-line pt-6 text-xs text-muted">
-      © <span id="annee"></span> PrepOral. Tous droits réservés. PrepOral est un outil d'entraînement :
+      © <span id="annee"></span> Oralixia. Tous droits réservés. Oralixia est un outil d'entraînement :
       les questions et corrections sont générées automatiquement et ne constituent ni une évaluation
       officielle, ni une garantie de réussite.
     </p>
@@ -562,7 +591,7 @@
   <div class="entree w-full max-w-md rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-7" role="dialog" aria-modal="true" aria-labelledby="age-titre">
     <h2 id="age-titre" class="font-display text-xl font-extrabold tracking-tight" data-i18n="accueil.quel_age_avez_vous">Quel âge avez-vous ?</h2>
     <p class="mt-2 text-sm leading-relaxed text-muted" data-i18n="accueil.preporal_s_adresse_aussi_a_des_collegiens_et_lyceens">
-      PrepOral s'adresse aussi à des collégiens et lycéens. La loi française fixe des règles
+      Oralixia s'adresse aussi à des collégiens et lycéens. La loi française fixe des règles
       différentes selon l'âge : nous demandons une tranche, jamais votre date de naissance.
     </p>
 

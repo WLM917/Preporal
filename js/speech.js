@@ -3,45 +3,140 @@
    répond (webkitSpeechRecognition)
    ═══════════════════════════════════════════════════════════ */
 
-/* ── 1. Voix de l'examinateur ──────────────────────────────── */
+/* ── 1. Voix de l'examinateur ───────────────────────────────
+
+   Une voix de synthèse paraît robotique pour trois raisons, et
+   deux d'entre elles se corrigent sans rien payer :
+
+   1. La mauvaise voix est choisie. Les systèmes récents
+      embarquent des voix neuronales bien meilleures que celle
+      par défaut, mais elles ne sont pas en tête de liste. On
+      les classe donc au lieu de prendre la première venue.
+   2. Le texte est lu d'un seul bloc, sans respiration. Découpé
+      en phrases, avec une pause après chaque point, le débit
+      redevient humain.
+   3. Le moteur lui-même est limité. Cette part-là ne se corrige
+      qu'avec une voix neuronale distante, payante — voir le
+      README, section « Qualité de la voix ».
+   ─────────────────────────────────────────────────────────── */
+
+/* Noms de voix réputées naturelles, par langue. Ordre indicatif :
+   le classement ci-dessous pèse d'autres critères en plus. */
+const BONNES_VOIX = {
+  fr: /(amélie|amelie|aurélie|aurelie|thomas|marie|audrey|denise|henri|siri)/i,
+  en: /(samantha|ava|allison|serena|daniel|karen|moira|aria|jenny|guy|siri)/i,
+  es: /(mónica|monica|paulina|jorge|lucia|elvira|álvaro|alvaro|siri)/i
+};
+
+/* Marqueurs de qualité communs à tous les systèmes. */
+const PREMIUM = /(neural|natural|premium|enhanced|eloquence|wavenet|studio|journey|siri)/i;
+const BASSE_QUALITE = /(compact|espeak|pico|festival|robot)/i;
+
 export const Voix = {
   supporte: 'speechSynthesis' in window,
   activee: true,
-  _voix: null,
+  _cache: new Map(),
+
+  /** Liste des voix, en attendant qu'elle soit peuplée si besoin. */
+  disponibles() {
+    if (!this.supporte) return [];
+    try { return speechSynthesis.getVoices() || []; } catch { return []; }
+  },
+
+  /**
+   * Note une voix pour une langue donnée. Plus c'est haut, mieux c'est.
+   * Le critère le plus utile en pratique n'est pas le nom mais
+   * localService : une voix servie par le réseau est presque toujours
+   * une voix neuronale, et une voix embarquée la version dégradée.
+   */
+  noter(v, langue) {
+    const base = langue.slice(0, 2).toLowerCase();
+    const nom = v.name || '';
+    const lang = (v.lang || '').toLowerCase().replace('_', '-');
+    if (!lang.startsWith(base)) return -1;
+
+    let note = 0;
+    if (lang === langue.toLowerCase()) note += 3;      // fr-FR plutôt que fr-CA
+    if (PREMIUM.test(nom)) note += 6;
+    if (v.localService === false) note += 4;           // voix réseau = neuronale
+    if (BONNES_VOIX[base]?.test(nom)) note += 3;
+    if (/google/i.test(nom)) note += 2;                // les voix Google sont correctes
+    if (BASSE_QUALITE.test(nom)) note -= 6;
+    if (v.default) note += 1;                          // départage à égalité
+    return note;
+  },
 
   /** Choisit la voix la plus naturelle disponible pour une langue. */
   choisirVoix(langue = 'fr-FR') {
     if (!this.supporte) return null;
-    const dispo = speechSynthesis.getVoices();
-    if (!dispo.length) return null;
-    const base = langue.slice(0, 2);
-    const candidates = dispo.filter(v => v.lang && v.lang.toLowerCase().startsWith(base));
-    // Les voix « premium » des systèmes récents sonnent beaucoup mieux.
-    const preferees = /(google|natural|enhanced|premium|siri|amélie|thomas|denise|audrey)/i;
-    return candidates.find(v => preferees.test(v.name)) || candidates[0] || null;
+    if (this._cache.has(langue)) return this._cache.get(langue);
+
+    const classees = this.disponibles()
+      .map(v => ({ v, note: this.noter(v, langue) }))
+      .filter(x => x.note >= 0)
+      .sort((a, b) => b.note - a.note);
+
+    const choisie = classees[0]?.v || null;
+    // Tant que la liste est vide, on ne mémorise rien : elle arrive tard.
+    if (choisie) this._cache.set(langue, choisie);
+    return choisie;
   },
 
-  parler(texte, { langue = 'fr-FR', debit = 0.98, onFin } = {}) {
+  /** Découpe en phrases : une pause après chaque point vaut mieux qu'un long souffle. */
+  decouper(texte) {
+    return String(texte)
+      .split(/(?<=[.!?…:])\s+(?=[A-ZÀ-ÖØ-Þ0-9«"])/u)
+      .flatMap(p => (p.length <= 240 ? [p] : p.split(/(?<=,)\s+/)))
+      .map(p => p.trim())
+      .filter(Boolean);
+  },
+
+  /**
+   * Lit un texte à voix haute.
+   * @param {string} texte
+   * @param {{langue?:string, debit?:number, onFin?:Function}} options
+   */
+  parler(texte, { langue = 'fr-FR', debit = 0.97, onFin } = {}) {
     if (!this.supporte || !this.activee || !texte) { onFin && onFin(); return; }
     try {
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(texte);
-      const v = this.choisirVoix(langue);
-      if (v) u.voice = v;
-      u.lang = v ? v.lang : langue;
-      u.rate = debit;
-      u.pitch = 1;
-      u.onend = () => onFin && onFin();
-      u.onerror = () => onFin && onFin();
-      speechSynthesis.speak(u);
+      const voix = this.choisirVoix(langue);
+      const morceaux = this.decouper(texte);
+      if (!morceaux.length) { onFin && onFin(); return; }
+
+      morceaux.forEach((morceau, i) => {
+        const u = new SpeechSynthesisUtterance(morceau);
+        if (voix) u.voice = voix;
+        u.lang = voix ? voix.lang : langue;
+        u.rate = debit;
+
+        /* Une question monte légèrement, une phrase longue redescend :
+           c'est ce que fait une voix humaine, et son absence est ce qui
+           rend la lecture monocorde. */
+        u.pitch = /\?\s*$/.test(morceau) ? 1.06 : 1;
+        u.volume = 1;
+
+        if (i === morceaux.length - 1) {
+          u.onend = () => onFin && onFin();
+          u.onerror = () => onFin && onFin();
+        }
+        speechSynthesis.speak(u);
+      });
     } catch { onFin && onFin(); }
   },
 
   stop() { if (this.supporte) { try { speechSynthesis.cancel(); } catch {} } }
 };
 
-// Certains navigateurs ne peuplent la liste des voix qu'après cet évènement.
-if (Voix.supporte) speechSynthesis.addEventListener?.('voiceschanged', () => Voix.choisirVoix());
+/* La liste des voix arrive de façon asynchrone, et parfois deux fois.
+   On vide le cache à chaque changement pour ne pas rester sur un
+   choix fait alors que les bonnes voix n'étaient pas encore chargées. */
+if (Voix.supporte) {
+  speechSynthesis.addEventListener?.('voiceschanged', () => {
+    Voix._cache.clear();
+    Voix.choisirVoix();
+  });
+}
 
 /* ── 2. Dictée ─────────────────────────────────────────────── */
 const Moteur = window.SpeechRecognition || window.webkitSpeechRecognition;

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PrepOral — Réussis ton oral du premier coup</title>
-<meta name="description" content="Entretien, Grand Oral, brevet, concours, pitch ou certification de langue : PrepOral pose les questions à voix haute, te chronomètre, t'écoute et corrige le fond et la forme.">
+<title>Oralixia — Réussis ton oral du premier coup</title>
+<meta name="description" content="Entretien, Grand Oral, brevet, concours, pitch ou certification de langue : Oralixia pose les questions à voix haute, te chronomètre, t'écoute et corrige le fond et la forme.">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/logo.svg">
 
@@ -16,15 +16,15 @@
 
 <!-- Partage sur les réseaux et messageries -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="PrepOral">
+<meta property="og:site_name" content="Oralixia">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:url" content="https://preporal.vercel.app/">
-<meta property="og:title" content="PrepOral — Réussis ton oral du premier coup">
+<meta property="og:title" content="Oralixia — Réussis ton oral du premier coup">
 <meta property="og:description" content="Entraîne-toi en conditions réelles : l'examinateur pose ses questions à voix haute, te chronomètre, puis corrige le fond et la forme. Deux simulations offertes.">
 <meta property="og:image" content="https://preporal.vercel.app/assets/partage.svg">
-<meta property="og:image:alt" content="PrepOral, simulateur d'oraux assisté par IA">
+<meta property="og:image:alt" content="Oralixia, simulateur d'oraux assisté par IA">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="PrepOral — Réussis ton oral du premier coup">
+<meta name="twitter:title" content="Oralixia — Réussis ton oral du premier coup">
 <meta name="twitter:description" content="Entretien, Grand Oral, brevet, concours, pitch, certification de langue. Deux simulations offertes, sans carte bancaire.">
 <meta name="twitter:image" content="https://preporal.vercel.app/assets/partage.svg">
 
@@ -34,7 +34,7 @@
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "PrepOral",
+  "name": "Oralixia",
   "applicationCategory": "EducationalApplication",
   "operatingSystem": "Web",
   "inLanguage": "fr-FR",
@@ -43,7 +43,7 @@
   "offers": [
     { "@type": "Offer", "name": "Offre gratuite", "price": "0", "priceCurrency": "EUR",
       "description": "2 simulations complètes offertes à la création du compte, sans carte bancaire" },
-    { "@type": "Offer", "name": "PrepOral Premium", "price": "9.99", "priceCurrency": "EUR",
+    { "@type": "Offer", "name": "Oralixia Premium", "price": "9.99", "priceCurrency": "EUR",
       "description": "Simulations illimitées, sans engagement" },
     { "@type": "Offer", "name": "Pass 48 heures", "price": "4.99", "priceCurrency": "EUR",
       "description": "Accès complet pendant 48 heures" }
@@ -59,7 +59,7 @@
 <script>
   (function () {
     try {
-      var t = localStorage.getItem('prepOral.theme');
+      var t = localStorage.getItem('oralixia.theme');
       if (t !== 'clair' && t !== 'sombre') {
         t = matchMedia('(prefers-color-scheme: light)').matches ? 'clair' : 'sombre';
       }
@@ -77,7 +77,7 @@
 
 <!-- Variables d'environnement publiques (aucune clé secrète ici) -->
 <script>
-  window.PREPORAL_ENV = {
+  window.ORALIXIA_ENV = {
     SUPABASE_URL: 'https://kcebxepykavnamtxosbc.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjZWJ4ZXB5a2F2bmFtdHhvc2JjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjAyODgsImV4cCI6MjEwNDQzNjI4OH0.frsPDwlI7WOoKJygIneBjPnd7t8sa614Mdqucs1E7Bg',
     API_BASE: '/api',
@@ -182,6 +182,19 @@
      devient inatteignable pour un visiteur qui arrive pour la
      première fois. Une modale passe donc toujours devant. */
   .modale { z-index: 60; }
+
+  /* Ondes du panneau d'appel : elles suivent l'état, pour qu'on voie
+     d'un coup d'œil qui a la parole. */
+  .onde { height: .5rem; transition: background .2s; }
+  #panneau-appel[data-etat="ecoute"] .onde { animation: onde 1s ease-in-out infinite; }
+  #panneau-appel[data-etat="parole"] .onde { animation: onde .6s ease-in-out infinite; background: rgb(var(--mint)); }
+  #panneau-appel[data-etat="reflexion"] .onde { animation: pulsation 1.4s ease-in-out infinite; }
+  @keyframes onde { 0%, 100% { height: .5rem; } 50% { height: 2.75rem; } }
+  @keyframes pulsation { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    #panneau-appel .onde { animation: none !important; height: 1rem; }
+  }
+
   .verre { background:var(--verre); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 
   /* Cartes de l'éventail « chaque oral a ses codes ». */
@@ -208,6 +221,22 @@
     #ecran-rapport * { color:#111 !important; border-color:#d8d5e4 !important; box-shadow:none !important; background:#fff !important; }
     #ecran-rapport details { break-inside: avoid; }
     #ecran-rapport details:not([open]) > div { display:block !important; }
+
+    /* Impression d'une simulation passée : la modale de relecture
+       devient la page entière. Sans cette exception, la règle
+       « .modale { display:none } » ci-dessus imprimerait une feuille
+       blanche — ce qui était le cas avant l'ajout du téléchargement. */
+    body.impression-relecture #modal-relecture { display:block !important; position:static !important;
+      background:#fff !important; padding:0 !important; backdrop-filter:none !important; }
+    body.impression-relecture #modal-relecture > div { max-width:none !important; max-height:none !important;
+      border:0 !important; box-shadow:none !important; background:#fff !important; }
+    body.impression-relecture #modal-relecture * { color:#111 !important; border-color:#d8d5e4 !important;
+      box-shadow:none !important; background:#fff !important; }
+    body.impression-relecture #modal-relecture .sans-impression,
+    body.impression-relecture #modal-relecture [data-fermer] { display:none !important; }
+    body.impression-relecture #modal-relecture > div > div { overflow:visible !important; }
+    body.impression-relecture #relecture-contenu > div,
+    body.impression-relecture #relecture-contenu details { break-inside: avoid; }
   }
 </style>
 </head>
@@ -223,7 +252,7 @@
 
     <a href="./index.html" class="flex shrink-0 items-center gap-2.5">
       <img src="assets/logo.svg" alt="" width="32" height="32" class="h-8 w-8 rounded-lg">
-      <span class="font-display text-lg font-extrabold tracking-tight">Prep<span class="text-iris2">Oral</span></span>
+      <span class="font-display text-lg font-extrabold tracking-tight">Oral<span class="text-iris2">ixia</span></span>
     </a>
 
     <nav class="hidden items-center gap-1 md:flex" aria-label="Navigation principale">
@@ -479,7 +508,7 @@
     <!-- ══ La méthode ══ -->
     <section class="mt-24 sm:mt-32">
       <div class="mx-auto max-w-3xl rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-10">
-        <h2 class="titre-section text-center" data-i18n="accueil.pourquoi_preporal">Pourquoi PrepOral ?</h2>
+        <h2 class="titre-section text-center" data-i18n="accueil.pourquoi_preporal">Pourquoi Oralixia ?</h2>
         <div class="mt-8 space-y-5 leading-relaxed text-muted">
           <p>
             <span class="font-display text-3xl leading-none text-iris2">«</span>
@@ -487,7 +516,7 @@
             ils découvrent qu'ils n'ont jamais prononcé leurs réponses à voix haute une seule fois.
           </p>
           <p data-i18n="accueil.repeter_devant_quelqu_un_coute_cher_gene_et_n_est_pa">
-            Répéter devant quelqu'un coûte cher, gêne, et n'est pas répétable dix fois. PrepOral
+            Répéter devant quelqu'un coûte cher, gêne, et n'est pas répétable dix fois. Oralixia
             fait exactement l'inverse : l'examinateur pose ses questions à voix haute, il ne se
             lasse jamais, et il te dit franchement ce qui ne va pas.
           </p>
@@ -575,6 +604,10 @@
     <div id="fil-coach" class="h-[46vh] min-h-[300px] space-y-4 overflow-y-auto p-4 sm:p-6"></div>
     <div class="border-t border-line/70 p-3 sm:p-4">
       <div class="flex items-end gap-2">
+        <button id="btn-appel-coach" type="button" class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-mint/15 text-mint transition hover:bg-mint/25"
+          data-i18n-attr="title:appel.appeler_le_coach,aria-label:appel.appeler_le_coach" title="Appeler le coach" aria-label="Appeler le coach">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></svg>
+        </button>
         <button id="btn-micro-coach" type="button" title="Parler" class="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-line bg-raised transition hover:border-iris/60">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
         </button>
@@ -623,7 +656,7 @@
         </div>
       </div>
       <div id="carte-premium" class="rounded-2xl border border-iris/40 bg-iris/10 p-5">
-        <p class="font-display font-bold" data-i18n="accueil.preporal_premium">PrepOral Premium</p>
+        <p class="font-display font-bold" data-i18n="accueil.preporal_premium">Oralixia Premium</p>
         <p id="texte-premium" class="mt-1 text-sm text-muted" data-i18n="accueil.simulations_illimitees_rapports_detailles_et_coach_i">Simulations illimitées, rapports détaillés et coach IA sans limite.</p>
         <button id="btn-premium" type="button" class="mt-4 w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="accueil.voir_les_offres">Voir les offres</button>
       </div>
@@ -642,7 +675,7 @@
       <div class="lg:col-span-2">
         <div class="flex items-center gap-2.5">
           <img src="assets/logo.svg" alt="" width="28" height="28" class="h-7 w-7 rounded-lg">
-          <span class="font-display text-base font-extrabold tracking-tight">Prep<span class="text-iris2">Oral</span></span>
+          <span class="font-display text-base font-extrabold tracking-tight">Oral<span class="text-iris2">ixia</span></span>
         </div>
         <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted" data-i18n="accueil.le_moyen_le_plus_rapide_de_passer_son_oral_une_premi">
           Le moyen le plus rapide de passer son oral une première fois, en privé.
@@ -676,7 +709,7 @@
     <p id="alerte-editeur" class="mt-10 hidden rounded-xl border border-amber/40 bg-amber/10 p-4 text-sm leading-relaxed text-amber"></p>
 
     <p class="mt-10 border-t border-line pt-6 text-xs text-muted">
-      © <span id="annee"></span> PrepOral. Tous droits réservés. PrepOral est un outil d'entraînement :
+      © <span id="annee"></span> Oralixia. Tous droits réservés. Oralixia est un outil d'entraînement :
       les questions et corrections sont générées automatiquement et ne constituent ni une évaluation
       officielle, ni une garantie de réussite.
     </p>
@@ -861,7 +894,7 @@
   <div class="entree w-full max-w-md rounded-3xl border border-line bg-surface p-6 shadow-carte sm:p-7" role="dialog" aria-modal="true" aria-labelledby="age-titre">
     <h2 id="age-titre" class="font-display text-xl font-extrabold tracking-tight" data-i18n="accueil.quel_age_avez_vous">Quel âge avez-vous ?</h2>
     <p class="mt-2 text-sm leading-relaxed text-muted" data-i18n="accueil.preporal_s_adresse_aussi_a_des_collegiens_et_lyceens">
-      PrepOral s'adresse aussi à des collégiens et lycéens. La loi française fixe des règles
+      Oralixia s'adresse aussi à des collégiens et lycéens. La loi française fixe des règles
       différentes selon l'âge : nous demandons une tranche, jamais votre date de naissance.
     </p>
 

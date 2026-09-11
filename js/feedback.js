@@ -87,7 +87,7 @@ export function analyseEloquence(reponses = []) {
   note = Math.max(0, Math.min(20, note));
 
   const conseils = [];
-  if (debit === null) conseils.push("Répondez au micro plutôt qu'au clavier : PrepOral pourra alors mesurer votre débit et vos silences.");
+  if (debit === null) conseils.push("Répondez au micro plutôt qu'au clavier : Oralixia pourra alors mesurer votre débit et vos silences.");
   else if (debit > 175) conseils.push(`Vous parlez à ${debit} mots/minute : c'est rapide. Marquez une respiration après chaque idée, le jury a besoin de vous suivre.`);
   else if (debit < 105) conseils.push(`Vous parlez à ${debit} mots/minute : un peu lent, ce qui donne une impression d'hésitation. Enchaînez vos idées sans chercher le mot parfait.`);
   else conseils.push(`Débit de ${debit} mots/minute : c'est le rythme d'un oral maîtrisé, gardez-le.`);

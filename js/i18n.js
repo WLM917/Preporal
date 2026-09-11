@@ -20,7 +20,7 @@ export const LANGUES = {
   es: { code: 'es', etiquette: 'Español',  drapeau: '🇪🇸', voix: 'es-ES', htmlLang: 'es' }
 };
 
-const CLE = 'prepOral.langue';
+const CLE = 'oralixia.langue';
 const DEFAUT = 'fr';
 
 let courante = DEFAUT;

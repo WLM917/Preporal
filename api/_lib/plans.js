@@ -15,7 +15,7 @@ export const PLANS = {
   mensuel: {
     env: 'STRIPE_PRICE_MENSUEL',
     mode: 'subscription',
-    nom: 'PrepOral Premium',
+    nom: 'Oralixia Premium',
     essaiJours: 0
   },
   pass48: {
@@ -35,7 +35,7 @@ export const PLANS = {
        (art. L215-1 du code de la consommation) — voir le README. */
     env: 'STRIPE_PRICE_EXTRA',
     mode: 'subscription',
-    nom: 'PrepOral Extra',
+    nom: 'Oralixia Extra',
     essaiJours: ESSAI_EXTRA_JOURS
   }
 };

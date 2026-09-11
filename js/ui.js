@@ -105,6 +105,25 @@ export const reglerGroupe = (cle, valeur) => {
 };
 
 /* ── Stockage local tolérant (navigation privée, quotas) ───── */
+/* Le préfixe des clés est passé de « prepOral. » à « oralixia. »
+   lors du changement de nom. Sans reprise, chacun aurait perdu son
+   historique, son quota et ses réglages au premier chargement.
+   La migration ne s'exécute qu'une fois. */
+(function migrerLesCles() {
+  try {
+    if (localStorage.getItem('oralixia.migration')) return;
+    for (let i = 0; i < localStorage.length; i++) {
+      const cle = localStorage.key(i);
+      if (!cle || !cle.startsWith('prepOral.')) continue;
+      const neuve = 'oralixia.' + cle.slice('prepOral.'.length);
+      if (localStorage.getItem(neuve) === null) {
+        localStorage.setItem(neuve, localStorage.getItem(cle));
+      }
+    }
+    localStorage.setItem('oralixia.migration', '1');
+  } catch {}
+})();
+
 export const stock = {
   lire(cle, defaut = null) {
     try { const v = localStorage.getItem(cle); return v === null ? defaut : JSON.parse(v); }

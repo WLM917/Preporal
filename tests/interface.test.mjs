@@ -359,6 +359,36 @@ test("le plan d'un abonnement se lit sur son tarif", () => {
     "l'abonnement ouvert en essai arrive par « created »");
 });
 
+test("le nom du produit n'est écrit qu'à un seul endroit", async () => {
+  /* Un changement de marque ne doit pas être une chasse aux
+     occurrences : les textes légaux, les e-mails et le titre des PDF
+     lisent CONFIG.nomProduit. */
+  globalThis.window = globalThis.window || { ORALIXIA_ENV: {} };
+  const { CONFIG, NOM_PRODUIT, DOMAINE } = await import('../js/config.js');
+  assert.ok(NOM_PRODUIT, 'le nom du produit doit être défini');
+  assert.equal(CONFIG.nomProduit, NOM_PRODUIT);
+  assert.ok(DOMAINE && !DOMAINE.includes('://'), 'DOMAINE est un hôte, sans protocole');
+
+  // Plus aucune trace de l'ancien nom dans ce qui est livré.
+  for (const { fichier } of PAGES) {
+    const page = lire(fichier);
+    assert.ok(!/PrepOral/.test(page), `ancien nom encore présent dans ${fichier}`);
+  }
+  for (const { nom, source } of modules) {
+    assert.ok(!/PrepOral/.test(source), `ancien nom encore présent dans js/${nom}`);
+  }
+});
+
+test('les clés de stockage renommées sont reprises, pas perdues', () => {
+  /* Le préfixe est passé de « prepOral. » à « oralixia. ». Sans
+     reprise, chacun aurait perdu son historique et son quota au
+     premier chargement suivant la mise à jour. */
+  const ui = modules.find(m => m.nom === 'ui.js').source;
+  assert.match(ui, /prepOral\./, 'la migration doit connaître l\'ancien préfixe');
+  assert.match(ui, /oralixia\./, 'la migration doit écrire le nouveau préfixe');
+  assert.match(ui, /migration/, 'la migration doit être marquée pour ne courir qu\'une fois');
+});
+
 test('aucune page ne promet des simulations « sans compte »', async () => {
   /* Un compte est exigé avant la première simulation (EXIGER_CONNEXION,
      exigerCompte()). Promettre le contraire sur la page de vente serait

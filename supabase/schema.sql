@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
---  PrepOral — schéma Supabase
+--  Oralixia — schéma Supabase
 --  À exécuter dans Supabase → SQL Editor.
 --  Toutes les tables sont protégées par RLS : un utilisateur
 --  ne voit que ses propres lignes. Les fonctions serverless

@@ -6,8 +6,8 @@
 
 import { $, stock } from './ui.js';
 
-const CLE_THEME = 'prepOral.theme';
-const CLE_COOKIES = 'prepOral.cookies';
+const CLE_THEME = 'oralixia.theme';
+const CLE_COOKIES = 'oralixia.cookies';
 
 export const themeActuel = () => document.documentElement.dataset.theme || 'sombre';
 
@@ -47,7 +47,7 @@ export function brancherTheme() {
 }
 
 /* ── Bandeau cookies ────────────────────────────────────────
-   PrepOral ne dépose que des cookies strictement nécessaires
+   Oralixia ne dépose que des cookies strictement nécessaires
    (session Supabase, préférences locales). Le bandeau informe
    et mémorise le choix ; aucun traceur n'est chargé dans un
    cas comme dans l'autre.

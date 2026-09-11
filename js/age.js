@@ -19,7 +19,7 @@ import { CONFIG } from './config.js';
 import { $, stock, toast } from './ui.js';
 import { supabase, session } from './auth.js';
 
-const CLE = 'prepOral.age';
+const CLE = 'oralixia.age';
 
 export const TRANCHES = {
   moins_15: { id: 'moins_15', libelle: 'Moins de 15 ans', consentementRequis: true, majeur: false },
