@@ -10,8 +10,8 @@
    métadonnées de progression.
    ═══════════════════════════════════════════════════════════ */
 
-import { typeParId } from './config.js';
-import { $, echappe, formaterTemps, couleurNote, ouvrirModale, fermerModale } from './ui.js';
+import { CONFIG, typeParId } from './config.js';
+import { $, echappe, formaterTemps, couleurNote, stock, ouvrirModale, fermerModale } from './ui.js';
 import { lireSimulation, estRelisible } from './history.js';
 import { t } from './i18n.js';
 import { boutonEcoute, arreterEcoute } from './speech.js';
@@ -155,9 +155,10 @@ export function ouvrirRelecture(id) {
       </div>
     </div>`;
 
-  // Le bilan relu peut aussi être écouté.
+  // Le bilan relu peut être écouté, téléchargé, ou confié au coach.
   const zoneEcoute = document.createElement('div');
-  zoneEcoute.className = 'mb-1';
+  zoneEcoute.className = 'mb-1 flex flex-wrap items-center gap-2 sans-impression';
+  zoneEcoute.append(boutonTelecharger(s, d), boutonCoach(s));
   const b = boutonEcoute({
     libelle: t('ecoute.bilan', 'Écouter cette simulation'),
     libelleArret: t('ecoute.arreter', 'Arrêter'),
@@ -172,7 +173,8 @@ export function ouvrirRelecture(id) {
       })
     ].filter(Boolean).join(' ')
   });
-  if (b) { zoneEcoute.appendChild(b); $('#relecture-contenu').prepend(zoneEcoute); }
+  if (b) zoneEcoute.prepend(b);
+  $('#relecture-contenu').prepend(zoneEcoute);
 
   ouvrirModale('modal-relecture');
 }
@@ -191,3 +193,82 @@ export function brancherRelecture() {
 }
 
 export { fermerModale };
+
+
+/* ═══════════════════════════════════════════════════════════
+   Emporter sa simulation
+   ═══════════════════════════════════════════════════════════ */
+
+const bouton = (libelle, icone, classes = '') => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'inline-flex items-center gap-2 rounded-lg border border-line bg-raised px-3 py-1.5 text-xs font-medium transition hover:border-iris/60 ' + classes;
+  b.innerHTML = `${icone}<span>${echappe(libelle)}</span>`;
+  return b;
+};
+
+const ICONE_PDF = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
+const ICONE_COACH = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l2-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>';
+
+/** Téléchargement : on passe par l'impression, seule voie vers un PDF
+    sans embarquer un moteur de rendu de deux mégaoctets. */
+function boutonTelecharger(s, d) {
+  const b = bouton(t('relecture.telecharger', 'Télécharger en PDF'), ICONE_PDF);
+  b.addEventListener('click', () => {
+    const titreInitial = document.title;
+    const type = typeParId(s.typeId);
+    document.title = `${CONFIG.nomProduit} - ${type.court} du ${d.toLocaleDateString('fr-FR')}`;
+    document.body.classList.add('impression-relecture');
+
+    const restaurer = () => {
+      document.body.classList.remove('impression-relecture');
+      document.title = titreInitial;
+      window.removeEventListener('afterprint', restaurer);
+    };
+    window.addEventListener('afterprint', restaurer);
+    setTimeout(() => window.print(), 120);
+  });
+  return b;
+}
+
+/** Confie la simulation au coach, qui l'analysera dans la foulée. */
+function boutonCoach(s) {
+  const b = bouton(t('relecture.envoyer_au_coach', 'Analyser avec le coach'), ICONE_COACH,
+    'border-iris/40 text-iris2 hover:border-iris');
+  b.addEventListener('click', () => {
+    stock.ecrire(CONFIG.cles.aCoacher, resumerPourLeCoach(s));
+    fermerModale('modal-relecture');
+    location.assign('./index.html?vue=coach');
+  });
+  return b;
+}
+
+/**
+ * Résumé destiné au coach. On lui donne de quoi analyser — questions,
+ * réponses, notes, axes — sans lui envoyer le CV ni l'offre : ils ne
+ * sont pas conservés, et le coach n'en a pas besoin pour juger une
+ * prestation orale.
+ */
+export function resumerPourLeCoach(s) {
+  const type = typeParId(s.typeId);
+  const d = new Date(s.date);
+  const lignes = [
+    `Simulation du ${d.toLocaleDateString('fr-FR')} — ${type.court}${s.sousChoix ? ' (' + s.sousChoix + ')' : ''}.`,
+    `Note globale : ${s.score}/100.`,
+    s.verdict ? `Verdict : ${s.verdict}` : '',
+    s.eloquence != null ? `Éloquence : ${s.eloquence}/20.` : ''
+  ].filter(Boolean);
+
+  (s.reponses || []).forEach((r, i) => {
+    const det = (s.details || [])[i] || {};
+    lignes.push(
+      '',
+      `Question ${i + 1} : ${r.question}`,
+      `Ma réponse : ${(r.texte || '').slice(0, 1200) || '(pas de réponse)'}`,
+      det.note != null ? `Note : ${det.note}/20.` : '',
+      det.axes?.length ? `Axes signalés : ${det.axes.join(' ; ')}` : ''
+    );
+  });
+
+  return { id: s.id, date: s.date, texte: lignes.filter(l => l !== undefined).join('\n') };
+}

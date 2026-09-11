@@ -211,13 +211,62 @@ const retour = () => new URL('./index.html?vue=compte', location.href).href;
 const donnees = (extra = {}) => ({ langue: langue(), ...extra });
 
 /* ── Actions ───────────────────────────────────────────────── */
+/* ── Google ────────────────────────────────────────────────
+   Quand le fournisseur n'est pas activé côté Supabase, la
+   redirection n'atterrit pas chez Google : elle atterrit sur une
+   réponse JSON brute — « Unsupported provider: provider is not
+   enabled » — que le navigateur affiche telle quelle. Sur un
+   écran sombre, cela ressemble à une page noire, et le candidat
+   n'a plus qu'à revenir en arrière sans rien comprendre.
+
+   On demande donc l'URL sans naviguer, on la sonde, et on ne
+   quitte la page que si elle mène vraiment quelque part. Une
+   redirection renvoie une réponse opaque ; une erreur renvoie un
+   400 lisible. */
 export async function connexionGoogle() {
-  if (!supabase) return toast("Connexion indisponible : Supabase n'est pas configuré.", 'erreur');
-  const { error } = await supabase.auth.signInWithOAuth({
+  if (!supabase) return toast(t('auth.supabase_absent', "Connexion indisponible : Supabase n'est pas configuré."), 'erreur');
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: retour() }
+    options: { redirectTo: retour(), skipBrowserRedirect: true }
   });
-  if (error) toast(lisible(error), 'erreur');
+  if (error) return dire(lisible(error), true);
+  if (!data?.url) return dire(t('auth.google_indisponible', MESSAGE_GOOGLE), true);
+
+  const probleme = await sonderOAuth(data.url);
+  if (probleme) return dire(probleme, true);
+
+  location.assign(data.url);
+}
+
+const MESSAGE_GOOGLE = "La connexion Google n'est pas encore activée sur ce site. Utilisez votre adresse e-mail et votre mot de passe, ou le lien sans mot de passe.";
+
+/**
+ * Sonde l'URL d'autorisation sans la suivre.
+ * @returns {Promise<string|null>} un message à afficher, ou null si la voie est libre.
+ */
+async function sonderOAuth(url) {
+  try {
+    const r = await fetch(url, { method: 'GET', redirect: 'manual', credentials: 'omit' });
+
+    // Une redirection vers Google : réponse opaque, statut 0. C'est le cas normal.
+    if (r.type === 'opaqueredirect' || r.status === 0 || (r.status >= 300 && r.status < 400)) return null;
+
+    if (r.status >= 400) {
+      const corps = await r.json().catch(() => ({}));
+      const brut = String(corps.msg || corps.error_description || corps.message || '');
+      if (/not enabled|unsupported provider/i.test(brut)) {
+        return t('auth.google_indisponible', MESSAGE_GOOGLE);
+      }
+      return brut || t('auth.google_indisponible', MESSAGE_GOOGLE);
+    }
+    return null;
+  } catch {
+    /* Le réseau, un bloqueur ou une politique inter-origines ont empêché
+       la sonde : ce n'est pas une preuve de panne. On laisse passer
+       plutôt que d'interdire une connexion qui marcherait. */
+    return null;
+  }
 }
 
 /** Inscription par e-mail et mot de passe.

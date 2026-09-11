@@ -6,7 +6,7 @@
 
    • Les coordonnées bancaires ne transitent jamais par ici.
      Saisir un numéro de carte sur nos pages ferait entrer
-     PrepOral dans le périmètre PCI-DSS, avec les audits qui
+     Oralixia dans le périmètre PCI-DSS, avec les audits qui
      vont avec, pour un service que Stripe rend déjà. Le bouton
      « Gérer mes moyens de paiement » ouvre donc le portail
      Stripe, qui gère aussi la résiliation et le changement de
@@ -317,9 +317,9 @@ function demanderSuppression() {
     'Supprimer définitivement votre compte, vos simulations passées et votre compteur d\'usage ? Cette action est irréversible.'));
   if (!confirme) return;
 
-  const objet = encodeURIComponent('Suppression de mon compte PrepOral');
+  const objet = encodeURIComponent('Suppression de mon compte Oralixia');
   const corps = encodeURIComponent(
-    `Bonjour,\n\nJe demande la suppression de mon compte PrepOral.\n\nAdresse du compte : ${session.email}\n\nMerci.`);
+    `Bonjour,\n\nJe demande la suppression de mon compte Oralixia.\n\nAdresse du compte : ${session.email}\n\nMerci.`);
   const destinataire = CONFIG.editeur.email;
 
   if (!destinataire) {

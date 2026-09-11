@@ -168,7 +168,7 @@ function brancherDepot() {
     const [nom, ...reste] = brut.split(',');
     const nouvel = {
       nom: nom.trim(),
-      statut: reste.join(',').trim() || 'Utilisateur de PrepOral',
+      statut: reste.join(',').trim() || 'Utilisateur de Oralixia',
       note: noteChoisie,
       texte,
       type_oral: $('#avis-type')?.value || null,

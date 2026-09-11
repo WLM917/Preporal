@@ -1,4 +1,4 @@
-# PrepOral — robots.txt
+# Oralixia — robots.txt
 # Remplacez le domaine ci-dessous par le vôtre après la mise en ligne.
 
 User-agent: *

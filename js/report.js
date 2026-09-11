@@ -158,7 +158,7 @@ export function exporterPDF() {
   ouverts.forEach(d => (d.open = true));
 
   const titreInitial = document.title;
-  document.title = `PrepOral - bilan du ${new Date().toLocaleDateString('fr-FR')}`;
+  document.title = `Oralixia - bilan du ${new Date().toLocaleDateString('fr-FR')}`;
 
   const restaurer = () => {
     ouverts.forEach((d, i) => (d.open = etatInitial[i]));

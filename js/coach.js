@@ -3,10 +3,11 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG } from './config.js';
-import { $, echappe, toast } from './ui.js';
+import { $, echappe, stock, toast } from './ui.js';
 import { Voix, Dictee, dicteeSupportee, boutonEcoute, arreterEcoute } from './speech.js';
 import { session, exigerCompte } from './auth.js';
 import { ouvrirPaywall } from './paywall.js';
+import { ouvrirAppel, Appel } from './appel.js';
 import { langue, t } from './i18n.js';
 
 const historique = [];
@@ -14,7 +15,7 @@ let lectureAuto = true;
 let dictee = null;
 let occupe = false;
 
-const ACCUEIL = "Bonjour, je suis votre coach PrepOral. Dites-moi quel oral vous préparez, ou collez votre plan, votre texte ou votre sujet : je vous aide à structurer, reformuler et anticiper les questions du jury.";
+const ACCUEIL = "Bonjour, je suis votre coach Oralixia. Dites-moi quel oral vous préparez, ou collez votre plan, votre texte ou votre sujet : je vous aide à structurer, reformuler et anticiper les questions du jury.";
 
 function bulle(role, texte, id, { ecoutable = true } = {}) {
   const fil = $('#fil-coach');
@@ -99,6 +100,75 @@ async function envoyer(texteSaisi) {
   }
 }
 
+/* ── Une simulation confiée depuis « Mon espace » ───────────
+   Le bouton « Analyser avec le coach » dépose la simulation puis
+   change de page. On la reprend ici, on la montre au candidat
+   plutôt que de l'envoyer en cachette, et on lance l'analyse. */
+function reprendreSimulationConfiee() {
+  const confiee = stock.lire(CONFIG.cles.aCoacher, null);
+  if (!confiee?.texte) return;
+  stock.supprimer(CONFIG.cles.aCoacher);
+
+  const d = new Date(confiee.date);
+  const entete = t('coach.simulation_confiee', 'Voici ma simulation du {date}. Qu\'est-ce que je dois travailler en priorité ?')
+    .replace('{date}', isNaN(d) ? '' : d.toLocaleDateString('fr-FR'));
+
+  // Un délai laisse le message d'accueil s'afficher avant celui-ci.
+  setTimeout(() => envoyer(entete + '\n\n' + confiee.texte), 500);
+}
+
+/* ── Appel au coach ────────────────────────────────────────
+   Le même échange que par écrit, sans clavier : on parle, la
+   réponse arrive à voix haute, l'écoute reprend. Tout passe par
+   /api/coach, donc par le même quota — un appel ne doit pas être
+   une porte dérobée vers le modèle. */
+async function tourDAppel(texte) {
+  bulle('user', texte);
+  historique.push({ role: 'user', content: texte });
+
+  const r = await fetch(`${CONFIG.api}/coach`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(session.jeton ? { Authorization: 'Bearer ' + session.jeton } : {}) },
+    body: JSON.stringify({ messages: historique.slice(-16), langue: langue() })
+  });
+
+  if (r.status === 402) {
+    const data = await r.json().catch(() => ({}));
+    historique.pop();
+    setTimeout(() => refuser(data.code, data.erreur), 400);
+    return null;                      // raccroche : inutile de poursuivre
+  }
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+
+  const data = await r.json();
+  const reponse = (data.reponse || '').trim();
+  if (!reponse) throw new Error('réponse vide');
+
+  bulle('assistant', reponse);
+  historique.push({ role: 'assistant', content: reponse });
+  majSolde(data.restant);
+  return reponse;
+}
+
+function appelerLeCoach() {
+  if (!Appel.disponible()) {
+    return toast(t('appel.indisponible',
+      "L'appel demande la reconnaissance vocale, absente de ce navigateur. Safari, Chrome et Edge la proposent."), 'erreur');
+  }
+  // La voix de synthèse et le micro ne peuvent pas fonctionner ensemble.
+  Voix.stop();
+  arreterEcoute();
+
+  ouvrirAppel({
+    titre: t('appel.titre_coach', 'Appel avec le coach'),
+    sousTitre: t('appel.sous_titre_coach', 'Parlez normalement. Marquez une pause pour laisser répondre.'),
+    langue: langueVoix,
+    ouverture: t('appel.ouverture_coach',
+      'Bonjour, je suis votre coach. Dites-moi sur quel oral vous travaillez.'),
+    repondre: tourDAppel
+  });
+}
+
 /** Refus du serveur : compte manquant, ou échanges du jour épuisés. */
 function refuser(code, message) {
   const texte = message || t('coach.limite_atteinte',
@@ -163,7 +233,12 @@ export function initCoach() {
   bulle('assistant', ACCUEIL);
   historique.push({ role: 'assistant', content: ACCUEIL });
 
+  reprendreSimulationConfiee();
+
   $('#btn-envoyer-coach')?.addEventListener('click', () => envoyer());
+  $('#btn-appel-coach')?.addEventListener('click', appelerLeCoach);
+  // Sans reconnaissance vocale, un bouton d'appel ne servirait à rien.
+  if (!Appel.disponible()) $('#btn-appel-coach')?.classList.add('hidden');
 
   const saisie = $('#saisie-coach');
   saisie?.addEventListener('keydown', e => {

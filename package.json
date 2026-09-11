@@ -1,8 +1,8 @@
 {
-  "name": "preporal",
+  "name": "oralixia",
   "version": "1.0.0",
   "private": true,
-  "description": "PrepOral — simulateur d'oraux assisté par IA : entretien, Grand Oral, brevet, concours, pitch, certifications de langue.",
+  "description": "Oralixia — simulateur d'oraux assisté par IA : entretien, Grand Oral, brevet, concours, pitch, certifications de langue.",
   "type": "module",
   "engines": {
     "node": ">=20"
