@@ -96,8 +96,9 @@ function remplirFormulaire() {
   v('#c-nom', session.nom);
   v('#c-pseudo', session.pseudo);
   v('#c-email', session.email);
-  v('#c-telephone', profil.telephone);
+  v('#c-telephone', afficherTelephone(profil.telephone));
   majApercuNom();
+  majTelephone();
 }
 
 /** Montre à quoi ressemblera le nom affiché, avant d'enregistrer. */
@@ -179,21 +180,47 @@ function rendreSimulations() {
 
 /* ── Écritures ─────────────────────────────────────────────── */
 
-/** Écrit dans les métadonnées du compte, et recopie dans « profils ». */
+/* Au-delà, on cesse d'attendre le réseau : un enregistrement qui ne
+   revient jamais laisserait le bouton bloqué sur « Enregistrement… ».
+   C'est exactement ce qui se produisait. */
+const DELAI_ECRITURE = 12000;
+
+/** Rejette si la promesse n'a pas abouti dans le délai imparti. */
+const avecDelai = (promesse, ms = DELAI_ECRITURE) => Promise.race([
+  promesse,
+  new Promise((_, ko) => setTimeout(
+    () => ko(new Error(t('compte.delai', "Le serveur n'a pas répondu. Réessayez."))), ms))
+]);
+
+/**
+ * Écrit dans les métadonnées du compte, et recopie dans « profils ».
+ * @returns {Promise<true|string>} true, ou le message d'erreur à afficher.
+ */
 async function enregistrer(champs, colonnes = champs) {
   if (!supabase || !session.id) {
-    toast(t('compte.hors_ligne', "Enregistrement impossible : vous n'êtes pas connecté."), 'erreur');
-    return false;
+    return t('compte.hors_ligne', "Enregistrement impossible : vous n'êtes pas connecté.");
   }
-  const { error } = await supabase.auth.updateUser({ data: champs });
-  if (error) { toast(error.message, 'erreur'); return false; }
 
-  // La copie en base sert aux requêtes SQL et au tableau de bord ; son
-  // échec ne doit pas faire croire que rien n'a été enregistré.
+  /* Les erreurs remontent comme message plutôt que comme exception :
+     l'appelant en a besoin pour les afficher, et une exception qui
+     traverse laissait le bouton désactivé pour toujours. */
+  let reponse;
   try {
-    await supabase.from('profils').update({ ...colonnes, maj_le: new Date().toISOString() })
-      .eq('id', session.id);
-  } catch (e) { console.warn('Copie du profil non écrite', e); }
+    reponse = await avecDelai(supabase.auth.updateUser({ data: champs }));
+  } catch (e) {
+    return e.message || t('compte.echec', "L'enregistrement a échoué.");
+  }
+  if (reponse?.error) return reponse.error.message;
+
+  /* La copie en base sert aux requêtes SQL et au tableau de bord. Son
+     échec n'annule pas l'enregistrement — les métadonnées font foi pour
+     l'affichage — mais il est journalisé plutôt qu'avalé. */
+  try {
+    const { error } = await avecDelai(
+      supabase.from('profils').update({ ...colonnes, maj_le: new Date().toISOString() })
+        .eq('id', session.id));
+    if (error) console.warn('Copie du profil non écrite', error.message);
+  } catch (e) { console.warn('Copie du profil non écrite', e?.message || e); }
 
   Object.assign(session, champs);
   Object.assign(profil, colonnes);
@@ -204,7 +231,8 @@ async function choisirCouleur(nom) {
   if (!COULEURS_AVATAR[nom]) return;
   session.couleur = nom;               // retour visuel immédiat
   rendreAvatar(); rendreCouleurs();
-  if (await enregistrer({ couleur: nom })) rafraichirEntete();
+  const r = await enregistrer({ couleur: nom });
+  if (r === true) rafraichirEntete(); else toast(r, 'erreur');
 }
 
 async function enregistrerInfos() {
@@ -215,20 +243,33 @@ async function enregistrerInfos() {
   const pseudo = ($('#c-pseudo')?.value || '').trim();
   const telephone = ($('#c-telephone')?.value || '').trim();
 
-  if (telephone && !/^[+0-9 ().-]{6,24}$/.test(telephone)) {
-    if (etat) { etat.textContent = t('compte.telephone_invalide', 'Numéro de téléphone invalide.'); etat.className = 'text-sm text-coral'; }
+  const numero = normaliserTelephone(telephone);
+  if (telephone && !numero) {
+    if (etat) { etat.textContent = t('compte.telephone_invalide',
+      'Numéro invalide. Exemple : 06 12 34 56 78, ou +33 6 12 34 56 78.'); etat.className = 'text-sm text-coral'; }
     return;
   }
 
+  /* try/finally : sans lui, une exception ou une requête qui ne revient
+     jamais laissait le bouton bloqué sur « Enregistrement… », désactivé,
+     sans un mot d'explication. Reproduit dans un navigateur. */
   if (bouton) { bouton.disabled = true; bouton.textContent = t('compte.enregistrement', 'Enregistrement…'); }
-  const ok = await enregistrer({ prenom, nom, pseudo }, { prenom, nom, pseudo, telephone });
-  if (bouton) { bouton.disabled = false; bouton.textContent = t('compte.enregistrer', 'Enregistrer'); }
-
-  if (etat) {
-    etat.textContent = ok ? t('compte.enregistre', 'Enregistré.') : '';
-    etat.className = 'text-sm ' + (ok ? 'text-mint' : 'text-coral');
+  let resultat;
+  try {
+    resultat = await enregistrer({ prenom, nom, pseudo }, { prenom, nom, pseudo, telephone: numero });
+  } catch (e) {
+    resultat = e?.message || t('compte.echec', "L'enregistrement a échoué.");
+  } finally {
+    if (bouton) { bouton.disabled = false; bouton.textContent = t('compte.enregistrer', 'Enregistrer'); }
   }
-  if (ok) { rafraichirEntete(); majApercuNom(); }
+
+  const reussi = resultat === true;
+  if (etat) {
+    // Un échec muet était pire qu'un échec : on affiche toujours la raison.
+    etat.textContent = reussi ? t('compte.enregistre', 'Enregistré.') : String(resultat);
+    etat.className = 'text-sm ' + (reussi ? 'text-mint' : 'text-coral');
+  }
+  if (reussi) { rafraichirEntete(); majApercuNom(); majTelephone(); }
 }
 
 async function televerserPhoto(fichier) {
@@ -262,10 +303,10 @@ async function televerserPhoto(fichier) {
     if (!url) throw new Error('URL de la photo introuvable.');
 
     session.avatar = url;
-    if (await enregistrer({ avatar_url: url }, { avatar_url: url })) {
-      dire(t('compte.photo_enregistree', 'Photo enregistrée.'));
-      rendreAvatar(); rendreCouleurs(); rafraichirEntete();
-    }
+    const r = await enregistrer({ avatar_url: url }, { avatar_url: url });
+    if (r !== true) throw new Error(r);
+    dire(t('compte.photo_enregistree', 'Photo enregistrée.'));
+    rendreAvatar(); rendreCouleurs(); rafraichirEntete();
   } catch (e) {
     dire(e.message || t('compte.photo_echec', "L'envoi de la photo a échoué."), true);
   }
@@ -273,11 +314,11 @@ async function televerserPhoto(fichier) {
 
 async function retirerPhoto() {
   session.avatar = '';
-  if (await enregistrer({ avatar_url: '' }, { avatar_url: null })) {
-    rendreAvatar(); rendreCouleurs(); rafraichirEntete();
-    const etat = $('#etat-avatar');
-    if (etat) etat.textContent = t('compte.photo_retiree', 'Photo retirée.');
-  }
+  const r = await enregistrer({ avatar_url: '' }, { avatar_url: null });
+  if (r !== true) return toast(r, 'erreur');
+  rendreAvatar(); rendreCouleurs(); rafraichirEntete();
+  const etat = $('#etat-avatar');
+  if (etat) etat.textContent = t('compte.photo_retiree', 'Photo retirée.');
 }
 
 async function changerEmail() {
@@ -346,6 +387,11 @@ async function demarrer() {
   $('#btn-retirer-photo')?.addEventListener('click', retirerPhoto);
   $('#fichier-avatar')?.addEventListener('change', e => televerserPhoto(e.target.files?.[0]));
   $('#btn-portail')?.addEventListener('click', ouvrirPortail);
+  $('#btn-verifier-tel')?.addEventListener('click', envoyerCodeSms);
+  $('#btn-confirmer-code')?.addEventListener('click', confirmerCodeSms);
+  $('#code-sms')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmerCodeSms(); }
+  });
   ['#c-prenom', '#c-nom'].forEach(sel => $(sel)?.addEventListener('input', majApercuNom));
 
   surChangementCompte(rendre);
@@ -362,3 +408,148 @@ async function demarrer() {
 }
 
 demarrer();
+
+
+/* ═══════════════════════════════════════════════════════════
+   Téléphone : format international, puis vérification par SMS
+
+   Deux choses distinctes, et c'est important :
+
+   • Enregistrer un numéro ne coûte rien et marche toujours.
+   • Le VÉRIFIER envoie un SMS, ce qui suppose un fournisseur
+     configuré chez Supabase et se paie au message. Sans
+     fournisseur, on le dit clairement au lieu d'échouer sans
+     explication.
+
+   Le numéro est rangé au format E.164 (+33612345678) : c'est
+   le seul que Supabase accepte, et le seul qui reste valable
+   si le candidat passe une frontière.
+   ═══════════════════════════════════════════════════════════ */
+
+/** Indicatif appliqué à un numéro national sans préfixe. */
+const INDICATIF_DEFAUT = '+33';
+
+/**
+ * @returns {string} le numéro en E.164, ou '' s'il est invalide.
+ *          Une chaîne vide en entrée rend une chaîne vide : effacer
+ *          son numéro est un choix légitime, pas une erreur.
+ */
+export function normaliserTelephone(brut) {
+  const saisi = String(brut || '').trim();
+  if (!saisi) return '';
+
+  // On ne garde que les chiffres, et le + s'il ouvre le numéro.
+  const international = saisi.startsWith('+');
+  const chiffres = saisi.replace(/\D/g, '');
+  if (!chiffres) return '';
+
+  if (international) {
+    return chiffres.length >= 8 && chiffres.length <= 15 ? '+' + chiffres : '';
+  }
+
+  /* Numéro national français : dix chiffres commençant par zéro.
+     Le zéro tombe, l'indicatif le remplace. */
+  if (/^0[1-9]\d{8}$/.test(chiffres)) return INDICATIF_DEFAUT + chiffres.slice(1);
+
+  // Tout le reste est ambigu : mieux vaut refuser que deviner un pays.
+  return '';
+}
+
+/** Affichage lisible : +33612345678 → +33 6 12 34 56 78 */
+export function afficherTelephone(e164) {
+  const n = String(e164 || '');
+  if (!n.startsWith('+33') || n.length !== 12) return n;
+  return '+33 ' + n.slice(3).replace(/(\d)(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
+}
+
+/** Reflète l'état du numéro : enregistré, vérifié, ou rien. */
+function majTelephone() {
+  const zone = $('#etat-telephone');
+  const btn = $('#btn-verifier-tel');
+  if (!zone || !btn) return;
+
+  const numero = profil.telephone || '';
+  const verifie = Boolean(profil.telephoneVerifie);
+
+  zone.innerHTML = !numero ? ''
+    : verifie
+      ? `<span class="inline-flex items-center gap-1.5 rounded-full border border-mint/50 bg-mint/10 px-2.5 py-0.5 text-xs text-mint">
+           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>
+           ${echappe(t('compte.tel_verifie', 'Numéro vérifié'))}
+         </span>`
+      : `<span class="text-xs text-muted">${echappe(t('compte.tel_non_verifie', 'Numéro enregistré, non vérifié.'))}</span>`;
+
+  // Rien à vérifier tant qu'aucun numéro n'est enregistré.
+  btn.classList.toggle('hidden', !numero || verifie);
+}
+
+/** Envoie le code, puis affiche le champ de saisie. */
+async function envoyerCodeSms() {
+  const btn = $('#btn-verifier-tel');
+  const bloc = $('#bloc-code-sms');
+  const etat = $('#etat-code-sms');
+  const numero = profil.telephone;
+
+  const dire = (texte, erreur = false) => {
+    if (etat) { etat.textContent = texte; etat.className = 'mt-2 text-xs ' + (erreur ? 'text-coral' : 'text-muted'); }
+  };
+
+  if (!numero) return dire(t('compte.tel_absent', "Enregistrez d'abord un numéro."), true);
+  if (!supabase) return dire(t('compte.hors_ligne', "Enregistrement impossible : vous n'êtes pas connecté."), true);
+
+  if (btn) { btn.disabled = true; btn.textContent = t('compte.envoi_code', 'Envoi du code…'); }
+  try {
+    const { error } = await avecDelai(supabase.auth.updateUser({ phone: numero }));
+    if (error) throw error;
+
+    bloc?.classList.remove('hidden');
+    $('#code-sms')?.focus();
+    dire(t('compte.code_envoye', 'Code envoyé au {n}. Il expire dans quelques minutes.')
+      .replace('{n}', afficherTelephone(numero)));
+  } catch (e) {
+    /* Sans fournisseur SMS configuré, Supabase répond par une erreur
+       technique. On la traduit : le candidat n'y peut rien, et
+       l'éditeur doit savoir quoi brancher. */
+    const brut = String(e?.message || '');
+    dire(/provider|not enabled|sms|twilio|unsupported/i.test(brut)
+      ? t('compte.sms_indisponible',
+          "La vérification par SMS n'est pas encore activée sur ce site. Votre numéro est enregistré malgré tout.")
+      : brut || t('compte.echec', "L'enregistrement a échoué."), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = t('compte.verifier_sms', 'Vérifier par SMS'); }
+  }
+}
+
+/** Confirme le code reçu, et marque le numéro vérifié. */
+async function confirmerCodeSms() {
+  const btn = $('#btn-confirmer-code');
+  const etat = $('#etat-code-sms');
+  const code = ($('#code-sms')?.value || '').replace(/\D/g, '');
+
+  const dire = (texte, erreur = false) => {
+    if (etat) { etat.textContent = texte; etat.className = 'mt-2 text-xs ' + (erreur ? 'text-coral' : 'text-mint'); }
+  };
+
+  if (code.length < 4) return dire(t('compte.code_court', 'Saisissez le code reçu par SMS.'), true);
+  if (!supabase) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = t('compte.verification', 'Vérification…'); }
+  try {
+    const { error } = await avecDelai(supabase.auth.verifyOtp({
+      phone: profil.telephone, token: code, type: 'phone_change'
+    }));
+    if (error) throw error;
+
+    profil.telephoneVerifie = true;
+    // Seule la colonne compte : les métadonnées n'ont pas à porter cet état.
+    await enregistrer({}, { telephone_verifie: true });
+    $('#bloc-code-sms')?.classList.add('hidden');
+    const champ = $('#code-sms'); if (champ) champ.value = '';
+    majTelephone();
+    dire(t('compte.tel_confirme', 'Numéro confirmé.'));
+  } catch (e) {
+    dire(e?.message || t('compte.code_invalide', 'Code incorrect ou expiré.'), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = t('compte.confirmer', 'Confirmer'); }
+  }
+}

@@ -359,6 +359,47 @@ test("le plan d'un abonnement se lit sur son tarif", () => {
     "l'abonnement ouvert en essai arrive par « created »");
 });
 
+test("un enregistrement qui échoue rend la main et dit pourquoi", () => {
+  /* Le bouton restait bloqué sur « Enregistrement… », désactivé, sans
+     un mot : une exception traversait sans try/finally, et une requête
+     qui ne revenait jamais n'avait aucun délai de garde. Reproduit
+     dans un navigateur avant correction. */
+  const src = modules.find(m => m.nom === 'compte.js').source;
+
+  /* On isole les deux fonctions concernées : le fichier entier contient
+     d'autres finally et d'autres avecDelai, et un test qui regarde le
+     fichier restait vert alors que la garde avait sauté — vérifié en
+     cassant le code. */
+  const corps = nom => {
+    const debut = src.indexOf(`function ${nom}`);
+    assert.ok(debut > -1, `${nom} a disparu`);
+    return src.slice(debut, src.indexOf('\n}', debut));
+  };
+
+  const infos = corps('enregistrerInfos');
+  assert.match(infos, /finally\s*\{[^}]*disabled\s*=\s*false/,
+    'le bouton doit être réactivé dans un finally, sinon une exception le bloque');
+  assert.match(infos, /catch/,
+    'une exception doit devenir un message, pas une console vide');
+  assert.ok(!/textContent\s*=\s*\w+\s*\?[^:]+:\s*''/.test(infos),
+    'un échec muet est pire qu\'un échec : la raison doit s\'afficher');
+
+  const ecriture = corps('enregistrer');
+  assert.match(ecriture, /avecDelai\s*\(/,
+    'sans délai de garde, une requête qui ne revient jamais bloque le bouton');
+});
+
+test("le pseudonyme remplace le nom, il ne s'y ajoute pas", () => {
+  /* Le menu et la carte affichaient « WLM_917 MATIABU OMANGELO » :
+     le nom de famille accolé au pseudonyme révélait justement
+     l'identité que le pseudonyme sert à couvrir. */
+  const auth = modules.find(m => m.nom === 'auth.js').source;
+  assert.ok(!/nomAffiche\(\)\s*\+\s*\(session\.nom/.test(auth),
+    'le nom de famille ne doit plus être accolé au nom affiché');
+  assert.match(auth, /nomComplet/,
+    'un seul point d\'entrée pour le nom affiché, sinon le cas revient ailleurs');
+});
+
 test('le domaine déclaré est celui que CONFIG annonce', async () => {
   /* La balise canonique a pointé sur preporal.vercel.app après que ce
      domaine a cessé de répondre : elle disait donc aux moteurs « la

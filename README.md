@@ -389,6 +389,40 @@ Quatre points d'attention :
   Le rendu HTML des messages diffère beaucoup d'un client de messagerie à
   l'autre.
 
+### Vérifier un numéro par SMS
+
+Le champ téléphone est **facultatif** et s'enregistre sans rien configurer. Le
+**vérifier** est autre chose : cela envoie un SMS, ce qui suppose un
+fournisseur et se paie au message.
+
+Le numéro est rangé au format **E.164** (`+33612345678`) : c'est le seul que
+Supabase accepte, et le seul qui reste valable si le candidat passe une
+frontière. `normaliserTelephone()` convertit `06 12 34 56 78` avant
+l'enregistrement ; un numéro national sans indicatif reconnaissable est refusé
+plutôt que rattaché au hasard à un pays.
+
+Pour activer l'envoi : **Authentication → Sign In / Providers → Phone**,
+activez, puis choisissez un fournisseur (Twilio, MessageBird, Vonage,
+Textlocal) et collez ses identifiants.
+
+> **Le SMS n'est pas gratuit.** Comptez quelques centimes par message en
+> France, et bien plus vers certains pays. Un compte Twilio demande aussi
+> l'achat d'un numéro émetteur, facturé au mois. À usage : chaque tentative de
+> vérification coûte, y compris celles qui échouent. Vérifiez les tarifs
+> courants chez le fournisseur avant d'ouvrir la fonction — les chiffres
+> bougent.
+
+Sans fournisseur configuré, le bouton « Vérifier par SMS » l'annonce
+clairement : *« La vérification par SMS n'est pas encore activée sur ce site.
+Votre numéro est enregistré malgré tout. »* Le reste de la page continue de
+fonctionner.
+
+Deux limites héritées de Supabase, à connaître avant de compter dessus :
+
+- `updateUser({ phone })` place le compte en attente de confirmation. Tant que
+  le code n'est pas saisi, l'ancien numéro reste en vigueur.
+- Un numéro déjà rattaché à un autre compte est refusé.
+
 ### Gérer les comptes depuis supabase.com
 
 **Authentication → Users** est la liste de référence. On y trouve, par compte :

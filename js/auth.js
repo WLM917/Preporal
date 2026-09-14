@@ -17,7 +17,7 @@ import { $, $$, echappe, toast, ouvrirModale, fermerModale } from './ui.js';
 import { langue, t, surChangementLangue } from './i18n.js';
 
 export const session = { id: null, email: null, jeton: null, prenom: '', nom: '', pseudo: '', avatar: '', couleur: '' };
-export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null, telephone: '' };
+export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null, telephone: '', telephoneVerifie: false };
 
 export let supabase = null;
 export const configure = () => Boolean(CONFIG.supabase.url && CONFIG.supabase.anonKey);
@@ -47,6 +47,17 @@ export function nomAffiche() {
   if (prenom) return prenom;
   return session.email ? session.email.split('@')[0] : '';
 }
+
+/**
+ * Le nom tel qu'il s'affiche partout : menu, carte de compte, en-tête.
+ *
+ * Un pseudonyme se suffit à lui-même. Le menu et la carte y accolaient
+ * pourtant le nom de famille — « WLM_917 MATIABU OMANGELO » — ce qui
+ * révélait justement l'identité que le pseudonyme sert à couvrir.
+ * Une seule fonction pour tous les affichages, et le cas ne peut plus
+ * revenir par un endroit oublié.
+ */
+export const nomComplet = () => nomAffiche();
 
 /* ── Erreurs renvoyées par les liens Supabase ───────────────
    Un lien de connexion périmé, déjà cliqué, ou pré-chargé par un
@@ -163,7 +174,7 @@ async function chargerProfil() {
   try {
     const { data } = await supabase
       .from('profils')
-      .select('premium, plan, premium_jusqu_au, stripe_client_id, telephone, pseudo, couleur, avatar_url')
+      .select('premium, plan, premium_jusqu_au, stripe_client_id, telephone, telephone_verifie, pseudo, couleur, avatar_url')
       .eq('id', session.id)
       .maybeSingle();
     if (data) {
@@ -173,6 +184,7 @@ async function chargerProfil() {
       profil.premiumJusquA = data.premium_jusqu_au || null;
       profil.stripeClientId = data.stripe_client_id || null;
       profil.telephone = data.telephone || '';
+      profil.telephoneVerifie = Boolean(data.telephone_verifie);
 
       /* La base complète ce que les métadonnées ne portent pas : un
          compte créé avant l'ajout du pseudonyme, ou modifié depuis un
@@ -487,7 +499,7 @@ function majBoutonCompte(connecte) {
     <div class="flex items-start gap-3 border-b border-line px-4 py-3">
       ${avatar('h-10 w-10 shrink-0')}
       <div class="min-w-0">
-        <p class="truncate font-display text-sm font-bold">${echappe(nomAffiche() + (session.nom ? ' ' + session.nom : ''))}</p>
+        <p class="truncate font-display text-sm font-bold">${echappe(nomComplet())}</p>
         <p class="mt-0.5 truncate text-xs text-muted">${echappe(session.email)}</p>
         <p class="mt-2 inline-flex rounded-full border px-2 py-0.5 text-[11px] ${
           profil.premium ? 'border-mint/50 bg-mint/10 text-mint' : 'border-line text-muted'}">
@@ -518,7 +530,7 @@ function majCarteCompte(connecte) {
     etat.innerHTML = `<span class="flex items-start gap-3">
         ${avatar('h-11 w-11')}
         <span class="min-w-0">
-          <span class="block truncate font-medium text-soft">${echappe(nomAffiche() + (session.nom ? ' ' + session.nom : ''))}</span>
+          <span class="block truncate font-medium text-soft">${echappe(nomComplet())}</span>
           <span class="block truncate text-xs">${echappe(session.email)}</span>
           <span class="block text-xs">${echappe(profil.premium
             ? t('compte.premium_actif', 'Premium actif')
