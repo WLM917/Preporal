@@ -7,6 +7,7 @@
 import { appelerModele, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
 import { verifierQuotaCoach, consommerQuotaCoach, refuserQuota } from './_lib/quota.js';
 import { blocsDePieces, resumerPieces } from './_lib/pieces.js';
+import { consigneLangue } from './_lib/langue.js';
 
 const SYSTEME = `Tu es le coach d'oral de Oralixia. Tu accompagnes des élèves, des étudiants et des candidats francophones qui préparent un entretien, un Grand Oral, un oral de brevet, un concours, un pitch ou une certification de langue.
 
@@ -60,9 +61,7 @@ export default async function handler(req, res) {
     /* La langue d'interface pilote la langue des réponses : un
        utilisateur qui a mis le site en anglais ne doit pas recevoir
        une correction en français. */
-    const LANGUES = { fr: 'français', en: 'anglais', es: 'espagnol' };
-    const nom = LANGUES[langue] || LANGUES.fr;
-    const systeme = SYSTEME + `\n\nRéponds intégralement en ${nom}, quelle que soit la langue de la question.`;
+    const systeme = SYSTEME + '\n\n' + consigneLangue(langue);
 
     const reponse = await appelerModele({
       systeme,
