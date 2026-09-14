@@ -21,7 +21,7 @@ const sansBarreFinale = (u = '') => String(u).trim().replace(/\/+$/, '');
    ferait pointer la balise canonique vers un domaine qui ne
    répond pas — le moyen le plus sûr de se désindexer soi-même. */
 export const NOM_PRODUIT = ENV.NOM_PRODUIT || 'Oralixia';
-export const DOMAINE = ENV.DOMAINE || 'preporal.vercel.app';
+export const DOMAINE = ENV.DOMAINE || 'www.oralixia.com';
 
 export const CONFIG = {
   api: ENV.API_BASE || '/api',

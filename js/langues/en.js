@@ -6,6 +6,16 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
+  "coach.joindre": "Attach a document",
+  "coach.retirer_piece": "Remove",
+  "coach.piece_trop_lourde": "File too large: 3 MB maximum.",
+  "coach.piece_vide": "No usable text in this file.",
+  "coach.piece_echec": "This file could not be read.",
+  "coach.piece_refusee": "This document could not be sent.",
+  "coach.trop_de_pieces": "Five attachments at most.",
+  "coach.lecture_piece": "Reading {nom}…",
+  "coach.preparation": "Preparing…",
+  "coach.analyse_piece": "Can you look at this document and tell me what I should work on?",
   "relecture.telecharger": "Download as PDF",
   "relecture.envoyer_au_coach": "Analyse with the coach",
   "coach.simulation_confiee": "Here is my session from {date}. What should I work on first?",

@@ -277,3 +277,62 @@ export function brancherDicteeChamp(cible, apres) {
 
   return bouton;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   Pièces jointes du coach
+
+   Le partage des rôles n'est pas le même que pour le
+   simulateur. Ici, un PDF et une image partent tels quels vers
+   le modèle, qui les lit nativement — une photo de copie
+   annotée ou un sujet manuscrit passe ainsi bien mieux qu'avec
+   une reconnaissance de caractères faite ici. Le reste (DOCX,
+   texte) est converti dans le navigateur, parce que le modèle
+   ne lit pas le DOCX et que mammoth le fait très bien.
+   ═══════════════════════════════════════════════════════════ */
+
+/** Formats envoyés tels quels au modèle. */
+const NATIFS = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+/* Miroir des bornes du serveur (api/_lib/pieces.js), qui fait foi.
+   Celles-ci évitent un aller-retour inutile et donnent un message
+   immédiat. */
+export const PIECE_MAX = 3 * 1024 * 1024;
+export const PIECES_MAX = 5;
+
+const enBase64 = fichier => new Promise((ok, ko) => {
+  const fr = new FileReader();
+  // readAsDataURL rend « data:<media>;base64,<charge> » : on ne garde que la charge.
+  fr.onload = () => ok(String(fr.result).split(',')[1] || '');
+  fr.onerror = () => ko(new Error('Fichier illisible.'));
+  fr.readAsDataURL(fichier);
+});
+
+/**
+ * Prépare un fichier pour le coach.
+ * @returns {Promise<{type:'natif'|'texte', nom:string, media?:string, donnees?:string, texte?:string, octets:number}>}
+ */
+export async function preparerPiece(fichier, onProgres) {
+  if (!fichier) throw new Error('Aucun fichier.');
+  if (fichier.size > PIECE_MAX) {
+    throw new Error(t('coach.piece_trop_lourde', 'Fichier trop lourd : 3 Mo maximum.'));
+  }
+
+  const media = fichier.type || '';
+  if (NATIFS.has(media)) {
+    onProgres && onProgres(t('coach.preparation', 'Préparation…'));
+    return { type: 'natif', nom: fichier.name, media, donnees: await enBase64(fichier), octets: fichier.size };
+  }
+
+  // Tout le reste passe par l'extraction déjà en place.
+  const texte = await extraireTexte(fichier, onProgres);
+  if (!texte || texte.trim().length < 20) {
+    throw new Error(t('coach.piece_vide', 'Aucun texte exploitable dans ce fichier.'));
+  }
+  return { type: 'texte', nom: fichier.name, texte: texte.trim(), octets: texte.length };
+}
+
+/** Ce que l'on envoie réellement à l'API : sans les champs d'affichage. */
+export const piecePourApi = p => p.type === 'natif'
+  ? { type: 'natif', nom: p.nom, media: p.media, donnees: p.donnees }
+  : { type: 'texte', nom: p.nom, texte: p.texte };
