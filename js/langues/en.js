@@ -6,19 +6,8 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
-  "compte.verifier_sms": "Verify by SMS",
-  "compte.code_recu": "Code received by SMS",
+  "compte.telephone_aide": "Only used to reach you if something goes wrong with your account. Never shared, never used for advertising.",
   "compte.confirmer": "Confirm",
-  "compte.verification": "Verifying…",
-  "compte.envoi_code": "Sending the code…",
-  "compte.code_envoye": "Code sent to {n}. It expires in a few minutes.",
-  "compte.code_court": "Enter the code you received by SMS.",
-  "compte.code_invalide": "Wrong or expired code.",
-  "compte.tel_verifie": "Number verified",
-  "compte.tel_non_verifie": "Number saved, not verified.",
-  "compte.tel_confirme": "Number confirmed.",
-  "compte.tel_absent": "Save a number first.",
-  "compte.sms_indisponible": "SMS verification is not switched on for this site yet. Your number is saved all the same.",
   "compte.delai": "The server did not answer. Try again.",
   "compte.echec": "Saving failed.",
   "coach.joindre": "Attach a document",
