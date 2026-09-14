@@ -522,7 +522,7 @@
 
         <div class="mt-6 flex items-baseline justify-between">
           <label for="reponse" class="text-sm font-medium" data-i18n="sim.votre_reponse">Votre réponse</label>
-          <span id="compteur-reponse" class="text-xs tabular-nums text-muted" data-i18n="sim.0_mot">0 mot</span>
+          <span id="compteur-reponse" class="text-xs tabular-nums text-muted" data-i18n="sim.zero_mot">0 mot</span>
         </div>
         <textarea id="reponse" rows="7"
           class="mt-2 w-full rounded-xl border border-line/70 bg-ink/60 p-4 text-sm leading-relaxed placeholder:text-muted/50 focus:border-iris focus:outline-none"
@@ -530,7 +530,7 @@
 
         <div class="mt-5 flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
           <button id="btn-suivant" type="button"
-            class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.valider_et_continuer">
+            class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-iris to-iris2 px-6 py-3.5 font-display font-bold text-white shadow-glow transition hover:brightness-110" data-i18n="sim.valider">
             Valider et continuer
           </button>
           <button id="btn-passer" type="button" class="text-sm text-muted underline-offset-4 hover:text-soft hover:underline" data-i18n="sim.passer_cette_question">Passer cette question</button>
@@ -548,8 +548,8 @@
             <span id="chrono" role="timer" class="font-display text-3xl font-extrabold tabular-nums">2:00</span>
           </div>
         </div>
-        <p id="etat-chrono" class="mt-4 text-sm text-muted" data-i18n="sim.le_chrono_tourne">Le chrono tourne.</p>
-        <button id="btn-pause" type="button" class="mt-4 w-full rounded-lg border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/50" data-i18n="sim.mettre_en_pause">Mettre en pause</button>
+        <p id="etat-chrono" class="mt-4 text-sm text-muted" data-i18n="sim.chrono_tourne">Le chrono tourne, il ne vous coupe pas.</p>
+        <button id="btn-pause" type="button" class="mt-4 w-full rounded-lg border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-iris/50" data-i18n="sim.pause">Mettre en pause</button>
       </aside>
     </div>
   </div>
