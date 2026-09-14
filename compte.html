@@ -301,9 +301,16 @@
   <!-- Connecté -->
   <section id="compte-connecte" class="hidden pt-10">
     <h1 class="titre-section" data-i18n="compte.gerer_mon_compte">Gérer mon compte</h1>
-    <p class="mt-3 max-w-xl leading-relaxed text-muted" data-i18n="compte.intro">
-      Votre identité, votre abonnement et vos moyens de paiement. Rien n'est visible par les autres candidats.
-    </p>
+    <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
+      <p class="max-w-xl leading-relaxed text-muted" data-i18n="compte.intro">
+        Votre identité, votre abonnement et vos moyens de paiement. Rien n'est visible par les autres candidats.
+      </p>
+      <button id="btn-deconnexion-compte" type="button"
+        class="inline-flex shrink-0 items-center gap-2 rounded-xl border border-line bg-raised px-4 py-2.5 text-sm font-medium transition hover:border-coral/60 hover:text-coral">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+        <span data-i18n="accueil.se_deconnecter">Se déconnecter</span>
+      </button>
+    </div>
 
     <div class="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
 
@@ -367,20 +374,7 @@
           <input id="c-telephone" type="tel" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="06 12 34 56 78"
             class="mt-2 w-full rounded-xl border border-line bg-ink/60 px-4 py-3 text-sm placeholder:text-muted/50 focus:border-iris focus:outline-none">
 
-          <div class="mt-2 flex flex-wrap items-center gap-3">
-            <span id="etat-telephone" role="status"></span>
-            <button id="btn-verifier-tel" type="button" class="hidden rounded-lg border border-line bg-raised px-3 py-1.5 text-xs font-medium transition hover:border-iris/60" data-i18n="compte.verifier_sms">Vérifier par SMS</button>
-          </div>
-
-          <div id="bloc-code-sms" class="mt-3 hidden rounded-xl border border-line bg-ink/40 p-4">
-            <label for="code-sms" class="text-sm font-medium" data-i18n="compte.code_recu">Code reçu par SMS</label>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <input id="code-sms" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456"
-                class="w-36 rounded-xl border border-line bg-ink/60 px-4 py-2.5 text-center text-sm tracking-[0.3em] placeholder:tracking-normal placeholder:text-muted/50 focus:border-iris focus:outline-none">
-              <button id="btn-confirmer-code" type="button" class="rounded-xl bg-inverse px-4 py-2.5 text-sm font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="compte.confirmer">Confirmer</button>
-            </div>
-            <p id="etat-code-sms" class="mt-2 text-xs text-muted" role="status"></p>
-          </div>
+          <p class="mt-2 text-xs text-muted" data-i18n="compte.telephone_aide">Sert uniquement à vous joindre en cas de problème sur votre compte. Jamais communiqué, jamais utilisé pour de la publicité.</p>
 
           <div class="mt-6 flex flex-wrap items-center gap-3">
             <button id="btn-enregistrer" type="button" class="rounded-xl bg-inverse px-5 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90" data-i18n="compte.enregistrer">Enregistrer</button>

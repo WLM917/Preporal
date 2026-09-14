@@ -6,19 +6,8 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
-  "compte.verifier_sms": "Verificar por SMS",
-  "compte.code_recu": "Código recibido por SMS",
+  "compte.telephone_aide": "Solo sirve para localizarte si hay un problema con tu cuenta. Nunca se comparte ni se usa con fines publicitarios.",
   "compte.confirmer": "Confirmar",
-  "compte.verification": "Verificando…",
-  "compte.envoi_code": "Enviando el código…",
-  "compte.code_envoye": "Código enviado al {n}. Caduca en unos minutos.",
-  "compte.code_court": "Escribe el código recibido por SMS.",
-  "compte.code_invalide": "Código incorrecto o caducado.",
-  "compte.tel_verifie": "Número verificado",
-  "compte.tel_non_verifie": "Número guardado, sin verificar.",
-  "compte.tel_confirme": "Número confirmado.",
-  "compte.tel_absent": "Guarda antes un número.",
-  "compte.sms_indisponible": "La verificación por SMS aún no está activada en este sitio. Tu número se guarda igualmente.",
   "compte.delai": "El servidor no ha respondido. Inténtalo de nuevo.",
   "compte.echec": "No se ha podido guardar.",
   "coach.joindre": "Adjuntar un documento",

@@ -389,6 +389,68 @@ test("un enregistrement qui échoue rend la main et dit pourquoi", () => {
     'sans délai de garde, une requête qui ne revient jamais bloque le bouton');
 });
 
+test('une photo inaffichable ne condamne pas le choix de couleur', () => {
+  /* La photo des comptes Google était refusée par la politique de
+     sécurité : la pastille s'affichait vide, et le nuancier restait
+     grisé au motif qu'« il y a déjà une photo ». Deux corrections, et
+     la seconde compte le plus : une URL de photo n'est pas une photo. */
+  const auth = modules.find(m => m.nom === 'auth.js').source;
+  const compte = modules.find(m => m.nom === 'compte.js').source;
+
+  assert.match(auth, /photoCassee/, 'l\'échec de chargement doit être détecté');
+  assert.match(auth, /addEventListener\('error'[\s\S]{0,120}true\)/,
+    'une image en erreur ne remonte pas : il faut écouter en capture');
+
+  // Le nuancier ne se grise que pour une photo réellement affichée.
+  assert.match(compte, /session\.avatar\)?\s*&&\s*!photoCassee/,
+    'le nuancier doit rester utilisable quand la photo ne s\'affiche pas');
+
+  // Et les hôtes d'avatars doivent être autorisés par la CSP.
+  const csp = JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8'))
+    .headers.find(r => r.source === '/(.*)')
+    .headers.find(h => h.key === 'Content-Security-Policy').value;
+  const imgSrc = csp.split(';').map(d => d.trim()).find(d => d.startsWith('img-src'));
+  assert.match(imgSrc, /googleusercontent\.com/,
+    'la photo des comptes Google serait bloquée');
+});
+
+test("l'enregistrement n'attend que l'écriture durable", () => {
+  /* Les deux écritures étaient enchaînées et la première commandait
+     tout : quand les métadonnées traînaient, un enregistrement déjà
+     accepté par la base était déclaré perdu. */
+  const src = modules.find(m => m.nom === 'compte.js').source;
+  const debut = src.indexOf('async function enregistrer(');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  assert.match(corps, /ecritureBase/, 'la base est la source durable');
+  assert.match(corps, /ecritureMeta/, 'les métadonnées partent en parallèle');
+  assert.match(corps, /await ecritureBase/,
+    "seule l'écriture durable doit faire patienter le candidat");
+  assert.ok(!/await Promise\.all/.test(corps),
+    'attendre les deux fait patienter pour un enregistrement déjà acquis');
+});
+
+test('la page compte permet de se déconnecter', () => {
+  /* Se déconnecter depuis l'écran qui gère le compte est le geste le
+     plus attendu : il n'y était pas. */
+  const page = lire('compte.html');
+  assert.match(page, /id="btn-deconnexion-compte"/, 'bouton de déconnexion absent');
+  const src = modules.find(m => m.nom === 'compte.js').source;
+  assert.match(src, /btn-deconnexion-compte[\s\S]{0,80}deconnexion/,
+    'le bouton doit être branché sur la déconnexion');
+});
+
+test('la vérification par SMS a bien été retirée', () => {
+  /* Elle imposait un fournisseur payant, facturait chaque tentative, et
+     rattachait un champ informatif à l'authentification du compte. */
+  const src = modules.find(m => m.nom === 'compte.js').source;
+  const page = lire('compte.html');
+  for (const trace of ['verifyOtp', 'phone_change', 'code-sms', 'btn-verifier-tel']) {
+    assert.ok(!src.includes(trace) && !page.includes(trace),
+      `reste de la vérification par SMS : ${trace}`);
+  }
+});
+
 test("le pseudonyme remplace le nom, il ne s'y ajoute pas", () => {
   /* Le menu et la carte affichaient « WLM_917 MATIABU OMANGELO » :
      le nom de famille accolé au pseudonyme révélait justement

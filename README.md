@@ -389,39 +389,54 @@ Quatre points d'attention :
   Le rendu HTML des messages diffère beaucoup d'un client de messagerie à
   l'autre.
 
-### Vérifier un numéro par SMS
+### Le numéro de téléphone
 
-Le champ téléphone est **facultatif** et s'enregistre sans rien configurer. Le
-**vérifier** est autre chose : cela envoie un SMS, ce qui suppose un
-fournisseur et se paie au message.
+Le champ est **facultatif** et purement informatif : il sert à joindre un
+candidat si quelque chose cloche sur son compte. Il est rangé au format
+**E.164** (`+33612345678`), qui reste valable si le candidat passe une
+frontière et se compose directement depuis un téléphone.
+`normaliserTelephone()` convertit `06 12 34 56 78` avant l'enregistrement ; un
+numéro national sans indicatif reconnaissable est refusé plutôt que rattaché au
+hasard à un pays.
 
-Le numéro est rangé au format **E.164** (`+33612345678`) : c'est le seul que
-Supabase accepte, et le seul qui reste valable si le candidat passe une
-frontière. `normaliserTelephone()` convertit `06 12 34 56 78` avant
-l'enregistrement ; un numéro national sans indicatif reconnaissable est refusé
-plutôt que rattaché au hasard à un pays.
+> **La vérification par SMS a été retirée**, et c'était le bon arbitrage. Elle
+> imposait un fournisseur payant chez Supabase, facturait **chaque tentative**
+> y compris les échecs, et surtout rattachait un champ informatif à
+> l'authentification du compte : une panne du SMS devenait alors une panne de
+> l'enregistrement. Pour un numéro qu'on ne fait que noter, le prix était
+> absurde. Si le besoin revient un jour, le point d'entrée est
+> `Authentication → Sign In / Providers → Phone`.
 
-Pour activer l'envoi : **Authentication → Sign In / Providers → Phone**,
-activez, puis choisissez un fournisseur (Twilio, MessageBird, Vonage,
-Textlocal) et collez ses identifiants.
+### Pourquoi l'enregistrement du profil écrit à deux endroits
 
-> **Le SMS n'est pas gratuit.** Comptez quelques centimes par message en
-> France, et bien plus vers certains pays. Un compte Twilio demande aussi
-> l'achat d'un numéro émetteur, facturé au mois. À usage : chaque tentative de
-> vérification coûte, y compris celles qui échouent. Vérifiez les tarifs
-> courants chez le fournisseur avant d'ouvrir la fonction — les chiffres
-> bougent.
+`enregistrer()` écrit dans la table `profils` **et** dans les métadonnées du
+compte, et cette dissymétrie mérite d'être comprise :
 
-Sans fournisseur configuré, le bouton « Vérifier par SMS » l'annonce
-clairement : *« La vérification par SMS n'est pas encore activée sur ce site.
-Votre numéro est enregistré malgré tout. »* Le reste de la page continue de
-fonctionner.
+| Destination | Rôle | Attendue ? |
+|---|---|---|
+| Table `profils` | source durable, interrogeable en SQL, repeuple la session au chargement | **oui** |
+| Métadonnées du compte | affiche le nom sans attendre une requête | non, en arrière-plan |
 
-Deux limites héritées de Supabase, à connaître avant de compter dessus :
+Les deux écritures étaient enchaînées, et la première commandait tout : quand
+`auth.updateUser` traînait, un enregistrement **déjà accepté par la base** était
+déclaré perdu — « Le serveur n'a pas répondu » sur un simple changement de
+pseudonyme. Elles partent désormais ensemble, seule la base fait patienter, et
+l'échec n'est annoncé que si les deux ont échoué.
 
-- `updateUser({ phone })` place le compte en attente de confirmation. Tant que
-  le code n'est pas saisi, l'ancien numéro reste en vigueur.
-- Un numéro déjà rattaché à un autre compte est refusé.
+### La photo de profil des comptes Google
+
+Une URL de photo n'est pas une photo. Celle des comptes Google
+(`lh3.googleusercontent.com`) était refusée par `img-src` : la pastille
+s'affichait **vide**, et le choix de couleur restait grisé au motif qu'« il y a
+déjà une photo ». Deux corrections, et la seconde compte le plus :
+
+1. Les hôtes d'avatars sont autorisés dans la CSP.
+2. Une image qui échoue bascule sur la silhouette colorée et **rend la main sur
+   les couleurs**. Un incident réseau, un bloqueur ou un compte dont la photo a
+   été supprimée ne doivent pas condamner un réglage.
+
+L'évènement `error` d'une image ne remonte pas : il est écouté **en phase de
+capture** au niveau du document.
 
 ### Gérer les comptes depuis supabase.com
 
@@ -1110,7 +1125,9 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    Stripe → Settings → Billing → Customer portal → autorisez la mise à jour
    d'abonnement et listez-y les deux tarifs (mensuel et six mois).
 5. **Compartiment `avatars`.** Créé par `supabase/schema.sql` : relancez le
-   script pour que les photos de profil fonctionnent.
+   script pour que les photos de profil fonctionnent. Le script ajoute aussi
+   les colonnes `pseudo`, `telephone`, `couleur` et `avatar_url` — sans elles,
+   l'enregistrement du profil échoue.
 6. **Modèles d'e-mail Supabase.** Les messages d'authentification partent en
    anglais tant que vous n'avez pas collé les modèles multilingues, et le SMTP
    intégré est limité aux tests. Voir *Configuration Supabase → Des e-mails

@@ -17,7 +17,7 @@ import { $, $$, echappe, toast, ouvrirModale, fermerModale } from './ui.js';
 import { langue, t, surChangementLangue } from './i18n.js';
 
 export const session = { id: null, email: null, jeton: null, prenom: '', nom: '', pseudo: '', avatar: '', couleur: '' };
-export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null, telephone: '', telephoneVerifie: false };
+export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null, telephone: '' };
 
 export let supabase = null;
 export const configure = () => Boolean(CONFIG.supabase.url && CONFIG.supabase.anonKey);
@@ -150,6 +150,8 @@ async function appliquerSession(s) {
     session.prenom = m.prenom || m.first_name || m.given_name || '';
     session.nom = m.nom || m.last_name || m.family_name || '';
     // Google renseigne avatar_url ou picture ; ailleurs, on affiche une silhouette.
+    // Nouvelle session, nouvelle chance : la photo n'est plus réputée cassée.
+    photoCassee = false;
     session.avatar = m.avatar_url || m.picture || '';
     session.pseudo = (m.pseudo || '').trim();
     session.couleur = m.couleur || '';
@@ -174,7 +176,7 @@ async function chargerProfil() {
   try {
     const { data } = await supabase
       .from('profils')
-      .select('premium, plan, premium_jusqu_au, stripe_client_id, telephone, telephone_verifie, pseudo, couleur, avatar_url')
+      .select('premium, plan, premium_jusqu_au, stripe_client_id, telephone, pseudo, couleur, avatar_url')
       .eq('id', session.id)
       .maybeSingle();
     if (data) {
@@ -184,7 +186,6 @@ async function chargerProfil() {
       profil.premiumJusquA = data.premium_jusqu_au || null;
       profil.stripeClientId = data.stripe_client_id || null;
       profil.telephone = data.telephone || '';
-      profil.telephoneVerifie = Boolean(data.telephone_verifie);
 
       /* La base complète ce que les métadonnées ne portent pas : un
          compte créé avant l'ajout du pseudonyme, ou modifié depuis un
@@ -459,15 +460,42 @@ export function couleurAvatar(id = session.id, choix = session.couleur) {
   return COULEURS_AVATAR[NOMS_COULEURS[somme % NOMS_COULEURS.length]];
 }
 
-/** Pastille de compte : photo si on en a une, silhouette colorée sinon. */
+/** Vrai quand la photo du compte s'est révélée inaffichable. */
+export let photoCassee = false;
+
+/**
+ * Pastille de compte : photo si on en a une, silhouette colorée sinon.
+ *
+ * Une URL de photo n'est pas une photo. Celle des comptes Google a été
+ * refusée par la politique de sécurité, et la pastille s'affichait
+ * vide — un cercle noir — pendant que le choix de couleur restait
+ * grisé au motif qu'« il y a déjà une photo ». D'où le repli : dès que
+ * l'image échoue, on redessine la silhouette colorée et on rend la
+ * main sur les couleurs.
+ */
 function avatar(taille) {
-  if (session.avatar) {
+  if (session.avatar && !photoCassee) {
     return `<img src="${echappe(session.avatar)}" alt="" referrerpolicy="no-referrer"
-      class="${taille} shrink-0 rounded-full border border-line object-cover">`;
+      data-avatar class="${taille} shrink-0 rounded-full border border-line object-cover">`;
   }
   return `<span class="${taille} grid shrink-0 place-items-center rounded-full text-white"
     style="background:${couleurAvatar()}">${SILHOUETTE}</span>`;
 }
+
+/** Signale une photo inaffichable et redessine tout ce qui la montrait. */
+export function signalerPhotoCassee() {
+  if (photoCassee) return;
+  photoCassee = true;
+  console.warn('Photo de profil inaffichable : repli sur la silhouette.');
+  majInterface();
+  document.dispatchEvent(new CustomEvent('preporal:photo-cassee'));
+}
+
+/* Une image en erreur ne déclenche pas d'évènement qui remonte : on
+   l'écoute donc en phase de capture, au niveau du document. */
+document.addEventListener('error', e => {
+  if (e.target?.tagName === 'IMG' && e.target.dataset.avatar !== undefined) signalerPhotoCassee();
+}, true);
 
 /** Le bouton d'en-tête devient un menu de compte une fois connecté. */
 function majBoutonCompte(connecte) {
