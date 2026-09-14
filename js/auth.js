@@ -14,10 +14,10 @@
 
 import { CONFIG } from './config.js';
 import { $, $$, echappe, toast, ouvrirModale, fermerModale } from './ui.js';
-import { langue, t, surChangementLangue } from './i18n.js';
+import { langue, t, surChangementLangue, region } from './i18n.js';
 
 export const session = { id: null, email: null, jeton: null, prenom: '', nom: '', pseudo: '', avatar: '', couleur: '' };
-export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null, telephone: '' };
+export const profil  = { premium: false, plan: null, premiumJusquA: null, stripeClientId: null };
 
 export let supabase = null;
 export const configure = () => Boolean(CONFIG.supabase.url && CONFIG.supabase.anonKey);
@@ -66,14 +66,17 @@ export const nomComplet = () => nomAffiche();
    ce fragment, le candidat retombe sur l'accueil, toujours
    déconnecté, sans la moindre explication — le symptôme le plus
    déroutant de toute l'authentification. */
-const ERREURS_LIEN = {
-  otp_expired: "Ce lien a expiré ou a déjà servi. Un lien de connexion ne fonctionne qu'une fois. Demandez-en un nouveau, ou connectez-vous avec votre mot de passe.",
-  access_denied: "Ce lien n'est plus valable. Demandez-en un nouveau, ou connectez-vous avec votre mot de passe.",
-  otp_disabled: "La connexion par lien est désactivée sur ce projet.",
-  email_link_invalid: "Ce lien est invalide. Demandez-en un nouveau.",
-  server_error: "Le service d'authentification n'a pas répondu. Réessayez dans un instant.",
-  validation_failed: "Le lien reçu est incomplet. Demandez-en un nouveau."
-};
+/* Une fonction, pas une constante : les traductions ne sont chargées
+   qu'après initLangue(), un objet figé au chargement du module
+   resterait en français pour toute la session. */
+const erreursLien = () => ({
+  otp_expired: t('lien.expire', "Ce lien a expiré ou a déjà servi. Un lien de connexion ne fonctionne qu'une fois. Demandez-en un nouveau, ou connectez-vous avec votre mot de passe."),
+  access_denied: t('lien.refuse', "Ce lien n'est plus valable. Demandez-en un nouveau, ou connectez-vous avec votre mot de passe."),
+  otp_disabled: t('lien.desactive', 'La connexion par lien est désactivée sur ce projet.'),
+  email_link_invalid: t('lien.invalide', 'Ce lien est invalide. Demandez-en un nouveau.'),
+  server_error: t('lien.serveur', "Le service d'authentification n'a pas répondu. Réessayez dans un instant."),
+  validation_failed: t('lien.incomplet', 'Le lien reçu est incomplet. Demandez-en un nouveau.')
+});
 
 /** Lit une erreur d'authentification dans l'URL, et nettoie celle-ci. */
 function erreurDansLUrl() {
@@ -98,7 +101,8 @@ function erreurDansLUrl() {
     history.replaceState({}, '', location.pathname + (reste ? '?' + reste : ''));
   }
 
-  return { code, message: ERREURS_LIEN[code] || description.replace(/\+/g, ' ') || ERREURS_LIEN.access_denied };
+  const table = erreursLien();
+  return { code, message: table[code] || description.replace(/\+/g, ' ') || table.access_denied };
 }
 
 /* ── Initialisation ────────────────────────────────────────── */
@@ -176,7 +180,7 @@ async function chargerProfil() {
   try {
     const { data } = await supabase
       .from('profils')
-      .select('premium, plan, premium_jusqu_au, stripe_client_id, telephone, pseudo, couleur, avatar_url')
+      .select('premium, plan, premium_jusqu_au, stripe_client_id, pseudo, couleur, avatar_url')
       .eq('id', session.id)
       .maybeSingle();
     if (data) {
@@ -185,7 +189,6 @@ async function chargerProfil() {
       profil.plan = data.plan || null;
       profil.premiumJusquA = data.premium_jusqu_au || null;
       profil.stripeClientId = data.stripe_client_id || null;
-      profil.telephone = data.telephone || '';
 
       /* La base complète ce que les métadonnées ne portent pas : un
          compte créé avant l'ajout du pseudonyme, ou modifié depuis un
@@ -207,14 +210,16 @@ async function memoriserLangue(code) {
   catch (e) { console.warn('Langue du compte non enregistrée', e); }
 }
 
-/* ── Messages d'erreur lisibles ────────────────────────────── */
-const MESSAGES = {
-  'Invalid login credentials': "E-mail ou mot de passe incorrect.",
-  'User already registered': "Un compte existe déjà avec cette adresse. Connectez-vous plutôt.",
-  'Email not confirmed': "Confirmez d'abord votre adresse : le lien est dans votre boîte mail.",
-  'Password should be at least 6 characters': 'Le mot de passe doit faire au moins 8 caractères.'
-};
-const lisible = e => MESSAGES[e?.message] || e?.message || 'Une erreur est survenue.';
+/* ── Messages d'erreur lisibles ──────────────────────────────
+   Supabase répond en anglais, avec des libellés stables : ils
+   servent de clés, et la phrase montrée suit la langue choisie. */
+const messagesSupabase = () => ({
+  'Invalid login credentials': t('auth.err.identifiants', 'E-mail ou mot de passe incorrect.'),
+  'User already registered': t('auth.err.deja_inscrit', 'Un compte existe déjà avec cette adresse. Connectez-vous plutôt.'),
+  'Email not confirmed': t('auth.err.non_confirme', "Confirmez d'abord votre adresse : le lien est dans votre boîte mail."),
+  'Password should be at least 6 characters': t('auth.err.mdp_court', 'Le mot de passe doit faire au moins 8 caractères.')
+});
+const lisible = e => messagesSupabase()[e?.message] || e?.message || t('auth.err.generique', 'Une erreur est survenue.');
 
 /* Où revenir après authentification : sur son espace, pas sur l'accueil. */
 const retour = () => new URL('./index.html?vue=compte', location.href).href;
@@ -244,7 +249,7 @@ export async function connexionGoogle() {
     options: { redirectTo: retour(), skipBrowserRedirect: true }
   });
   if (error) return dire(lisible(error), true);
-  if (!data?.url) return dire(t('auth.google_indisponible', MESSAGE_GOOGLE), true);
+  if (!data?.url) return dire(messageGoogle(), true);
 
   const probleme = await sonderOAuth(data.url);
   if (probleme) return dire(probleme, true);
@@ -252,7 +257,7 @@ export async function connexionGoogle() {
   location.assign(data.url);
 }
 
-const MESSAGE_GOOGLE = "La connexion Google n'est pas encore activée sur ce site. Utilisez votre adresse e-mail et votre mot de passe, ou le lien sans mot de passe.";
+const messageGoogle = () => t('auth.google_inactif', "La connexion Google n'est pas encore activée sur ce site. Utilisez votre adresse e-mail et votre mot de passe, ou le lien sans mot de passe.");
 
 /**
  * Sonde l'URL d'autorisation sans la suivre.
@@ -269,9 +274,9 @@ async function sonderOAuth(url) {
       const corps = await r.json().catch(() => ({}));
       const brut = String(corps.msg || corps.error_description || corps.message || '');
       if (/not enabled|unsupported provider/i.test(brut)) {
-        return t('auth.google_indisponible', MESSAGE_GOOGLE);
+        return messageGoogle();
       }
-      return brut || t('auth.google_indisponible', MESSAGE_GOOGLE);
+      return brut || messageGoogle();
     }
     return null;
   } catch {
@@ -285,7 +290,7 @@ async function sonderOAuth(url) {
 /** Inscription par e-mail et mot de passe.
     @returns {Promise<false|{confirmationRequise:boolean, dejaInscrit?:boolean}>} */
 export async function inscription({ prenom, nom, pseudo, email, motDePasse }) {
-  if (!supabase) { toast("Inscription indisponible : Supabase n'est pas configuré.", 'erreur'); return false; }
+  if (!supabase) { toast(t('auth.inscription_indispo', "Inscription indisponible : Supabase n'est pas configuré."), 'erreur'); return false; }
   const { data, error } = await supabase.auth.signUp({
     email,
     password: motDePasse,
@@ -313,7 +318,7 @@ export async function inscription({ prenom, nom, pseudo, email, motDePasse }) {
 
 /** Connexion par e-mail et mot de passe. */
 export async function connexionMotDePasse(email, motDePasse) {
-  if (!supabase) { toast("Connexion indisponible : Supabase n'est pas configuré.", 'erreur'); return false; }
+  if (!supabase) { toast(t('auth.supabase_absent', "Connexion indisponible : Supabase n'est pas configuré."), 'erreur'); return false; }
   const { error } = await supabase.auth.signInWithPassword({ email, password: motDePasse });
   if (error) { toast(lisible(error), 'erreur'); return false; }
   return true;
@@ -321,8 +326,8 @@ export async function connexionMotDePasse(email, motDePasse) {
 
 /** Lien magique, pour qui ne veut pas retenir de mot de passe. */
 export async function connexionEmail(email) {
-  if (!estEmail(email)) return toast('Saisissez une adresse e-mail valide.', 'erreur');
-  if (!supabase) return toast("Connexion indisponible : Supabase n'est pas configuré.", 'erreur');
+  if (!estEmail(email)) return toast(t('auth.email_invalide', 'Saisissez une adresse e-mail valide.'), 'erreur');
+  if (!supabase) return toast(t('auth.supabase_absent', "Connexion indisponible : Supabase n'est pas configuré."), 'erreur');
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { data: donnees(), emailRedirectTo: retour() }
@@ -333,10 +338,10 @@ export async function connexionEmail(email) {
 
 /** Réinitialisation du mot de passe. */
 export async function motDePasseOublie(email) {
-  if (!estEmail(email)) return toast('Saisissez votre adresse e-mail au-dessus.', 'erreur');
-  if (!supabase) return toast("Indisponible : Supabase n'est pas configuré.", 'erreur');
+  if (!estEmail(email)) return toast(t('auth.email_au_dessus', 'Saisissez votre adresse e-mail au-dessus.'), 'erreur');
+  if (!supabase) return toast(t('auth.indispo', "Indisponible : Supabase n'est pas configuré."), 'erreur');
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: retour() });
-  toast(error ? lisible(error) : 'Message envoyé : suivez le lien pour choisir un nouveau mot de passe.',
+  toast(error ? lisible(error) : t('auth.mdp_envoye', 'Message envoyé : suivez le lien pour choisir un nouveau mot de passe.'),
         error ? 'erreur' : 'succes');
 }
 
@@ -421,7 +426,7 @@ export function majInterface() {
   if (textePremium && profil.premium) {
     textePremium.textContent = profil.premiumJusquA
       ? t('compte.actif_jusquau', "Actif jusqu'au {date}")
-          .replace('{date}', new Date(profil.premiumJusquA).toLocaleDateString(langue() === 'fr' ? 'fr-FR' : langue()))
+          .replace('{date}', new Date(profil.premiumJusquA).toLocaleDateString(region()))
       : t('compte.abonnement_actif', 'Abonnement actif. Merci !');
     const btnPremium = $('#btn-premium');
     if (btnPremium) btnPremium.textContent = t('accueil.gerer_mon_abonnement', 'Gérer mon abonnement');

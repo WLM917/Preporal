@@ -128,7 +128,8 @@ export async function lancerCheckout(planId) {
 
   // Un mineur non émancipé ne peut pas souscrire seul (art. 1145 s. du code civil).
   if (!$('#confirmation-age')?.checked) {
-    toast(`Confirmez d'abord avoir ${CONFIG.ageMinimumAchat} ans ou l'accord de votre représentant légal.`, 'erreur');
+    toast(t('paywall.confirmer_age', "Confirmez d'abord avoir {n} ans ou l'accord de votre représentant légal.")
+      .replace('{n}', CONFIG.ageMinimumAchat), 'erreur');
     $('#confirmation-age')?.focus();
     return;
   }
@@ -152,11 +153,11 @@ export async function lancerCheckout(planId) {
       })
     });
     const data = await r.json().catch(() => ({}));
-    if (!r.ok || !data.url) throw new Error(data.erreur || 'Session de paiement indisponible.');
+    if (!r.ok || !data.url) throw new Error(data.erreur || t('paywall.session_indispo', 'Session de paiement indisponible.'));
     window.location.assign(data.url);   // redirection vers Stripe Checkout
   } catch (e) {
     if (bouton) { bouton.disabled = false; bouton.style.opacity = ''; bouton.innerHTML = texteInitial; }
-    toast(e.message || "Le paiement n'a pas pu démarrer. Réessayez dans un instant.", 'erreur');
+    toast(e.message || t('paywall.demarrage_echec', "Le paiement n'a pas pu démarrer. Réessayez dans un instant."), 'erreur');
   }
 }
 
@@ -172,10 +173,10 @@ export async function ouvrirPortail() {
       body: JSON.stringify({ userId: session.id, email: session.email, origine: window.location.origin })
     });
     const data = await r.json().catch(() => ({}));
-    if (!r.ok || !data.url) throw new Error(data.erreur || 'Portail indisponible.');
+    if (!r.ok || !data.url) throw new Error(data.erreur || t('paywall.portail_indispo', 'Portail indisponible.'));
     window.location.assign(data.url);
   } catch (e) {
-    toast(e.message || "Impossible d'ouvrir le portail d'abonnement.", 'erreur');
+    toast(e.message || t('paywall.portail_echec', "Impossible d'ouvrir le portail d'abonnement."), 'erreur');
   }
 }
 
@@ -198,14 +199,14 @@ export async function traiterRetourPaiement() {
   history.replaceState({}, '', window.location.pathname + (reste ? '?' + reste : ''));
 
   if (etat === 'annule') {
-    toast('Paiement annulé. Vos simulations gratuites restent disponibles.');
+    toast(t('paywall.annule', 'Paiement annulé. Vos simulations gratuites restent disponibles.'));
     majJauge();
     return;
   }
   if (etat !== 'ok') return;
 
   if (!sessionId) {
-    toast("Paiement reçu. Votre accès s'activera d'ici quelques secondes.");
+    toast(t('paywall.recu', "Paiement reçu. Votre accès s'activera d'ici quelques secondes."));
     majJauge();
     return;
   }
@@ -227,12 +228,12 @@ export async function traiterRetourPaiement() {
         plan: data.plan,
         jusquA: data.jusquA || Date.now() + 31 * 24 * 3600 * 1000
       });
-      toast('Paiement confirmé. Votre accès Premium est actif, bon entraînement.', 'succes');
+      toast(t('paywall.confirme', 'Paiement confirmé. Votre accès Premium est actif, bon entraînement.'), 'succes');
     } else {
-      toast("Nous n'avons pas pu confirmer ce paiement. Si vous avez été débité, contactez-nous.", 'erreur');
+      toast(t('paywall.non_confirme', "Nous n'avons pas pu confirmer ce paiement. Si vous avez été débité, contactez-nous."), 'erreur');
     }
   } catch {
-    toast("Vérification du paiement impossible pour l'instant. Rechargez la page dans un instant.");
+    toast(t('paywall.verif_impossible', "Vérification du paiement impossible pour l'instant. Rechargez la page dans un instant."));
   }
 
   majJauge();

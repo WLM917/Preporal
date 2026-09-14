@@ -14,7 +14,7 @@
 
 import { CONFIG } from './config.js';
 import { $, stock, echappe, toast } from './ui.js';
-import { t, surChangementLangue } from './i18n.js';
+import { t, surChangementLangue, region } from './i18n.js';
 import { supabase, session } from './auth.js';
 
 const etoiles = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
@@ -65,7 +65,7 @@ function rendreNoteMoyenne() {
   if (!m) { el.classList.add('hidden'); el.classList.remove('flex'); return; }
 
   const depuis = m.depuis
-    ? new Date(m.depuis).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    ? new Date(m.depuis).toLocaleDateString(region(), { month: 'long', year: 'numeric' })
     : null;
 
   el.classList.remove('hidden');
@@ -73,16 +73,17 @@ function rendreNoteMoyenne() {
   el.innerHTML =
     `<span class="text-amber">${etoiles(Math.round(m.valeur))}</span>` +
     `<span class="font-display font-bold">${String(m.valeur).replace('.', ',')}/5</span>` +
-    `<span class="text-muted">· ${m.nombre} avis vérifié${m.nombre > 1 ? 's' : ''}` +
-    `${depuis ? ' depuis ' + echappe(depuis) : ''}</span>`;
+    `<span class="text-muted">· ${echappe(t(m.nombre > 1 ? 'avis.verifies' : 'avis.verifie',
+        m.nombre > 1 ? '{n} avis vérifiés' : '{n} avis vérifié').replace('{n}', m.nombre))}` +
+    `${depuis ? ' ' + echappe(t('avis.depuis', 'depuis {date}').replace('{date}', depuis)) : ''}</span>`;
 }
 
 const carte = (a, enAttente = false) => `
   <figure class="rounded-2xl border ${enAttente ? 'border-amber/40' : 'border-line'} bg-surface p-5 shadow-carte">
     <div class="flex items-center justify-between gap-3">
-      <span class="text-amber" aria-label="${a.note} sur 5">${etoiles(a.note)}</span>
+      <span class="text-amber" aria-label="${echappe(t('avis.note_sur_5', '{n} sur 5').replace('{n}', a.note))}">${etoiles(a.note)}</span>
       ${enAttente
-        ? '<span class="rounded-full border border-amber/50 bg-amber/10 px-2 py-0.5 text-xs text-amber">En attente de vérification</span>'
+        ? `<span class="rounded-full border border-amber/50 bg-amber/10 px-2 py-0.5 text-xs text-amber">${echappe(t('avis.en_attente', 'En attente de vérification'))}</span>`
         : ''}
     </div>
     <blockquote class="mt-3 text-sm leading-relaxed text-muted">« ${echappe(a.texte)} »</blockquote>

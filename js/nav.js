@@ -110,8 +110,12 @@ export async function brancherNavigation({ auChangementDeCompte } = {}) {
   // français, il faut le traduire avant que l'utilisateur ne le lise.
   await initLangue();
 
-  const annee = $('#annee');
-  if (annee) annee.textContent = new Date().getFullYear();
+  /* Le millésime est réécrit à chaque changement de langue : si un jour
+     il se retrouve dans un bloc traduit, appliquerTraductions() en
+     remplace le contenu et l'année disparaîtrait silencieusement. */
+  const majAnnee = () => { const el = $('#annee'); if (el) el.textContent = new Date().getFullYear(); };
+  majAnnee();
+  surChangementLangue(majAnnee);
 
   marquerPageCourante();
   brancherSelecteurLangue();

@@ -14,39 +14,43 @@
 import { $, echappe } from './ui.js';
 import { t } from './i18n.js';
 
-const SEQUENCES = {
+/* Une fonction, pas une constante : les traductions doivent être lues
+   au moment d'afficher l'écran, pas au chargement du module. Évaluées
+   trop tôt — avant initLangue() — elles se figeraient sur le français,
+   quelle que soit la langue choisie ensuite. */
+const sequences = () => ({
   questions: {
-    titre: 'Préparation de votre oral',
+    titre: t('chargement.questions.titre', 'Préparation de votre oral'),
     etapes: [
-      { texte: 'Lecture de vos documents', duree: 2200 },
-      { texte: 'Repérage des points que le jury va creuser', duree: 3200 },
-      { texte: "Rédaction des questions de l'examinateur", duree: 4200 },
-      { texte: 'Mise en ordre du déroulé', duree: 3000 }
+      { texte: t('chargement.questions.etape.0', 'Lecture de vos documents'), duree: 2200 },
+      { texte: t('chargement.questions.etape.1', 'Repérage des points que le jury va creuser'), duree: 3200 },
+      { texte: t('chargement.questions.etape.2', "Rédaction des questions de l'examinateur"), duree: 4200 },
+      { texte: t('chargement.questions.etape.3', 'Mise en ordre du déroulé'), duree: 3000 }
     ],
     conseils: [
-      "Respirez avant de répondre. Deux secondes de silence valent mieux qu'un « euh » de trois.",
-      "Une bonne réponse tient en trois temps : la situation, ce que vous avez fait, le résultat.",
-      "Le jury retient la première et la dernière phrase. Soignez-les.",
-      "Un chiffre concret vaut mieux que trois adjectifs.",
-      "Si la question vous surprend, reformulez-la : vous gagnez cinq secondes de réflexion."
+      t('chargement.questions.conseil.0', "Respirez avant de répondre. Deux secondes de silence valent mieux qu'un « euh » de trois."),
+      t('chargement.questions.conseil.1', "Une bonne réponse tient en trois temps : la situation, ce que vous avez fait, le résultat."),
+      t('chargement.questions.conseil.2', "Le jury retient la première et la dernière phrase. Soignez-les."),
+      t('chargement.questions.conseil.3', "Un chiffre concret vaut mieux que trois adjectifs."),
+      t('chargement.questions.conseil.4', "Si la question vous surprend, reformulez-la : vous gagnez cinq secondes de réflexion.")
     ]
   },
   correction: {
-    titre: 'Analyse de votre prestation',
+    titre: t('chargement.correction.titre', 'Analyse de votre prestation'),
     etapes: [
-      { texte: 'Relecture de vos réponses', duree: 2400 },
-      { texte: 'Évaluation du fond, réponse par réponse', duree: 4200 },
-      { texte: 'Mesure du débit et de la richesse du vocabulaire', duree: 3000 },
-      { texte: 'Rédaction des axes de progression', duree: 3600 }
+      { texte: t('chargement.correction.etape.0', 'Relecture de vos réponses'), duree: 2400 },
+      { texte: t('chargement.correction.etape.1', 'Évaluation du fond, réponse par réponse'), duree: 4200 },
+      { texte: t('chargement.correction.etape.2', 'Mesure du débit et de la richesse du vocabulaire'), duree: 3000 },
+      { texte: t('chargement.correction.etape.3', 'Rédaction des axes de progression'), duree: 3600 }
     ],
     conseils: [
-      "La correction est franche : c'est ce qui la rend utile.",
-      "Reprenez d'abord la question la moins bien notée, pas la première.",
-      "Relancer une simulation juste après avoir lu le bilan est le meilleur moment pour progresser.",
-      "Une réponse trop longue coûte plus de points qu'une réponse trop courte."
+      t('chargement.correction.conseil.0', "La correction est franche : c'est ce qui la rend utile."),
+      t('chargement.correction.conseil.1', "Reprenez d'abord la question la moins bien notée, pas la première."),
+      t('chargement.correction.conseil.2', "Relancer une simulation juste après avoir lu le bilan est le meilleur moment pour progresser."),
+      t('chargement.correction.conseil.3', "Une réponse trop longue coûte plus de points qu'une réponse trop courte.")
     ]
   }
-};
+});
 
 let minuteur = null;
 let debut = 0;
@@ -58,7 +62,8 @@ const pourcentage = el => Number(el?.dataset.avance || 0);
  * @param {'questions'|'correction'} type
  */
 export function demarrerChargement(type = 'questions') {
-  const sequence = SEQUENCES[type] || SEQUENCES.questions;
+  const toutes = sequences();
+  const sequence = toutes[type] || toutes.questions;
   arreterChargement();
   debut = Date.now();
 

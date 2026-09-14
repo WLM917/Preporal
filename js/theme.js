@@ -5,6 +5,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { $, stock } from './ui.js';
+import { t, surChangementLangue } from './i18n.js';
 
 const CLE_THEME = 'oralixia.theme';
 const CLE_COOKIES = 'oralixia.cookies';
@@ -18,7 +19,9 @@ function majIcones() {
   if (!btn) return;
   btn.querySelector('[data-icone="sombre"]').hidden = !sombre;
   btn.querySelector('[data-icone="clair"]').hidden = sombre;
-  btn.setAttribute('aria-label', sombre ? 'Passer en thème clair' : 'Passer en thème sombre');
+  btn.setAttribute('aria-label', sombre
+    ? t('a11y.theme_clair', 'Passer en thème clair')
+    : t('a11y.theme_sombre', 'Passer en thème sombre'));
 }
 
 export function appliquerTheme(nom) {
@@ -31,6 +34,9 @@ export function appliquerTheme(nom) {
 
 export function brancherTheme() {
   majIcones();
+  // Le libellé du bouton est un aria-label : il ne porte pas de
+  // data-i18n, il faut donc le réécrire au changement de langue.
+  surChangementLangue(majIcones);
   $('#btn-theme')?.addEventListener('click', () => {
     appliquerTheme(themeActuel() === 'sombre' ? 'clair' : 'sombre');
   });

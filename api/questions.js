@@ -1,11 +1,13 @@
 /* ═══════════════════════════════════════════════════════════
    POST /api/questions
-   Entrée  : { typeId, sousChoix, champA, champB, nbQuestions, niveau }
+   Entrée  : { typeId, sousChoix, champA, champB, nbQuestions,
+               niveau, langue }
    Sortie  : { questions: [{ categorie, texte }] }
    ═══════════════════════════════════════════════════════════ */
 
 import { appelerModele, extraireJSON, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
 import { verifierQuota, consommerQuota, refuserQuota } from './_lib/quota.js';
+import { nomLangue } from './_lib/langue.js';
 
 const CONSIGNES = {
   entretien: "Tu es un recruteur expérimenté qui fait passer un entretien d'embauche ou de stage en France.",
@@ -34,7 +36,8 @@ export default async function handler(req, res) {
     const verdict = await verifierQuota(req);
     if (!verdict.autorise) return refuserQuota(res, verdict);
 
-    const { typeId = 'entretien', sousChoix = '', champA = '', champB = '', nbQuestions = 5, niveau = 'standard' } = req.body || {};
+    const { typeId = 'entretien', sousChoix = '', champA = '', champB = '',
+            nbQuestions = 5, niveau = 'standard', langue = 'fr' } = req.body || {};
     const n = Math.max(1, Math.min(10, Number(nbQuestions) || 5));
 
     const systeme = `${CONSIGNES[typeId] || CONSIGNES.entretien}
@@ -48,7 +51,9 @@ Règles :
 - Une seule question par entrée, formulée telle qu'un examinateur la prononcerait à l'oral.
 - Progression : commencer par une question d'ouverture, finir par une question d'approfondissement ou de projection.
 - Pas de question fermée par oui/non.
-- Vouvoiement, français correct (sauf pour une épreuve de langue étrangère : utilise alors la langue de l'épreuve).
+- ${typeId === 'langue'
+    ? "L'épreuve porte sur une langue étrangère : pose les questions dans la langue de l'épreuve, sans traduction."
+    : `Rédige les questions et les catégories intégralement en ${nomLangue(langue)}, quelle que soit la langue des documents fournis. Vouvoiement, langue correcte.`}
 
 Réponds UNIQUEMENT par un objet JSON valide, sans texte autour, au format :
 {"questions":[{"categorie":"...","texte":"..."}]}

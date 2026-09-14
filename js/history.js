@@ -2,9 +2,11 @@
    history.js — « Mes simulations passées » + progression
    ═══════════════════════════════════════════════════════════ */
 
-import { CONFIG, typeParId } from './config.js';
+import { CONFIG } from './config.js';
+import { typeTraduit } from './catalogue.js';
 import { $, stock, echappe, toast, couleurNote, jeton } from './ui.js';
 import { supabase, session } from './auth.js';
+import { t, region } from './i18n.js';
 
 const MAX = 60;
 
@@ -103,25 +105,24 @@ export function rendreHistorique() {
 
   if (!liste.length) {
     graph.innerHTML = '';
-    zone.innerHTML = `<div class="rounded-xl border border-dashed border-line bg-ink/40 p-8 text-center text-sm text-muted">
-      Aucune simulation pour le moment. Lancez-en une : elle apparaîtra ici avec sa note et sa correction.
-    </div>`;
+    zone.innerHTML = `<div class="rounded-xl border border-dashed border-line bg-ink/40 p-8 text-center text-sm text-muted">${
+      echappe(t('hist.aucune', 'Aucune simulation pour le moment. Lancez-en une : elle apparaîtra ici avec sa note et sa correction.'))}</div>`;
     return;
   }
 
   graph.innerHTML = courbe(liste.slice().reverse());
 
   zone.innerHTML = liste.map(s => {
-    const type = typeParId(s.typeId);
+    const type = typeTraduit(s.typeId);
     const d = new Date(s.date);
     const relisible = estRelisible(s);
     return `<button type="button" data-relire="${s.id}"
       class="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-ink/40 p-4 text-left transition hover:border-iris/60">
       <div class="min-w-0">
         <p class="truncate font-medium">${type.emoji} ${echappe(type.court)}${s.sousChoix ? ' · ' + echappe(s.sousChoix) : ''}</p>
-        <p class="text-xs text-muted">${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · ${s.nbQuestions} question${s.nbQuestions > 1 ? 's' : ''}${s.eloquence != null ? ' · éloquence ' + s.eloquence + '/20' : ''}</p>
+        <p class="text-xs text-muted">${d.toLocaleDateString(region())} ${t('hist.a', 'à')} ${d.toLocaleTimeString(region(), { hour: '2-digit', minute: '2-digit' })} · ${s.nbQuestions} ${t(s.nbQuestions > 1 ? 'hist.questions' : 'hist.question', s.nbQuestions > 1 ? 'questions' : 'question')}${s.eloquence != null ? ' · ' + t('hist.eloquence', 'éloquence') + ' ' + s.eloquence + '/20' : ''}</p>
         <p class="mt-1 text-xs ${relisible ? 'text-iris2' : 'text-muted'}">
-          ${relisible ? 'Relire les questions et la correction →' : 'Détail non conservé'}
+          ${relisible ? t('hist.relire', 'Relire les questions et la correction →') : t('hist.non_conserve', 'Détail non conservé')}
         </p>
       </div>
       <span class="shrink-0 font-display text-xl font-extrabold tabular-nums" style="color:${couleurNote(s.score)}">${s.score}</span>
@@ -132,8 +133,8 @@ export function rendreHistorique() {
 /** Petite courbe SVG maison : pas de librairie à charger. */
 function courbe(points) {
   if (points.length < 2) {
-    return `<p class="rounded-xl border border-line bg-ink/40 p-4 text-sm text-muted">
-      Une deuxième simulation et votre courbe de progression s'affichera ici.</p>`;
+    return `<p class="rounded-xl border border-line bg-ink/40 p-4 text-sm text-muted">${
+      t('hist.courbe_attente', "Une deuxième simulation et votre courbe de progression s'affichera ici.")}</p>`;
   }
   const iris = jeton('--iris', 'rgb(124 92 255)');
   const iris2 = jeton('--iris2', 'rgb(167 139 255)');
@@ -154,10 +155,10 @@ function courbe(points) {
   return `
   <div class="rounded-xl border border-line bg-ink/40 p-4">
     <div class="flex items-baseline justify-between">
-      <p class="text-sm text-muted">Progression sur ${n} simulations</p>
+      <p class="text-sm text-muted">${t('hist.progression', 'Progression sur {n} simulations').replace('{n}', n)}</p>
       <p class="font-display text-sm font-bold" style="color:${ecart >= 0 ? jeton('--mint', 'rgb(61 220 151)') : jeton('--coral', 'rgb(255 93 108)')}">${ecart >= 0 ? '+' : ''}${ecart} pts</p>
     </div>
-    <svg viewBox="0 0 ${L} ${H}" class="mt-3 w-full" role="img" aria-label="Courbe de progression des notes">
+    <svg viewBox="0 0 ${L} ${H}" class="mt-3 w-full" role="img" aria-label="${echappe(t('hist.courbe_a11y', 'Courbe de progression des notes'))}">
       <defs>
         <linearGradient id="remplissage" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${iris}" stop-opacity=".35"/>
@@ -174,10 +175,10 @@ function courbe(points) {
 
 export function brancherHistorique() {
   $('#btn-vider-historique')?.addEventListener('click', () => {
-    if (!confirm('Effacer définitivement toutes vos simulations enregistrées ?')) return;
+    if (!confirm(t('hist.vider_confirmer', 'Effacer définitivement toutes vos simulations enregistrées ?'))) return;
     stock.supprimer(CONFIG.cles.historique);
     rendreHistorique();
-    toast('Historique effacé.');
+    toast(t('hist.vide', 'Historique effacé.'));
   });
   rendreHistorique();
 }

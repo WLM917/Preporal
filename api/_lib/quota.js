@@ -78,7 +78,7 @@ export async function verifierQuota(req) {
 
   if (!utilisateurId && EXIGER_CONNEXION) {
     return { autorise: false, premium: false, utilisateurId: null, empreinte: null,
-             utilisees: 0, restant: 0, code: 'connexion',
+             utilisees: 0, restant: 0, code: 'connexion', limite: SIMULATIONS_GRATUITES,
              motif: `Créez un compte gratuit pour lancer une simulation : vos ${SIMULATIONS_GRATUITES} simulations offertes y sont rattachées.` };
   }
 
@@ -103,7 +103,7 @@ export async function verifierQuota(req) {
 
   return {
     autorise: false, premium: false, utilisateurId, empreinte, utilisees, restant: 0,
-    code: 'quota',
+    code: 'quota', limite: SIMULATIONS_GRATUITES,
     motif: `Vos ${SIMULATIONS_GRATUITES} simulations gratuites sont utilisées. Passez au Premium pour continuer.`
   };
 }
@@ -136,11 +136,18 @@ export async function consommerQuota(verdict) {
   }
 }
 
-/** Réponse normalisée quand le quota est épuisé. */
+/**
+ * Réponse normalisée quand le quota est épuisé.
+ *
+ * `motif` est en français : il dépanne un client sans traduction.
+ * `code` et `limite` permettent au navigateur de reformuler la même
+ * phrase dans la langue choisie, ce qu'il fait quand il en a une.
+ */
 export function refuserQuota(res, verdict) {
   return res.status(402).json({
     erreur: verdict.motif || 'Quota épuisé.',
     code: verdict.code || 'quota',
+    limite: verdict.limite ?? null,
     restant: 0
   });
 }
@@ -175,7 +182,7 @@ export async function verifierQuotaCoach(req) {
 
   if (!utilisateurId) {
     return { autorise: false, premium: false, utilisateurId: null, jour,
-             utilises: 0, restant: 0, code: 'connexion',
+             utilises: 0, restant: 0, code: 'connexion', limite: MESSAGES_COACH_PAR_JOUR,
              motif: `Créez un compte gratuit pour parler au coach : ${MESSAGES_COACH_PAR_JOUR} échanges par jour vous sont offerts.` };
   }
 
@@ -190,7 +197,7 @@ export async function verifierQuotaCoach(req) {
 
   return {
     autorise: false, premium: false, utilisateurId, jour, utilises, restant: 0,
-    code: 'coach',
+    code: 'coach', limite: MESSAGES_COACH_PAR_JOUR,
     motif: `Vos ${MESSAGES_COACH_PAR_JOUR} échanges du jour avec le coach sont utilisés. Revenez demain, ou passez au Premium pour un accès illimité.`
   };
 }

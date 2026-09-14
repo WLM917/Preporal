@@ -16,8 +16,9 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG } from './config.js';
-import { $, stock, toast } from './ui.js';
+import { $, stock, toast, echappe } from './ui.js';
 import { supabase, session } from './auth.js';
+import { t } from './i18n.js';
 
 const CLE = 'oralixia.age';
 
@@ -26,6 +27,10 @@ export const TRANCHES = {
   '15_17':  { id: '15_17',    libelle: 'Entre 15 et 17 ans', consentementRequis: false, majeur: false },
   majeur:   { id: 'majeur',   libelle: '18 ans ou plus', consentementRequis: false, majeur: true }
 };
+
+/** Libellé traduit d'une tranche, lu au moment de l'affichage. */
+export const libelleTranche = id =>
+  t('age.' + id, TRANCHES[id]?.libelle || '');
 
 export const etatAge = {
   tranche: null,
@@ -90,8 +95,8 @@ export async function enregistrerAge(trancheId, { emailParent = null } = {}) {
 /** L'utilisateur peut-il utiliser le service (même gratuitement) ? */
 export function peutUtiliser() {
   if (!etatAge.tranche) return true;                 // pas encore déclaré
-  const t = TRANCHES[etatAge.tranche];
-  return !t.consentementRequis || etatAge.consentementParental;
+  const tranche = TRANCHES[etatAge.tranche];
+  return !tranche.consentementRequis || etatAge.consentementParental;
 }
 
 /** L'utilisateur peut-il payer seul ? */
@@ -102,8 +107,9 @@ export function peutPayerSeul() {
 /** Message à afficher dans la modale d'offre selon la tranche déclarée. */
 export function messagePaiement() {
   if (!etatAge.tranche || TRANCHES[etatAge.tranche].majeur) return null;
-  return `Vous avez déclaré avoir moins de ${CONFIG.ageMinimumAchat} ans : le paiement doit être `
-       + `effectué par votre représentant légal, ou avec son accord exprès.`;
+  return t('age.paiement_mineur',
+    'Vous avez déclaré avoir moins de {n} ans : le paiement doit être effectué par votre représentant légal, ou avec son accord exprès.')
+    .replace('{n}', CONFIG.ageMinimumAchat);
 }
 
 /* ── Interface ─────────────────────────────────────────────── */
@@ -120,11 +126,11 @@ export function brancherAge() {
   let choix = etatAge.tranche;
 
   const dessiner = () => {
-    zone.innerHTML = Object.values(TRANCHES).map(t => `
-      <button type="button" data-tranche="${t.id}" aria-pressed="${choix === t.id}"
+    zone.innerHTML = Object.values(TRANCHES).map(tr => `
+      <button type="button" data-tranche="${tr.id}" aria-pressed="${choix === tr.id}"
         class="rounded-xl border px-4 py-3 text-sm font-medium transition ${
-          choix === t.id ? 'border-iris bg-iris/10 text-soft' : 'border-line text-muted hover:border-iris/50'}">
-        ${t.libelle}
+          choix === tr.id ? 'border-iris bg-iris/10 text-soft' : 'border-line text-muted hover:border-iris/50'}">
+        ${echappe(libelleTranche(tr.id))}
       </button>`).join('');
     // Le courriel du parent n'est demandé qu'en dessous de 15 ans.
     champParent?.classList.toggle('hidden', choix !== 'moins_15');
@@ -145,14 +151,14 @@ export function brancherAge() {
 
     if (choix === 'moins_15') {
       if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(courriel)) {
-        return toast("Indiquez l'adresse e-mail de votre parent ou responsable légal.", 'erreur');
+        return toast(t('age.email_parent_requis', "Indiquez l'adresse e-mail de votre parent ou responsable légal."), 'erreur');
       }
     }
 
     await enregistrerAge(choix, { emailParent: choix === 'moins_15' ? courriel : null });
 
     if (choix === 'moins_15') {
-      toast("Merci. Un message sera envoyé à votre responsable légal pour confirmer son accord.", 'succes');
+      toast(t('age.consentement_envoye', 'Merci. Un message sera envoyé à votre responsable légal pour confirmer son accord.'), 'succes');
     }
     document.getElementById('modal-age')?.setAttribute('hidden', '');
     document.body.style.overflow = '';

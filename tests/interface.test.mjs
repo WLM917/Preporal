@@ -570,3 +570,158 @@ test('chaque langue déclare ce qu\'il faut pour la voix et le balisage', async 
     assert.ok(l.etiquette && l.drapeau, `${code} : libellé ou drapeau manquant`);
   }
 });
+
+test('les traductions couvrent aussi les clés appelées depuis les modules', async () => {
+  /* Le test précédent ne lit que le balisage. Or l'essentiel de ce que
+     voit un candidat — les messages d'erreur, le rapport, le coach, les
+     CGV — est écrit par les modules via t('clé', 'repli'). Une clé
+     oubliée y retombe sur le français, et la page devient bilingue sans
+     que rien ne le signale. */
+  const cles = new Map();                       // clé -> texte français
+  const modulesJs = readdirSync(join(RACINE, 'js')).filter(f => f.endsWith('.js'));
+
+  for (const f of modulesJs) {
+    const src = readFileSync(join(RACINE, 'js', f), 'utf8');
+    // t('clé', 'repli') et pa('clé', 'repli') — le repli peut aller à la ligne.
+    const re = /\b(t|pa)\(\s*(['"])([a-zA-Z0-9._-]+)\2\s*,\s*(['"`])((?:\\.|(?!\4)[\s\S])*?)\4\s*[,)]/g;
+    for (const m of src.matchAll(re)) {
+      const cle = (m[1] === 'pa' ? 'legal.' : '') + m[3];
+      if (!cles.has(cle)) cles.set(cle, m[5]);
+    }
+  }
+  assert.ok(cles.size > 250, `trop peu de clés trouvées dans les modules : ${cles.size}`);
+
+  // Aucun repli vide : sans repli, une traduction manquante affiche du blanc.
+  const sansRepli = [...cles].filter(([, fr]) => !fr.trim()).map(([c]) => c);
+  assert.deepEqual(sansRepli, [], 'clés sans texte français de repli');
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    const manquantes = [...cles.keys()].filter(c => !(c in dico));
+    assert.deepEqual(manquantes.slice(0, 8), [],
+      `${langue} : ${manquantes.length} clé(s) de module sans traduction`);
+  }
+});
+
+test('le catalogue des épreuves est traduit dans les deux langues', async () => {
+  /* Les sept épreuves vivent dans config.js, en français : leurs noms,
+     les libellés des deux champs, les critères de notation et les
+     catégories de questions. catalogue.js les traduit par clé dérivée
+     de l'identifiant — s'il en manque une, le candidat lit le nom de
+     son épreuve en français au milieu d'une page anglaise. */
+  globalThis.window = globalThis.window || { ORALIXIA_ENV: {} };
+  const { TYPES_ORAL } = await import('../js/config.js');
+
+  const attendues = [];
+  for (const ty of TYPES_ORAL) {
+    attendues.push(`type.${ty.id}.nom`, `type.${ty.id}.court`);
+    for (const cote of ['champA', 'champB']) {
+      if (!ty[cote]) continue;
+      for (const p of ['label', 'aide', 'placeholder']) attendues.push(`type.${ty.id}.${cote}.${p}`);
+    }
+    (ty.criteres || []).forEach((_, i) => attendues.push(`type.${ty.id}.critere.${i}`));
+    (ty.categories || []).forEach((_, i) => attendues.push(`type.${ty.id}.categorie.${i}`));
+    if (ty.sousChoix) {
+      attendues.push(`type.${ty.id}.souschoix.label`);
+      (ty.sousChoix.options || []).forEach((_, i) => attendues.push(`type.${ty.id}.souschoix.${i}`));
+    }
+  }
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    const manquantes = attendues.filter(c => !(c in dico));
+    assert.deepEqual(manquantes.slice(0, 8), [],
+      `${langue} : ${manquantes.length} clé(s) de catalogue sans traduction`);
+  }
+});
+
+test('les questions de secours sont traduites, sauf les épreuves de langue', async () => {
+  /* La banque hors ligne s'affiche quand le modèle est injoignable :
+     elle est donc visible, et doit suivre la langue choisie. Exception
+     assumée : une certification se passe dans la langue de l'examen,
+     seuls les intitulés de catégorie s'y traduisent. */
+  const src = readFileSync(join(RACINE, 'js/questions.js'), 'utf8');
+  const bloc = src.slice(src.indexOf('const BANQUES = {'), src.indexOf('/** Remplace'));
+  assert.ok(bloc.length > 500, 'banques de secours introuvables');
+
+  const attendues = [];
+  for (const m of bloc.matchAll(/^  '?([a-z-]+)'?: \[$([\s\S]*?)^  \],?$/gm)) {
+    const banque = m[1];
+    [...m[2].matchAll(/^    \[/gm)].forEach((_, i) => {
+      attendues.push(`secours.${banque}.${i}.cat`);
+      if (!banque.startsWith('langue')) attendues.push(`secours.${banque}.${i}.q`);
+    });
+  }
+  assert.ok(attendues.length > 100, `trop peu d'entrées de secours : ${attendues.length}`);
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    const manquantes = attendues.filter(c => !(c in dico));
+    assert.deepEqual(manquantes.slice(0, 8), [],
+      `${langue} : ${manquantes.length} question(s) de secours sans traduction`);
+
+    // L'exception doit rester une exception : pas de traduction du texte
+    // d'une épreuve de langue, sinon le candidat passe son TOEIC en anglais
+    // mais lit ses questions en espagnol.
+    const detournees = Object.keys(dico).filter(c => /^secours\.langue[a-z-]*\.\d+\.q$/.test(c));
+    assert.deepEqual(detournees, [],
+      `${langue} : une épreuve de langue se passe dans la langue de l'examen`);
+  }
+});
+
+test('les textes juridiques traduits disent que le français fait foi', async () => {
+  /* Traduire des CGV soumises au droit français sans le dire laisserait
+     croire à deux versions également opposables. */
+  const src = readFileSync(join(RACINE, 'js/legal.js'), 'utf8');
+  const fonction = src.slice(src.indexOf('const avertissementTraduction'), src.indexOf('export const textes'));
+  assert.match(fonction, /langue\(\)\s*===\s*'fr'\s*\?\s*''/,
+    "l'avertissement ne doit s'afficher que hors français");
+  assert.match(fonction, /legal\.version_fr_fait_foi/,
+    "l'avertissement doit passer par une clé traduite");
+
+  // Il doit être posé sur les quatre textes, pas seulement sur les CGV.
+  const corps = src.slice(src.indexOf('export const textes'));
+  const poses = [...corps.matchAll(/\$\{avertissementTraduction\(\)\}/g)].length;
+  assert.equal(poses, 4, `avertissement posé sur ${poses} texte(s) au lieu de 4`);
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    assert.ok(dico['legal.version_fr_fait_foi']?.trim(),
+      `${langue} : l'avertissement de traduction n'est pas traduit`);
+  }
+});
+
+test('le modèle reçoit la langue choisie, pour les questions comme pour la correction', async () => {
+  /* Traduire l'interface sans traduire ce que le modèle écrit donnait
+     une page anglaise dont les questions d'examinateur restaient en
+     français — c'est-à-dire le produit lui-même. */
+  const questionsApi = readFileSync(join(RACINE, 'api/questions.js'), 'utf8');
+  assert.match(questionsApi, /langue\s*=\s*'fr'\s*\}\s*=\s*req\.body|langue = 'fr' \} = req\.body/s,
+    '/api/questions doit lire la langue demandée');
+  assert.match(questionsApi, /nomLangue\(langue\)/,
+    'la consigne système doit nommer la langue de rédaction');
+
+  const questionsJs = readFileSync(join(RACINE, 'js/questions.js'), 'utf8');
+  const appel = questionsJs.slice(questionsJs.indexOf('export async function genererQuestions'),
+                                 questionsJs.indexOf('/* ── Extraction de mots-clés'));
+  assert.match(appel, /langue:\s*langue\(\)/,
+    'le navigateur doit envoyer sa langue avec la demande de questions');
+
+  const feedbackJs = readFileSync(join(RACINE, 'js/feedback.js'), 'utf8');
+  const evaluer = feedbackJs.slice(feedbackJs.indexOf('export async function evaluer'),
+                                   feedbackJs.indexOf("/* ═══ Analyse d'éloquence"));
+  assert.match(evaluer, /langue:\s*langue\(\)/, 'la correction doit partir avec la langue');
+  assert.match(evaluer, /criteres:\s*typeTraduit\(typeId\)\.criteres/,
+    'les critères doivent partir traduits : ils reviennent comme libellés du rapport');
+});
+
+test("l'examinateur parle la langue choisie hors épreuve de langue", async () => {
+  const src = readFileSync(join(RACINE, 'js/speech.js'), 'utf8');
+  const fn = src.slice(src.indexOf('export function langueDeLEpreuve'),
+                       src.indexOf('/* ── 3. Bouton'));
+  assert.ok(fn.length > 50, 'langueDeLEpreuve introuvable');
+  assert.match(fn, /return infoLangue\(\)\.voix/,
+    "hors certification, la voix doit suivre la langue d'interface");
+  assert.ok(!/return 'fr-FR'/.test(fn),
+    'le français ne doit plus être le repli figé de la voix');
+});

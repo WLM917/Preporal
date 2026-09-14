@@ -20,7 +20,7 @@
 
 import { CONFIG, OFFRES } from './config.js';
 import { $, $$, echappe, toast } from './ui.js';
-import { t, langue } from './i18n.js';
+import { t, langue, region } from './i18n.js';
 import { brancherNavigation } from './nav.js';
 import {
   session, profil, supabase, configure, nomAffiche, deconnexion,
@@ -99,7 +99,6 @@ function remplirFormulaire() {
   v('#c-nom', session.nom);
   v('#c-pseudo', session.pseudo);
   v('#c-email', session.email);
-  v('#c-telephone', afficherTelephone(profil.telephone));
   majApercuNom();
 }
 
@@ -120,7 +119,7 @@ function rendreAbonnement() {
   const offre = profil.plan ? OFFRES[profil.plan] : null;
   const finLe = profil.premiumJusquA ? new Date(profil.premiumJusquA) : null;
   const dateLisible = finLe
-    ? finLe.toLocaleDateString(langue() === 'fr' ? 'fr-FR' : langue(),
+    ? finLe.toLocaleDateString(region(),
         { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
 
@@ -230,14 +229,41 @@ async function enregistrer(champs, colonnes = champs) {
     }
   };
 
+  /* Une colonne absente de la base fait échouer l'écriture entière, y
+     compris pour les champs qui, eux, existent. Cela arrive dès que le
+     schéma SQL n'a pas été rejoué après une mise à jour — et cela
+     produisait un « Le serveur n'a pas répondu » que le candidat ne
+     pouvait ni comprendre ni corriger. On réessaie donc avec les seules
+     colonnes que la base connaît. */
+  const colonneInconnue = message =>
+    /could not find|does not exist|schema cache|column/i.test(String(message || ''));
+
+  const ecrireEnBase = async champsBase => {
+    const premier = await tenter('profils', () => supabase.from('profils')
+      .update({ ...champsBase, maj_le: new Date().toISOString() }).eq('id', session.id));
+    if (premier.ok || !colonneInconnue(premier.message)) return premier;
+
+    /* Second essai, réduit au strict nécessaire. Ces trois colonnes
+       existent depuis la création de la table : si elles manquent
+       aussi, c'est un vrai problème et il doit remonter. */
+    const sures = {};
+    for (const cle of ['prenom', 'nom', 'email']) {
+      if (cle in champsBase) sures[cle] = champsBase[cle];
+    }
+    if (!Object.keys(sures).length) return premier;
+
+    console.warn('Colonne absente du schéma : réessai réduit. Rejouez supabase/schema.sql.');
+    return tenter('profils (réduit)', () => supabase.from('profils')
+      .update({ ...sures, maj_le: new Date().toISOString() }).eq('id', session.id));
+  };
+
   /* Les deux écritures partent ensemble, mais on n'attend que la base :
      c'est elle qui conserve durablement le profil. Les métadonnées ne
      servent qu'à afficher le nom sans requête au chargement suivant ;
      les attendre faisait patienter le candidat — jusqu'au délai de
      garde — pour un enregistrement déjà acquis. */
   const ecritureBase = Object.keys(colonnes).length
-    ? tenter('profils', () => supabase.from('profils')
-        .update({ ...colonnes, maj_le: new Date().toISOString() }).eq('id', session.id))
+    ? ecrireEnBase(colonnes)
     : Promise.resolve({ nom: 'profils', ok: true });
 
   const ecritureMeta = Object.keys(champs).length
@@ -272,14 +298,7 @@ async function enregistrerInfos() {
   const prenom = ($('#c-prenom')?.value || '').trim();
   const nom = ($('#c-nom')?.value || '').trim();
   const pseudo = ($('#c-pseudo')?.value || '').trim();
-  const telephone = ($('#c-telephone')?.value || '').trim();
 
-  const numero = normaliserTelephone(telephone);
-  if (telephone && !numero) {
-    if (etat) { etat.textContent = t('compte.telephone_invalide',
-      'Numéro invalide. Exemple : 06 12 34 56 78, ou +33 6 12 34 56 78.'); etat.className = 'text-sm text-coral'; }
-    return;
-  }
 
   /* try/finally : sans lui, une exception ou une requête qui ne revient
      jamais laissait le bouton bloqué sur « Enregistrement… », désactivé,
@@ -287,7 +306,7 @@ async function enregistrerInfos() {
   if (bouton) { bouton.disabled = true; bouton.textContent = t('compte.enregistrement', 'Enregistrement…'); }
   let resultat;
   try {
-    resultat = await enregistrer({ prenom, nom, pseudo }, { prenom, nom, pseudo, telephone: numero });
+    resultat = await enregistrer({ prenom, nom, pseudo }, { prenom, nom, pseudo });
   } catch (e) {
     resultat = e?.message || t('compte.echec', "L'enregistrement a échoué.");
   } finally {
@@ -331,7 +350,7 @@ async function televerserPhoto(fichier) {
 
     const { data } = supabase.storage.from('avatars').getPublicUrl(chemin);
     const url = data?.publicUrl;
-    if (!url) throw new Error('URL de la photo introuvable.');
+    if (!url) throw new Error(t('compte.photo_url', 'URL de la photo introuvable.'));
 
     session.avatar = url;
     const r = await enregistrer({ avatar_url: url }, { avatar_url: url });
@@ -389,9 +408,10 @@ function demanderSuppression() {
     'Supprimer définitivement votre compte, vos simulations passées et votre compteur d\'usage ? Cette action est irréversible.'));
   if (!confirme) return;
 
-  const objet = encodeURIComponent('Suppression de mon compte Oralixia');
-  const corps = encodeURIComponent(
-    `Bonjour,\n\nJe demande la suppression de mon compte Oralixia.\n\nAdresse du compte : ${session.email}\n\nMerci.`);
+  const objet = encodeURIComponent(t('compte.suppression_objet', 'Suppression de mon compte Oralixia'));
+  const corps = encodeURIComponent(t('compte.suppression_corps',
+    'Bonjour,\n\nJe demande la suppression de mon compte Oralixia.\n\nAdresse du compte : {email}\n\nMerci.')
+    .replace('{email}', session.email || ''));
   const destinataire = CONFIG.editeur.email;
 
   if (!destinataire) {
@@ -436,59 +456,3 @@ async function demarrer() {
 }
 
 demarrer();
-
-
-/* ═══════════════════════════════════════════════════════════
-   Téléphone : un simple moyen de rappeler quelqu'un
-
-   Le numéro est facultatif et sert à joindre un candidat en
-   cas de problème sur son compte. Rien de plus.
-
-   La vérification par SMS a été retirée : elle imposait un
-   fournisseur payant chez Supabase, facturait chaque tentative,
-   et rattachait le numéro à l'authentification du compte — donc
-   une panne du SMS devenait une panne de l'enregistrement. Pour
-   un champ purement informatif, le prix était absurde.
-
-   Le format E.164 (+33612345678) est conservé : il reste
-   valable si le candidat passe une frontière, et se compose
-   directement depuis un téléphone.
-   ═══════════════════════════════════════════════════════════ */
-
-/** Indicatif appliqué à un numéro national sans préfixe. */
-const INDICATIF_DEFAUT = '+33';
-
-/**
- * @returns {string} le numéro en E.164, ou '' s'il est invalide.
- *          Une chaîne vide en entrée rend une chaîne vide : effacer
- *          son numéro est un choix légitime, pas une erreur.
- */
-export function normaliserTelephone(brut) {
-  const saisi = String(brut || '').trim();
-  if (!saisi) return '';
-
-  // On ne garde que les chiffres, et le + s'il ouvre le numéro.
-  const international = saisi.startsWith('+');
-  const chiffres = saisi.replace(/\D/g, '');
-  if (!chiffres) return '';
-
-  if (international) {
-    return chiffres.length >= 8 && chiffres.length <= 15 ? '+' + chiffres : '';
-  }
-
-  /* Numéro national français : dix chiffres commençant par zéro.
-     Le zéro tombe, l'indicatif le remplace. */
-  if (/^0[1-9]\d{8}$/.test(chiffres)) return INDICATIF_DEFAUT + chiffres.slice(1);
-
-  // Tout le reste est ambigu : mieux vaut refuser que deviner un pays.
-  return '';
-}
-
-/** Affichage lisible : +33612345678 → +33 6 12 34 56 78 */
-export function afficherTelephone(e164) {
-  const n = String(e164 || '');
-  if (!n.startsWith('+33') || n.length !== 12) return n;
-  return '+33 ' + n.slice(3).replace(/(\d)(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
-}
-
-

@@ -10,10 +10,11 @@
    métadonnées de progression.
    ═══════════════════════════════════════════════════════════ */
 
-import { CONFIG, typeParId } from './config.js';
+import { CONFIG } from './config.js';
+import { typeTraduit } from './catalogue.js';
 import { $, echappe, formaterTemps, couleurNote, stock, ouvrirModale, fermerModale } from './ui.js';
 import { lireSimulation, estRelisible } from './history.js';
-import { t } from './i18n.js';
+import { t, region } from './i18n.js';
 import { boutonEcoute, arreterEcoute } from './speech.js';
 
 const note = (v, sur = 20) =>
@@ -82,7 +83,7 @@ export function ouvrirRelecture(id) {
   const titre = $('#relecture-titre');
   if (!s || !zone) return;
 
-  const type = typeParId(s.typeId);
+  const type = typeTraduit(s.typeId);
   const d = new Date(s.date);
   if (titre) {
     titre.textContent = `${type.emoji} ${type.court}${s.sousChoix ? ' · ' + s.sousChoix : ''}`;
@@ -93,7 +94,7 @@ export function ouvrirRelecture(id) {
        gardé que leur note : on le dit plutôt que d'afficher un vide. */
     zone.innerHTML = `
       <div class="rounded-2xl border border-line bg-surface p-5">
-        <p class="text-sm text-muted">${d.toLocaleDateString('fr-FR')} · note globale
+        <p class="text-sm text-muted">${d.toLocaleDateString(region())} · note globale
           <span class="font-display font-bold" style="color:${couleurNote(s.score)}">${s.score}/100</span></p>
         ${criteres(s.criteres)}
       </div>
@@ -110,7 +111,7 @@ export function ouvrirRelecture(id) {
     <div class="rounded-2xl border border-line bg-surface p-5">
       <div class="flex flex-wrap items-baseline justify-between gap-3">
         <p class="text-sm text-muted">
-          ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          ${d.toLocaleDateString(region())} à ${d.toLocaleTimeString(region(), { hour: '2-digit', minute: '2-digit' })}
           · ${s.nbQuestions} question${s.nbQuestions > 1 ? 's' : ''}
           ${s.tempsTotal ? ' · ' + formaterTemps(s.tempsTotal) + ' de parole' : ''}
         </p>
@@ -164,7 +165,7 @@ export function ouvrirRelecture(id) {
     libelleArret: t('ecoute.arreter', 'Arrêter'),
     classes: 'px-3 py-1.5',
     texte: () => [
-      `Simulation du ${d.toLocaleDateString('fr-FR')}. Note globale : ${s.score} sur 100.`,
+      `Simulation du ${d.toLocaleDateString(region())}. Note globale : ${s.score} sur 100.`,
       s.verdict,
       ...s.reponses.map((r, i) => {
         const det = (s.details || [])[i] || {};
@@ -216,8 +217,8 @@ function boutonTelecharger(s, d) {
   const b = bouton(t('relecture.telecharger', 'Télécharger en PDF'), ICONE_PDF);
   b.addEventListener('click', () => {
     const titreInitial = document.title;
-    const type = typeParId(s.typeId);
-    document.title = `${CONFIG.nomProduit} - ${type.court} du ${d.toLocaleDateString('fr-FR')}`;
+    const type = typeTraduit(s.typeId);
+    document.title = `${CONFIG.nomProduit} - ${type.court} du ${d.toLocaleDateString(region())}`;
     document.body.classList.add('impression-relecture');
 
     const restaurer = () => {
@@ -250,10 +251,10 @@ function boutonCoach(s) {
  * prestation orale.
  */
 export function resumerPourLeCoach(s) {
-  const type = typeParId(s.typeId);
+  const type = typeTraduit(s.typeId);
   const d = new Date(s.date);
   const lignes = [
-    `Simulation du ${d.toLocaleDateString('fr-FR')} — ${type.court}${s.sousChoix ? ' (' + s.sousChoix + ')' : ''}.`,
+    `Simulation du ${d.toLocaleDateString(region())} — ${type.court}${s.sousChoix ? ' (' + s.sousChoix + ')' : ''}.`,
     `Note globale : ${s.score}/100.`,
     s.verdict ? `Verdict : ${s.verdict}` : '',
     s.eloquence != null ? `Éloquence : ${s.eloquence}/20.` : ''

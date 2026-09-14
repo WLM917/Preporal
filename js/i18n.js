@@ -41,6 +41,14 @@ export const langue = () => courante;
 export const infoLangue = () => LANGUES[courante] || LANGUES[DEFAUT];
 
 /**
+ * Étiquette régionale pour toLocaleDateString et consorts.
+ * Sans elle, une date reste « 14/09/2026 » sur une page anglaise,
+ * et les mois s'affichent en français.
+ */
+const REGIONS = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES' };
+export const region = () => REGIONS[courante] || REGIONS[DEFAUT];
+
+/**
  * Traduit une clé. Sans traduction, renvoie le repli fourni —
  * en pratique le texte français déjà présent dans la page.
  */
