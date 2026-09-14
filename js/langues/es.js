@@ -6,6 +6,16 @@
    approximative y ferait plus de mal que de bien. */
 
 export default {
+  "coach.joindre": "Adjuntar un documento",
+  "coach.retirer_piece": "Quitar",
+  "coach.piece_trop_lourde": "Archivo demasiado pesado: 3 MB como máximo.",
+  "coach.piece_vide": "No hay texto aprovechable en este archivo.",
+  "coach.piece_echec": "No se ha podido leer este archivo.",
+  "coach.piece_refusee": "No se ha podido enviar este documento.",
+  "coach.trop_de_pieces": "Cinco archivos adjuntos como máximo.",
+  "coach.lecture_piece": "Leyendo {nom}…",
+  "coach.preparation": "Preparando…",
+  "coach.analyse_piece": "¿Puedes analizar este documento y decirme qué debería trabajar?",
   "relecture.telecharger": "Descargar en PDF",
   "relecture.envoyer_au_coach": "Analizar con el coach",
   "coach.simulation_confiee": "Esta es mi simulación del {date}. ¿Qué debería trabajar primero?",

@@ -237,11 +237,11 @@ Dans **Authentication → URL Configuration** :
 
 | Champ | Valeur |
 |---|---|
-| **Site URL** | l'adresse de production, sans barre finale — `https://preporal.vercel.app` |
+| **Site URL** | l'adresse de production, sans barre finale — `https://www.oralixia.com` |
 | **Redirect URLs** | une ligne par environnement d'où l'on se connecte |
 
 ```
-https://preporal.vercel.app/**
+https://www.oralixia.com/**
 https://*-<votre-compte>.vercel.app/**      ← les déploiements de prévisualisation
 http://localhost:3000/**                     ← le développement local
 https://votre-domaine.fr/**                  ← après branchement du domaine
@@ -280,7 +280,7 @@ configuration ci-dessous rend le bouton utile.
 | Créer un projet | *Oralixia* |
 | APIs & Services → OAuth consent screen | Externe, nom de l'application, e-mail de contact, lien vers les CGV et la politique de confidentialité |
 | Credentials → Create → OAuth client ID | Type **Web application** |
-| Authorized JavaScript origins | `https://preporal.vercel.app` (puis votre domaine) |
+| Authorized JavaScript origins | `https://www.oralixia.com` (puis votre domaine) |
 | Authorized redirect URIs | `https://<projet>.supabase.co/auth/v1/callback` |
 
 L'URI de redirection est celle de **Supabase**, pas celle de votre site : c'est
@@ -490,6 +490,40 @@ npm test
 ```
 
 Les licences des deux projets sont conservées à côté des fichiers.
+
+### Montrer un document au coach
+
+Le coach accepte des pièces jointes : le sujet d'un Grand Oral, une offre de
+stage, le règlement d'un concours, une copie annotée prise en photo. Bouton
+trombone, glisser-déposer sur la conversation, ou collage d'une capture d'écran.
+
+Le partage des rôles n'est **pas** celui du simulateur, et c'est délibéré :
+
+| Format | Chemin | Pourquoi |
+|---|---|---|
+| PDF, PNG, JPEG, WebP, GIF | envoyé tel quel au modèle | il les lit nativement — une photo de copie annotée ou un sujet manuscrit passe bien mieux qu'avec une reconnaissance de caractères faite dans le navigateur |
+| DOCX, TXT, MD, CSV… | converti en texte dans le navigateur | le modèle ne lit pas le DOCX, et mammoth le fait très bien côté client |
+
+Les pièces accompagnent **un seul** message : l'historique garde le texte, pas
+les fichiers. Renvoyer un PDF de deux mégaoctets à chaque tour coûterait cher
+sans rien apporter.
+
+Trois bornes, dans `api/_lib/pieces.js` — c'est **le serveur** qui fait foi,
+celle du navigateur se contourne :
+
+| Borne | Valeur | Raison |
+|---|---|---|
+| Par pièce | 3 Mo | une fonction serverless reçoit un corps de requête limité, et le base64 gonfle de 33 % |
+| Cumulées | 4 Mo | idem |
+| Nombre | 5 | dix PDF de vingt pages coûteraient une fortune en jetons |
+
+Un message accompagné d'une pièce est traité à un effort supérieur et avec plus
+de place pour répondre : on ne lit pas un sujet de Grand Oral au même niveau
+d'attention qu'une question de deux lignes.
+
+Le journal ne porte jamais le contenu d'une pièce — seulement son type et sa
+taille. Un CV n'a rien à faire dans les journaux d'un hébergeur, et un test le
+vérifie.
 
 ### Dicter au lieu de taper
 

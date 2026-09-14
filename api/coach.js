@@ -6,6 +6,7 @@
 
 import { appelerModele, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
 import { verifierQuotaCoach, consommerQuotaCoach, refuserQuota } from './_lib/quota.js';
+import { blocsDePieces, resumerPieces } from './_lib/pieces.js';
 
 const SYSTEME = `Tu es le coach d'oral de Oralixia. Tu accompagnes des élèves, des étudiants et des candidats francophones qui préparent un entretien, un Grand Oral, un oral de brevet, un concours, un pitch ou une certification de langue.
 
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
     const verdict = await verifierQuotaCoach(req);
     if (!verdict.autorise) return refuserQuota(res, verdict);
 
-    const { messages = [], langue = 'fr' } = req.body || {};
+    const { messages = [], langue = 'fr', pieces = [] } = req.body || {};
     if (!Array.isArray(messages) || !messages.length) throw new ErreurIA('Message manquant.', 400);
 
     const propres = messages
@@ -44,6 +45,18 @@ export default async function handler(req, res) {
     while (propres.length && propres[0].role !== 'user') propres.shift();
     if (!propres.length) throw new ErreurIA('Message manquant.', 400);
 
+    /* Les pièces jointes accompagnent le dernier message. Elles se
+       placent AVANT son texte : le modèle lit d'abord le document, puis
+       la question posée dessus.
+
+       Seul le dernier tour les porte. L'historique reste en texte : on
+       ne renvoie pas un PDF de deux mégaoctets à chaque échange. */
+    const blocs = blocsDePieces(pieces);
+    if (blocs.length) {
+      const dernier = propres[propres.length - 1];
+      dernier.content = [...blocs, { type: 'text', text: dernier.content }];
+    }
+
     /* La langue d'interface pilote la langue des réponses : un
        utilisateur qui a mis le site en anglais ne doit pas recevoir
        une correction en français. */
@@ -54,10 +67,15 @@ export default async function handler(req, res) {
     const reponse = await appelerModele({
       systeme,
       messages: propres,
-      maxTokens: 700,
-      effort: 'low',
-      etiquette: 'coach'
+      /* Un document joint demande une lecture attentive : on ne lit pas
+         un sujet de Grand Oral au même effort qu'une question de deux
+         lignes, et la réponse a besoin de place pour l'analyser. */
+      maxTokens: blocs.length ? 1600 : 700,
+      effort: blocs.length ? 'medium' : 'low',
+      etiquette: blocs.length ? 'coach+pieces' : 'coach'
     });
+
+    if (blocs.length) console.log('[pieces]', resumerPieces(pieces));
 
     // Décompté seulement maintenant : une panne du modèle ne coûte pas
     // un échange au candidat.

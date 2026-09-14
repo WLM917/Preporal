@@ -8,6 +8,7 @@ import { Voix, Dictee, dicteeSupportee, boutonEcoute, arreterEcoute } from './sp
 import { session, exigerCompte } from './auth.js';
 import { ouvrirPaywall } from './paywall.js';
 import { ouvrirAppel, Appel } from './appel.js';
+import { preparerPiece, piecePourApi, PIECES_MAX } from './upload.js';
 import { langue, t } from './i18n.js';
 
 const historique = [];
@@ -56,12 +57,24 @@ function formater(texte) {
 
 async function envoyer(texteSaisi) {
   const texte = (texteSaisi ?? $('#saisie-coach').value).trim();
-  if (!texte || occupe) return;
+  /* Avec une pièce jointe, une question vide a du sens : « regarde ça ».
+     On fournit alors la demande implicite plutôt que de bloquer. */
+  const demande = texte || (pieces.length
+    ? t('coach.analyse_piece', 'Peux-tu analyser ce document et me dire ce que je dois travailler ?')
+    : '');
+  if (!demande || occupe) return;
   occupe = true;
   $('#saisie-coach').value = '';
   $('#saisie-coach').style.height = 'auto';
-  bulle('user', texte);
-  historique.push({ role: 'user', content: texte });
+
+  // Les pièces partent avec ce message, puis la liste se vide.
+  const jointes = pieces.map(piecePourApi);
+  const nomsJoints = pieces.map(p => p.nom);
+  pieces = [];
+  rendrePieces();
+
+  bulle('user', demande + (nomsJoints.length ? '\n\n📎 ' + nomsJoints.join(', ') : ''));
+  historique.push({ role: 'user', content: demande });
 
   const attente = bulle('assistant', '…', 'bulle-attente', { ecoutable: false });
 
@@ -69,7 +82,7 @@ async function envoyer(texteSaisi) {
     const r = await fetch(`${CONFIG.api}/coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(session.jeton ? { Authorization: 'Bearer ' + session.jeton } : {}) },
-      body: JSON.stringify({ messages: historique.slice(-16), langue: langue() })
+      body: JSON.stringify({ messages: historique.slice(-16), langue: langue(), pieces: jointes })
     });
     /* 402 : le serveur refuse, il ne panne pas. Servir malgré tout une
        réponse hors ligne reviendrait à contourner la limite qu'on vient
@@ -79,6 +92,15 @@ async function envoyer(texteSaisi) {
       attente.remove();
       historique.pop();                       // la question n'a pas été traitée
       return refuser(data.code, data.erreur);
+    }
+    /* 413, 415, 400 : le serveur a lu la demande et l'a refusée. Servir
+       un repli hors ligne masquerait la vraie raison — un fichier trop
+       lourd ou d'un format qu'il ne lit pas. */
+    if (r.status >= 400 && r.status < 500) {
+      const data = await r.json().catch(() => ({}));
+      attente.remove();
+      bulle('assistant', data.erreur || t('coach.piece_refusee', "Ce document n'a pas pu être transmis."));
+      return;
     }
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
@@ -97,6 +119,66 @@ async function envoyer(texteSaisi) {
     if (lectureAuto) Voix.parler(repli, { langue: langueVoix });
   } finally {
     occupe = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Pièces jointes
+
+   On peut montrer au coach le sujet, l'offre, une copie
+   annotée, le règlement d'un concours. Les pièces accompagnent
+   le prochain message et ne sont envoyées qu'une fois :
+   l'historique garde le texte, pas les fichiers.
+   ═══════════════════════════════════════════════════════════ */
+
+let pieces = [];
+
+const ICONE_FICHIER = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>';
+const ICONE_IMAGE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>';
+
+const poidsLisible = o => o > 1024 * 1024
+  ? (o / 1024 / 1024).toFixed(1) + ' Mo'
+  : Math.max(1, Math.round(o / 1024)) + ' Ko';
+
+function rendrePieces() {
+  const zone = $('#pieces-coach');
+  if (!zone) return;
+  zone.classList.toggle('hidden', !pieces.length);
+
+  zone.innerHTML = pieces.map((p, i) => `
+    <span class="inline-flex max-w-full items-center gap-2 rounded-lg border border-line bg-raised px-2.5 py-1.5 text-xs">
+      <span class="shrink-0 text-iris2">${p.media?.startsWith('image/') ? ICONE_IMAGE : ICONE_FICHIER}</span>
+      <span class="truncate">${echappe(p.nom)}</span>
+      <span class="shrink-0 text-muted">${p.type === 'texte' ? echappe(p.octets.toLocaleString('fr-FR') + ' c.') : echappe(poidsLisible(p.octets))}</span>
+      <button type="button" data-retirer="${i}" class="shrink-0 rounded p-0.5 text-muted transition hover:text-coral"
+        aria-label="${echappe(t('coach.retirer_piece', 'Retirer'))} ${echappe(p.nom)}">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </span>`).join('');
+
+  zone.querySelectorAll('[data-retirer]').forEach(b =>
+    b.addEventListener('click', () => { pieces.splice(Number(b.dataset.retirer), 1); rendrePieces(); }));
+}
+
+async function ajouterPieces(fichiers) {
+  const etat = $('#etat-piece');
+  const dire = (texte, erreur = false) => {
+    if (etat) { etat.textContent = texte; etat.className = 'mt-2 text-xs ' + (erreur ? 'text-coral' : 'text-muted'); }
+  };
+
+  for (const fichier of [...(fichiers || [])]) {
+    if (pieces.length >= PIECES_MAX) {
+      dire(t('coach.trop_de_pieces', 'Cinq pièces jointes au maximum.'), true);
+      break;
+    }
+    try {
+      dire(t('coach.lecture_piece', 'Lecture de {nom}…').replace('{nom}', fichier.name));
+      pieces.push(await preparerPiece(fichier, m => dire(m)));
+      rendrePieces();
+      dire('');
+    } catch (e) {
+      dire(e.message || t('coach.piece_echec', 'Ce fichier n\'a pas pu être lu.'), true);
+    }
   }
 }
 
@@ -237,6 +319,22 @@ export function initCoach() {
 
   $('#btn-envoyer-coach')?.addEventListener('click', () => envoyer());
   $('#btn-appel-coach')?.addEventListener('click', appelerLeCoach);
+
+  $('#fichier-coach')?.addEventListener('change', e => {
+    ajouterPieces(e.target.files);
+    e.target.value = '';               // le même fichier doit pouvoir être rechoisi
+  });
+
+  // Glisser-déposer sur la conversation, et collage d'une capture d'écran.
+  const zone = $('#vue-coach') || document;
+  ['dragover', 'drop'].forEach(ev => zone.addEventListener(ev, e => {
+    e.preventDefault();
+    if (ev === 'drop') ajouterPieces(e.dataTransfer?.files);
+  }));
+  $('#saisie-coach')?.addEventListener('paste', e => {
+    const fichiers = [...(e.clipboardData?.files || [])];
+    if (fichiers.length) { e.preventDefault(); ajouterPieces(fichiers); }
+  });
   // Sans reconnaissance vocale, un bouton d'appel ne servirait à rien.
   if (!Appel.disponible()) $('#btn-appel-coach')?.classList.add('hidden');
 

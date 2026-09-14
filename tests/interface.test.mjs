@@ -359,6 +359,24 @@ test("le plan d'un abonnement se lit sur son tarif", () => {
     "l'abonnement ouvert en essai arrive par « created »");
 });
 
+test('le domaine déclaré est celui que CONFIG annonce', async () => {
+  /* La balise canonique a pointé sur preporal.vercel.app après que ce
+     domaine a cessé de répondre : elle disait donc aux moteurs « la
+     vraie version est là-bas », vers un 404. Les pages et CONFIG
+     doivent parler du même hôte. */
+  globalThis.window = globalThis.window || { ORALIXIA_ENV: {} };
+  const { DOMAINE } = await import('../js/config.js');
+
+  const canonique = html.match(/<link rel="canonical" href="https:\/\/([^/"]+)/)?.[1];
+  assert.equal(canonique, DOMAINE,
+    `la page annonce ${canonique}, CONFIG annonce ${DOMAINE}`);
+
+  for (const factice of ['example.com', 'votre-domaine', 'localhost', 'vercel.app']) {
+    assert.ok(!DOMAINE.includes(factice),
+      `DOMAINE doit être le domaine définitif, pas ${factice}`);
+  }
+});
+
 test("le nom du produit n'est écrit qu'à un seul endroit", async () => {
   /* Un changement de marque ne doit pas être une chasse aux
      occurrences : les textes légaux, les e-mails et le titre des PDF
