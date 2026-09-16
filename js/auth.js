@@ -153,10 +153,20 @@ async function appliquerSession(s) {
     const m = s.user.user_metadata || {};
     session.prenom = m.prenom || m.first_name || m.given_name || '';
     session.nom = m.nom || m.last_name || m.family_name || '';
-    // Google renseigne avatar_url ou picture ; ailleurs, on affiche une silhouette.
+    /* La photo de profil est celle que le candidat a lui-même déposée,
+       c'est-à-dire avatar_url, que notre téléversement écrit.
+
+       On ne reprend PLUS « picture », fourni par Google : quand le
+       compte Google n'a pas de photo, Google y met une image qu'il
+       fabrique — un monogramme, la première lettre du prénom sur un
+       fond terne. Rien ne la distingue d'une vraie photo par son URL,
+       et le site l'affichait donc en grand au milieu de « Gérer mon
+       compte », tout en verrouillant le choix de couleur au motif
+       qu'une photo était déjà là. Sans photo déposée, c'est la
+       silhouette et la couleur choisie qui s'affichent. */
     // Nouvelle session, nouvelle chance : la photo n'est plus réputée cassée.
     photoCassee = false;
-    session.avatar = m.avatar_url || m.picture || '';
+    session.avatar = m.avatar_url || '';
     session.pseudo = (m.pseudo || '').trim();
     session.couleur = m.couleur || '';
     await chargerProfil();

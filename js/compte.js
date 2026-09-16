@@ -68,13 +68,15 @@ function rendreCouleurs() {
   const zone = $('#choix-couleurs');
   if (!zone) return;
 
-  /* Avec une photo VISIBLE, la couleur ne sert plus à rien : on grise le
-     choix plutôt que de le faire disparaître. Une photo qui ne s'affiche
-     pas, en revanche, ne doit rien condamner — la pastille montre alors
-     la silhouette, et sa couleur redevient le seul réglage utile. */
-  const inutile = Boolean(session.avatar) && !photoCassee;
-  zone.classList.toggle('opacity-40', inutile);
-  zone.classList.toggle('pointer-events-none', inutile);
+  /* La couleur reste modifiable en toute circonstance.
+
+     Elle était grisée dès qu'une photo existait, au motif qu'elle ne
+     servait plus à rien. Mais elle sert toujours : c'est elle qui
+     s'affiche si la photo est retirée, ou si elle ne se charge pas. Et
+     comme le site prenait le monogramme fourni par Google pour une
+     photo, le choix se retrouvait verrouillé sans que rien ne
+     l'explique — un réglage qu'on voit et sur lequel on ne peut pas
+     appuyer. */
 
   const actuelle = session.couleur || nomDeLaCouleur(couleurAvatar());
   zone.innerHTML = Object.entries(COULEURS_AVATAR).map(([nom, teinte]) => {
@@ -199,17 +201,24 @@ const avecDelai = (promesse, ms = DELAI_ECRITURE) => {
 };
 
 /**
- * Enregistre le profil à deux endroits, en parallèle.
+ * Enregistre le profil.
  *
- * La table « profils » est la source durable : c'est elle qu'on
- * interroge en SQL, et elle qui repeuple la session au chargement
- * suivant. Les métadonnées du compte ne servent qu'à afficher le nom
- * sans attendre une requête.
+ * Deux endroits reçoivent la même information, et l'ordre compte :
  *
- * Les deux écritures étaient enchaînées, et la première commandait
- * tout : quand `auth.updateUser` traînait ou échouait, l'enregistrement
- * entier était déclaré perdu alors que la base aurait accepté. Elles
- * partent donc ensemble, et il suffit que l'une aboutisse.
+ * • Les métadonnées du compte font foi pour l'affichage. C'est d'elles
+ *   que la session se remplit à l'ouverture, et elles l'emportent sur
+ *   la table. Ce sont aussi du JSON : aucune colonne ne peut y manquer,
+ *   et l'écriture aboutit ou échoue tout de suite.
+ *
+ * • La table « profils » en reçoit une copie, pour être lisible en SQL.
+ *
+ * C'est donc la première qu'on attend. L'inverse était fait, et la
+ * copie commandait tout : tant que la base ne répondait pas, le
+ * candidat regardait « Enregistrement… » jusqu'au délai de garde, puis
+ * lisait « Le serveur n'a pas répondu » — pour un changement de
+ * pseudonyme déjà acquis dans son compte. La copie part maintenant en
+ * arrière-plan ; si elle échoue, rien de ce qu'il voit n'est faux, et
+ * la console dit quoi rejouer.
  *
  * @returns {Promise<true|string>} true, ou le message d'erreur à afficher.
  */
@@ -231,52 +240,39 @@ async function enregistrer(champs, colonnes = champs) {
 
   /* Une colonne absente de la base fait échouer l'écriture entière, y
      compris pour les champs qui, eux, existent. Cela arrive dès que le
-     schéma SQL n'a pas été rejoué après une mise à jour — et cela
-     produisait un « Le serveur n'a pas répondu » que le candidat ne
-     pouvait ni comprendre ni corriger. On réessaie donc avec les seules
-     colonnes que la base connaît. */
+     schéma SQL n'a pas été rejoué après une mise à jour. */
   const colonneInconnue = message =>
     /could not find|does not exist|schema cache|column/i.test(String(message || ''));
 
-  const ecrireEnBase = async champsBase => {
+  const copierEnBase = async champsBase => {
     const premier = await tenter('profils', () => supabase.from('profils')
       .update({ ...champsBase, maj_le: new Date().toISOString() }).eq('id', session.id));
     if (premier.ok || !colonneInconnue(premier.message)) return premier;
 
-    /* Second essai, réduit au strict nécessaire. Ces trois colonnes
-       existent depuis la création de la table : si elles manquent
-       aussi, c'est un vrai problème et il doit remonter. */
+    /* Second essai, réduit aux colonnes présentes depuis la création de
+       la table. Les autres attendront que supabase/schema.sql soit
+       rejoué — sans quoi, rien à signaler au candidat : son compte,
+       lui, est à jour. */
     const sures = {};
     for (const cle of ['prenom', 'nom', 'email']) {
       if (cle in champsBase) sures[cle] = champsBase[cle];
     }
     if (!Object.keys(sures).length) return premier;
 
-    console.warn('Colonne absente du schéma : réessai réduit. Rejouez supabase/schema.sql.');
+    console.warn('Colonne absente du schéma : copie réduite. Rejouez supabase/schema.sql.');
     return tenter('profils (réduit)', () => supabase.from('profils')
       .update({ ...sures, maj_le: new Date().toISOString() }).eq('id', session.id));
   };
 
-  /* Les deux écritures partent ensemble, mais on n'attend que la base :
-     c'est elle qui conserve durablement le profil. Les métadonnées ne
-     servent qu'à afficher le nom sans requête au chargement suivant ;
-     les attendre faisait patienter le candidat — jusqu'au délai de
-     garde — pour un enregistrement déjà acquis. */
-  const ecritureBase = Object.keys(colonnes).length
-    ? ecrireEnBase(colonnes)
-    : Promise.resolve({ nom: 'profils', ok: true });
+  /* La copie part tout de suite, mais personne ne l'attend. Le .catch
+     est là pour qu'un échec ne remonte pas en rejet non traité. */
+  if (Object.keys(colonnes).length) {
+    copierEnBase(colonnes).catch(e => console.warn('Copie en base abandonnée', e));
+  }
 
-  const ecritureMeta = Object.keys(champs).length
-    ? tenter('métadonnées', () => supabase.auth.updateUser({ data: champs }))
-    : Promise.resolve({ nom: 'métadonnées', ok: true });
-
-  const base = await ecritureBase;
-
-  if (!base.ok) {
-    /* La base a refusé : les métadonnées deviennent le dernier recours,
-       et là seulement il vaut la peine de les attendre. */
-    const meta = await ecritureMeta;
-    if (!meta.ok) return base.message || meta.message;
+  if (Object.keys(champs).length) {
+    const meta = await tenter('métadonnées', () => supabase.auth.updateUser({ data: champs }));
+    if (!meta.ok) return meta.message;
   }
 
   Object.assign(session, champs);

@@ -414,20 +414,59 @@ test('une photo inaffichable ne condamne pas le choix de couleur', () => {
     'la photo des comptes Google serait bloquée');
 });
 
-test("l'enregistrement n'attend que l'écriture durable", () => {
-  /* Les deux écritures étaient enchaînées et la première commandait
-     tout : quand les métadonnées traînaient, un enregistrement déjà
-     accepté par la base était déclaré perdu. */
+test("l'enregistrement n'attend que les métadonnées, pas la copie en base", () => {
+  /* Les métadonnées font foi pour l'affichage : c'est d'elles que la
+     session se remplit, et ce sont du JSON, donc aucune colonne ne
+     peut y manquer. La table « profils » n'en reçoit qu'une copie.
+
+     La copie était attendue, et commandait tout : tant que la base ne
+     répondait pas — ou refusait une colonne absente du schéma — le
+     candidat regardait « Enregistrement… » jusqu'au délai de garde,
+     puis lisait « Le serveur n'a pas répondu », pour un changement de
+     pseudonyme déjà enregistré dans son compte. */
   const src = modules.find(m => m.nom === 'compte.js').source;
   const debut = src.indexOf('async function enregistrer(');
+  const corps = src.slice(debut, src.indexOf('\n}\n', debut));
+
+  assert.match(corps, /await tenter\('métadonnées'/,
+    'les métadonnées sont la seule écriture attendue');
+  assert.ok(!/await copierEnBase/.test(corps),
+    'attendre la copie fait patienter pour un enregistrement déjà acquis');
+  assert.match(corps, /copierEnBase\(colonnes\)\.catch/,
+    'la copie part quand même, et son échec ne doit pas remonter en rejet non traité');
+
+  // Une colonne manquante reste rattrapée, sans rien dire au candidat.
+  assert.match(corps, /colonneInconnue/, 'le rattrapage de colonne absente a disparu');
+});
+
+test('le monogramme fourni par Google ne tient pas lieu de photo', () => {
+  /* Un compte Google sans photo reçoit tout de même une image :
+     Google en fabrique une, la première lettre du prénom sur un fond
+     terne. Rien ne la distingue d'une vraie photo par son URL. Elle
+     s'affichait donc en grand au milieu de « Gérer mon compte », et
+     verrouillait le choix de couleur au motif qu'une photo existait. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+  const ligne = src.split('\n').find(l => /session\.avatar\s*=\s*m\./.test(l));
+  assert.ok(ligne, 'la reprise de la photo depuis les métadonnées a disparu');
+  assert.ok(!/m\.picture/.test(ligne),
+    "« picture » vient du fournisseur, pas du candidat : il ne doit pas devenir sa photo");
+  assert.match(ligne, /m\.avatar_url/,
+    'seule la photo déposée par le candidat fait une photo de profil');
+});
+
+test('le choix de couleur reste toujours cliquable', () => {
+  /* Il était grisé dès qu'une photo existait. Combiné au monogramme
+     Google, cela donnait un réglage visible sur lequel on ne pouvait
+     jamais appuyer. */
+  const src = modules.find(m => m.nom === 'compte.js').source;
+  const debut = src.indexOf('function rendreCouleurs(');
   const corps = src.slice(debut, src.indexOf('\n}', debut));
 
-  assert.match(corps, /ecritureBase/, 'la base est la source durable');
-  assert.match(corps, /ecritureMeta/, 'les métadonnées partent en parallèle');
-  assert.match(corps, /await ecritureBase/,
-    "seule l'écriture durable doit faire patienter le candidat");
-  assert.ok(!/await Promise\.all/.test(corps),
-    'attendre les deux fait patienter pour un enregistrement déjà acquis');
+  assert.ok(!/pointer-events-none/.test(corps),
+    'le choix de couleur ne doit jamais être rendu inerte');
+  assert.ok(!/opacity-40/.test(corps),
+    'le choix de couleur ne doit jamais être grisé');
+  assert.match(corps, /data-couleur/, 'les pastilles doivent toujours être rendues');
 });
 
 test('la page compte permet de se déconnecter', () => {
