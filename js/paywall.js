@@ -5,7 +5,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG, OFFRES, ORDRE_OFFRES, OFFRE_RECOMMANDEE } from './config.js';
-import { t, surChangementLangue } from './i18n.js';
+import { t, langue, surChangementLangue } from './i18n.js';
 import { $, $$, stock, echappe, ouvrirModale, fermerModale, toast } from './ui.js';
 import { session, profil, surChangementCompte } from './auth.js';
 import { messagePaiement } from './age.js';
@@ -149,7 +149,10 @@ export async function lancerCheckout(planId) {
         plan: planId,
         email: session.email || undefined,
         userId: session.id || undefined,
-        origine: window.location.origin
+        origine: window.location.origin,
+        // La page de paiement fait partie du site : elle s'ouvre
+        // dans la langue choisie, pas systématiquement en français.
+        langue: langue()
       })
     });
     const data = await r.json().catch(() => ({}));
