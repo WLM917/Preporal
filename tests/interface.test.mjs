@@ -725,3 +725,30 @@ test("l'examinateur parle la langue choisie hors épreuve de langue", async () =
   assert.ok(!/return 'fr-FR'/.test(fn),
     'le français ne doit plus être le repli figé de la voix');
 });
+
+test("la déclaration d'âge reprend le lancement au lieu de l'abandonner", async () => {
+  /* Le candidat remplissait son dossier, cliquait sur « Lancer »,
+     déclarait son âge — et il ne se passait plus rien. Il fallait
+     cliquer une seconde fois, sans que rien ne le dise. Reproduit
+     dans un navigateur. */
+  const age = readFileSync(join(RACINE, 'js/age.js'), 'utf8');
+  const demande = age.slice(age.indexOf('export function demanderAgeSiNecessaire'),
+                            age.indexOf('export function demanderAgeSiNecessaire') + 400);
+  assert.match(demande, /demanderAgeSiNecessaire\(\s*auRetour/,
+    'la fonction doit accepter une action à reprendre');
+  assert.match(demande, /reprise = auRetour/, "l'action doit être mémorisée");
+
+  // Elle doit être rejouée à la validation, et seulement si l'usage est permis.
+  const validation = age.slice(age.indexOf("valider?.addEventListener"));
+  assert.match(validation, /if \(aReprendre && peutUtiliser\(\)\) aReprendre\(\)/,
+    "l'action doit être rejouée, et refusée tant qu'un accord parental manque");
+  assert.match(validation, /reprise = null/,
+    "l'action ne doit pas pouvoir être rejouée deux fois");
+
+  // Et le simulateur doit effectivement passer son lancement en reprise.
+  const sim = readFileSync(join(RACINE, 'js/simulateur.js'), 'utf8');
+  assert.match(sim, /demanderAgeSiNecessaire\(lancerSimulation\)/,
+    'le simulateur doit se donner lui-même comme reprise');
+  assert.match(sim, /\$\('#btn-lancer'\)\.addEventListener\('click', lancerSimulation\)/,
+    'le bouton doit appeler la même fonction que la reprise');
+});

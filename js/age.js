@@ -162,14 +162,32 @@ export function brancherAge() {
     }
     document.getElementById('modal-age')?.setAttribute('hidden', '');
     document.body.style.overflow = '';
+
+    /* Un mineur de moins de 15 ans attend l'accord de son responsable :
+       on ne relance pas pour lui, peutUtiliser() le refuserait. */
+    const aReprendre = reprise;
+    reprise = null;
+    if (aReprendre && peutUtiliser()) aReprendre();
   });
 }
 
-/** Ouvre la déclaration d'âge si elle n'a jamais été faite. */
-export function demanderAgeSiNecessaire() {
+/* Action interrompue par la déclaration d'âge, à reprendre une fois
+   celle-ci faite. Sans cela, le candidat remplissait son dossier,
+   cliquait sur « Lancer », déclarait son âge — et il ne se passait
+   plus rien : il fallait cliquer une seconde fois, sans que rien ne
+   le dise. C'est le tout premier pas du produit. */
+let reprise = null;
+
+/**
+ * Ouvre la déclaration d'âge si elle n'a jamais été faite.
+ * @param {Function} [auRetour] rejouée une fois l'âge déclaré
+ * @returns {boolean} true si l'appelant doit s'interrompre
+ */
+export function demanderAgeSiNecessaire(auRetour = null) {
   if (etatAge.tranche) return false;
   const m = document.getElementById('modal-age');
   if (!m) return false;
+  reprise = auRetour;
   m.hidden = false;
   document.body.style.overflow = 'hidden';
   return true;

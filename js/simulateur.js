@@ -150,14 +150,15 @@ function verifierFormulaire() {
 }
 
 /* ═══ Lancement ═══ */
-$('#btn-lancer').addEventListener('click', async () => {
+async function lancerSimulation() {
   /* Un compte d'abord. Sans lui, les deux simulations offertes ne
      tiennent pas : il suffirait de vider son navigateur pour repartir
      à zéro. Rattachées à un compte, elles sont comptées en base. */
   if (!await exigerCompte()) return;
 
-  // Première simulation : on demande la tranche d'âge avant de commencer.
-  if (demanderAgeSiNecessaire()) return;
+  /* Première simulation : on demande la tranche d'âge avant de commencer,
+     et on reprend le lancement dès qu'elle est déclarée. */
+  if (demanderAgeSiNecessaire(lancerSimulation)) return;
   if (!peutLancer()) { ouvrirPaywall('quota'); return; }
 
   etat.index = 0;
@@ -212,7 +213,9 @@ $('#btn-lancer').addEventListener('click', async () => {
 
   allerEcran('simulation');
   afficherQuestion();
-});
+}
+
+$('#btn-lancer').addEventListener('click', lancerSimulation);
 
 /* ═══ Déroulé de la simulation ═══ */
 function afficherQuestion() {
