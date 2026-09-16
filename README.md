@@ -174,13 +174,28 @@ La suite couvre ce qui casse en silence :
    | Produit | Type de tarif | Montant | Variable |
    |---|---|---|---|
    | **Pass 48 heures** | ponctuel | 4,90 € TTC | `STRIPE_PRICE_PASS48` |
-   | **Oralixia Premium** | récurrent mensuel | 9,90 € TTC | `STRIPE_PRICE_MENSUEL` |
-   | **Oralixia Extra** | ponctuel | 54,90 € TTC | `STRIPE_PRICE_EXTRA` |
+   | **Oralixia Premium** | récurrent, tous les mois | 9,90 € TTC | `STRIPE_PRICE_MENSUEL` |
+   | **Oralixia Extra** | récurrent, tous les 6 mois | 54,90 € TTC | `STRIPE_PRICE_EXTRA` |
 
-   L'offre Extra est un **paiement unique** couvrant six mois, pas un abonnement :
-   rien n'est reconduit et l'échéance est posée par `api/webhook.js`.
+   Le Pass 48 h est un **paiement unique** : rien n'est reconduit, et l'échéance
+   est posée par `api/webhook.js`. Les deux autres sont des **abonnements**.
+
+   L'offre Extra ouvre sur `ESSAI_EXTRA_JOURS` jours d'essai (7 par défaut).
+   Un essai gratuit n'existe chez Stripe que sur un abonnement — d'où le tarif
+   récurrent semestriel plutôt qu'un paiement unique. La reconduction tacite
+   qui en découle impose d'informer l'abonné avant chaque échéance
+   (art. L215-1 du code de la consommation) : voir « Avant de vendre ».
+
+   > Le type du tarif doit correspondre au mode de l'offre. Un tarif ponctuel
+   > branché sur un abonnement fait échouer la session de paiement ;
+   > `api/create-checkout-session.js` répond alors en nommant la variable à
+   > corriger et le type de tarif à créer, plutôt que de laisser remonter le
+   > message brut de Stripe.
 
 2. Copiez les identifiants de tarif (`price_…`) dans les variables correspondantes.
+   Ce sont bien les identifiants de **tarif**, pas de produit : dans la fiche
+   produit, `price_…` se trouve sous la ligne de tarification, tandis que
+   `prod_…` identifie le produit et n'est accepté nulle part ici.
 
 > Les prix affichés viennent uniquement de `js/config.js`, et la modale d'offre
 > est rendue à partir de là. Un test refuse tout tarif écrit en dur dans une
