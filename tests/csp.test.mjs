@@ -143,7 +143,12 @@ test("seul ce qui ne change jamais est mis en cache pour un an", () => {
   assert.match(cache('/assets/vendor/(.*)') || '', /immutable/,
     'les bibliothèques livrées avec le site ne changent jamais de contenu');
 
-  for (const source of ['/assets/(.*)', '/js/(.*)']) {
+  /* La règle générale des assets : celle qui vise assets/ sans viser
+     assets/vendor. Son motif exact est vérifié plus bas. */
+  const generale = vercel.headers.find(h => /^\/assets\//.test(h.source) && !h.source.includes('vendor/('));
+  assert.ok(generale, 'règle générale des assets introuvable');
+
+  for (const source of [generale.source, '/js/(.*)']) {
     const valeur = cache(source);
     assert.ok(valeur, `${source} : aucune règle de cache`);
     assert.match(valeur, /must-revalidate/, `${source} doit être revalidé`);
@@ -151,9 +156,14 @@ test("seul ce qui ne change jamais est mis en cache pour un an", () => {
       `${source} change avec le site : le figer force le visiteur à vider son cache`);
   }
 
-  /* L'ordre compte : Vercel applique la première règle qui correspond,
-     et /assets/(.*) recouvre /assets/vendor/(.*). */
-  const rang = s => vercel.headers.findIndex(h => h.source === s);
-  assert.ok(rang('/assets/vendor/(.*)') < rang('/assets/(.*)'),
-    'la règle des bibliothèques doit précéder la règle générale, sinon elle ne sert jamais');
+  /* Les deux règles d'assets/ ne doivent pas se recouvrir.
+
+     La première version s'appuyait sur leur ordre, en supposant que
+     Vercel retient la première règle qui correspond. C'est faux : sur le
+     site déployé, assets/vendor/pdf.min.js recevait la règle générale
+     malgré la règle spécifique placée avant. La documentation ne tranche
+     pas — alors on ne parie plus dessus, la règle générale exclut
+     explicitement le dossier des bibliothèques. */
+  assert.match(generale.source, /\(\?!vendor\//,
+    "la règle générale doit exclure assets/vendor, sans dépendre de l'ordre d'application");
 });
