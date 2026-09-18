@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    POST /api/create-checkout-session
-   Entrée : { plan: 'mensuel' | 'pass48' | 'extra', email?, userId?,
+   Entrée : { plan: 'mensuel' | 'pass48' | 'extra', userId?,
               origine?, langue? }
    Sortie : { url }  → le navigateur est redirigé vers Stripe
    ═══════════════════════════════════════════════════════════ */
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
   try {
     const stripe = new Stripe(cle, { apiVersion: '2024-06-20' });
-    const { plan = 'mensuel', email, userId, origine, langue = 'fr' } = req.body || {};
+    const { plan = 'mensuel', userId, origine, langue = 'fr' } = req.body || {};
 
     const config = PLANS[plan];
     if (!config) return res.status(400).json({ erreur: 'Offre inconnue.' });
@@ -42,7 +42,6 @@ export default async function handler(req, res) {
     // Si l'utilisateur est authentifié, on relie le paiement à son compte.
     const utilisateur = await utilisateurDepuisJeton(req);
     const identifiant = utilisateur?.id || userId || null;
-    const courriel = utilisateur?.email || email || undefined;
 
     const base = process.env.URL_PUBLIQUE || origine || `https://${req.headers.host}`;
 
@@ -52,7 +51,18 @@ export default async function handler(req, res) {
     const session = await stripe.checkout.sessions.create({
       mode: config.mode,
       line_items: [{ price: priceId, quantity: 1 }],
-      customer_email: courriel,
+      /* L'adresse n'est pas pré-remplie, et ce n'est pas un oubli.
+
+         Stripe la cherche alors dans Link : si le candidat y a un compte,
+         la page de paiement s'ouvre directement sur une demande de code
+         par SMS, au lieu de la liste des moyens de paiement. On ne voit
+         plus ni carte, ni Apple Pay, ni Klarna — juste six cases et un
+         téléphone qu'on n'a pas forcément sous la main.
+
+         Sans pré-remplissage, la page s'ouvre sur le choix du moyen de
+         paiement, Link compris, et le candidat saisit son adresse s'il
+         le souhaite. Le rattachement au compte ne dépend pas d'elle :
+         il passe par client_reference_id, ci-dessous. */
       client_reference_id: identifiant || undefined,
       metadata: { plan, utilisateur_id: identifiant || '' },
       ...(config.mode === 'subscription'

@@ -791,3 +791,33 @@ test("la déclaration d'âge reprend le lancement au lieu de l'abandonner", asyn
   assert.match(sim, /\$\('#btn-lancer'\)\.addEventListener\('click', lancerSimulation\)/,
     'le bouton doit appeler la même fonction que la reprise');
 });
+
+test("une offre reste cliquable sans la déclaration d'âge, et dit pourquoi", () => {
+  /* Les trois offres étaient désactivées tant que la case n'était pas
+     cochée. Un bouton désactivé n'émet aucun clic : toucher une offre ne
+     produisait rien, pas même le message d'explication — jamais atteint.
+     Sur tablette, on touchait trois cartes grisées sans comprendre. */
+  const src = modules.find(m => m.nom === 'paywall.js').source;
+  const maj = src.slice(src.indexOf('function majEtatOffres('),
+                        src.indexOf('\n}', src.indexOf('function majEtatOffres(')));
+  assert.ok(!/\.disabled\s*=/.test(maj),
+    "les offres ne doivent plus être désactivées : le clic doit pouvoir expliquer");
+
+  // Le refus doit s'afficher contre la case, pas seulement en bas de l'écran.
+  const signal = src.slice(src.indexOf('function signalerAgeManquant('),
+                           src.indexOf('\n}', src.indexOf('function signalerAgeManquant(')));
+  assert.match(signal, /rappel-confirmation-age/, 'le rappel doit avoir sa place dans la page');
+  assert.match(signal, /scrollIntoView/, 'la case doit être ramenée sous les yeux');
+
+  // Et la déclaration reste exigée avant tout paiement (art. 1145 code civil).
+  const checkout = src.slice(src.indexOf('export async function lancerCheckout'));
+  assert.match(checkout, /if \(!\$\('#confirmation-age'\)\?\.checked\) \{\s*\n\s*signalerAgeManquant\(\);\s*\n\s*return;/,
+    'le paiement doit rester bloqué sans la déclaration');
+
+  // Le balisage doit porter les deux crochets, sur chaque page qui vend.
+  for (const { fichier } of PAGES) {
+    const page = lire(fichier);
+    assert.match(page, /id="bloc-confirmation-age"/, `${fichier} : bloc de la case absent`);
+    assert.match(page, /id="rappel-confirmation-age"/, `${fichier} : rappel absent`);
+  }
+});

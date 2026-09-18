@@ -87,14 +87,22 @@ export function rendreOffres() {
     </button>`;
   }).join('');
 
-  // La confirmation d'âge conditionne l'activation des boutons.
   $$('[data-plan]').forEach(b => b.addEventListener('click', () => lancerCheckout(b.dataset.plan)));
   majEtatOffres();
 }
 
+/* Les offres restent cliquables, même sans la case cochée.
+
+   Elles étaient désactivées tant qu'on ne l'avait pas décochée — et un
+   bouton désactivé n'émet aucun clic : toucher une offre ne produisait
+   rien du tout, pas même le message d'explication, qui n'était donc
+   jamais atteint. Sur une tablette, on touchait trois cartes grisées
+   sans comprendre, avant de finir par trouver la case en bas.
+
+   Le paiement reste interdit sans la déclaration : lancerCheckout la
+   vérifie, et affiche le rappel contre la case. */
 function majEtatOffres() {
-  const coche = $('#confirmation-age')?.checked;
-  $$('[data-plan]').forEach(b => { b.disabled = !coche; });
+  if ($('#confirmation-age')?.checked) effacerRappelAge();
 }
 
 /** @param {'quota'|'fin'} raison */
@@ -121,16 +129,45 @@ export function ouvrirPaywall(raison = 'quota') {
   ouvrirModale('modal-paywall');
 }
 
+/* ── Déclaration d'âge, exigée avant tout paiement ──────────── */
+
+/** Met la case en évidence, et la ramène sous les yeux. */
+function signalerAgeManquant() {
+  const bloc = $('#bloc-confirmation-age');
+  const rappel = $('#rappel-confirmation-age');
+  const message = t('paywall.confirmer_age',
+    "Confirmez d'abord avoir {n} ans ou l'accord de votre représentant légal.")
+    .replace('{n}', CONFIG.ageMinimumAchat);
+
+  if (rappel) { rappel.textContent = message; rappel.classList.remove('hidden'); }
+  bloc?.classList.add('border-coral', 'bg-coral/10');
+  bloc?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  $('#confirmation-age')?.focus({ preventScroll: true });
+
+  // Sans balisage pour l'afficher, le message doit passer quelque part.
+  if (!rappel) toast(message, 'erreur');
+}
+
+/** Efface le rappel dès que la case est cochée. */
+function effacerRappelAge() {
+  $('#rappel-confirmation-age')?.classList.add('hidden');
+  $('#bloc-confirmation-age')?.classList.remove('border-coral', 'bg-coral/10');
+}
+
 /* ── Stripe Checkout ───────────────────────────────────────── */
 export async function lancerCheckout(planId) {
   const offre = OFFRES[planId];
   if (!offre) return;
 
-  // Un mineur non émancipé ne peut pas souscrire seul (art. 1145 s. du code civil).
+  /* Un mineur non émancipé ne peut pas souscrire seul (art. 1145 s. du code
+     civil). La case reste donc obligatoire — mais le refus se voyait à peine :
+     il n'apparaissait que dans un bandeau en bas de l'écran, à vingt
+     centimètres de l'offre qu'on venait de toucher sur une tablette. On
+     cliquait, rien ne semblait se produire, et il fallait recommencer.
+     Le rappel s'affiche maintenant contre la case, qui est amenée à l'écran
+     et encadrée de rouge. */
   if (!$('#confirmation-age')?.checked) {
-    toast(t('paywall.confirmer_age', "Confirmez d'abord avoir {n} ans ou l'accord de votre représentant légal.")
-      .replace('{n}', CONFIG.ageMinimumAchat), 'erreur');
-    $('#confirmation-age')?.focus();
+    signalerAgeManquant();
     return;
   }
 
@@ -147,7 +184,6 @@ export async function lancerCheckout(planId) {
       },
       body: JSON.stringify({
         plan: planId,
-        email: session.email || undefined,
         userId: session.id || undefined,
         origine: window.location.origin,
         // La page de paiement fait partie du site : elle s'ouvre

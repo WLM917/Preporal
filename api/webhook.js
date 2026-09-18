@@ -76,8 +76,11 @@ export default async function handler(req, res) {
             premium: true,
             plan,
             premium_jusqu_au: jusquA,
-            stripe_client_id: typeof s.customer === 'string' ? s.customer : s.customer?.id || null,
-            email: s.customer_details?.email || null
+            stripe_client_id: typeof s.customer === 'string' ? s.customer : s.customer?.id || null
+            /* L'adresse saisie chez Stripe n'est PAS celle du compte : rien
+               n'oblige à payer avec l'adresse avec laquelle on s'est
+               inscrit. L'écrire dans « profils » désynchronisait le miroir
+               de l'authentification, qui seule fait foi. */
           });
         }
         console.log('Paiement confirmé', { plan, utilisateurId });
