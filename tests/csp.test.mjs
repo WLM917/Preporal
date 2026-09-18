@@ -156,14 +156,24 @@ test("seul ce qui ne change jamais est mis en cache pour un an", () => {
       `${source} change avec le site : le figer force le visiteur à vider son cache`);
   }
 
-  /* Les deux règles d'assets/ ne doivent pas se recouvrir.
+  /* La règle des bibliothèques doit gagner, quelle que soit la sémantique.
 
-     La première version s'appuyait sur leur ordre, en supposant que
-     Vercel retient la première règle qui correspond. C'est faux : sur le
-     site déployé, assets/vendor/pdf.min.js recevait la règle générale
-     malgré la règle spécifique placée avant. La documentation ne tranche
-     pas — alors on ne parie plus dessus, la règle générale exclut
-     explicitement le dossier des bibliothèques. */
+     Deux tentatives ont échoué sur le site déployé, chacune fondée sur
+     une hypothèse invérifiable : d'abord la règle spécifique placée en
+     premier (« la première qui correspond gagne »), puis l'exclusion du
+     dossier dans la règle générale. Dans les deux cas,
+     assets/vendor/pdf.min.js recevait encore la règle générale.
+
+     La documentation de Vercel ne dit pas laquelle des règles
+     concordantes l'emporte. On satisfait donc les deux lectures à la
+     fois : la règle générale exclut le dossier ET la règle des
+     bibliothèques est placée en dernier. C'est redondant à dessein —
+     la redondance coûte une ligne, se tromper coûte un déploiement. */
   assert.match(generale.source, /\(\?!vendor\//,
-    "la règle générale doit exclure assets/vendor, sans dépendre de l'ordre d'application");
+    'la règle générale doit exclure assets/vendor : « la première qui correspond gagne »');
+
+  const rang = s => vercel.headers.findIndex(h => h.source === s);
+  const dernier = vercel.headers.length - 1;
+  assert.equal(rang('/assets/vendor/(.*)'), dernier,
+    'la règle des bibliothèques doit être la dernière : « la dernière qui correspond gagne »');
 });
