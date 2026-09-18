@@ -127,3 +127,33 @@ test('la redirection vers Stripe reste possible', () => {
   assert.ok(fa.some(s => s.includes('checkout.stripe.com')));
   assert.ok(fa.some(s => s.includes('billing.stripe.com')));
 });
+
+test("seul ce qui ne change jamais est mis en cache pour un an", () => {
+  /* assets/ tout entier était servi « immutable, max-age=31536000 ».
+     Or la feuille de style y vit, elle est régénérée à chaque
+     modification, et son nom ne porte aucune empreinte : un visiteur
+     déjà venu gardait l'ancienne mise en page jusqu'à un an, sans
+     aucun moyen de s'en douter — ni d'y remédier autrement qu'en
+     vidant les données du site. */
+  const vercel = JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8'));
+  const cache = source => vercel.headers
+    .find(h => h.source === source)?.headers
+    .find(x => x.key === 'Cache-Control')?.value;
+
+  assert.match(cache('/assets/vendor/(.*)') || '', /immutable/,
+    'les bibliothèques livrées avec le site ne changent jamais de contenu');
+
+  for (const source of ['/assets/(.*)', '/js/(.*)']) {
+    const valeur = cache(source);
+    assert.ok(valeur, `${source} : aucune règle de cache`);
+    assert.match(valeur, /must-revalidate/, `${source} doit être revalidé`);
+    assert.ok(!/immutable/.test(valeur),
+      `${source} change avec le site : le figer force le visiteur à vider son cache`);
+  }
+
+  /* L'ordre compte : Vercel applique la première règle qui correspond,
+     et /assets/(.*) recouvre /assets/vendor/(.*). */
+  const rang = s => vercel.headers.findIndex(h => h.source === s);
+  assert.ok(rang('/assets/vendor/(.*)') < rang('/assets/(.*)'),
+    'la règle des bibliothèques doit précéder la règle générale, sinon elle ne sert jamais');
+});
