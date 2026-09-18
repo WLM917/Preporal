@@ -744,8 +744,11 @@
 
     <p id="avis-mineur" class="mt-5 hidden rounded-xl border border-amber/40 bg-amber/10 p-3.5 text-xs leading-relaxed text-amber"></p>
 
-    <!-- Un mineur ne peut pas souscrire seul un abonnement payant (art. 1145 s. du code civil). -->
-    <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-ink/40 p-3.5">
+    <!-- Un mineur ne peut pas souscrire seul un abonnement payant (art. 1145 s. du code civil).
+         La case garde l'identifiant « bloc-confirmation-age » : cliquer une offre
+         sans l'avoir cochée la met en évidence ici, plutôt que d'afficher un
+         message en bas d'un écran où personne ne regarde. -->
+    <label id="bloc-confirmation-age" class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-ink/40 p-3.5 transition">
       <input id="confirmation-age" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0 accent-[#7C5CFF]">
       <span class="text-xs leading-relaxed text-muted" data-i18n="paywall.confirmation_age">
         Je déclare avoir 18 ans ou plus, ou disposer de l'accord de mon représentant légal
@@ -753,6 +756,7 @@
         <button type="button" data-legal="cgv" class="underline underline-offset-2 hover:text-soft" data-i18n="legal.cgv">CGV</button>.
       </span>
     </label>
+    <p id="rappel-confirmation-age" class="mt-2 hidden text-xs font-medium text-coral" role="alert"></p>
 
     <p class="mt-5 flex items-center justify-center gap-2 text-center text-xs text-muted">
       <svg viewBox="0 0 24 24" width="14" height="14" class="shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
