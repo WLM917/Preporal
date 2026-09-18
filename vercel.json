@@ -54,7 +54,7 @@
       ]
     },
     {
-      "source": "/assets/(.*)",
+      "source": "/assets/:chemin((?!vendor/).*)",
       "headers": [
         {
           "key": "Cache-Control",
