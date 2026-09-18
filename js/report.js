@@ -2,9 +2,9 @@
    report.js — tableau de bord de fin de simulation + export PDF
    ═══════════════════════════════════════════════════════════ */
 
-import { typeParId } from './config.js';
+import { typeTraduit } from './catalogue.js';
 import { $, echappe, formaterTemps, compterMots, couleurNote } from './ui.js';
-import { t } from './i18n.js';
+import { t, region } from './i18n.js';
 import { boutonEcoute, arreterEcoute } from './speech.js';
 
 const CIRCONFERENCE = 326.73;   // 2πr, r = 52
@@ -23,14 +23,14 @@ function placerEcouteBilan(score, bilan) {
     libelleArret: t('ecoute.arreter', 'Arrêter'),
     classes: 'px-3 py-1.5',
     texte: () => {
-      const criteres = Object.entries(bilan.criteres || {})
-        .map(([nom, val]) => `${nom} : ${val} sur 100.`).join(' ');
+      const surCent = (nom, val) => t('lu.sur_100', '{nom} : {val} sur 100.').replace('{nom}', nom).replace('{val}', val);
+      const criteres = Object.entries(bilan.criteres || {}).map(([nom, val]) => surCent(nom, val)).join(' ');
       const conseils = (bilan.eloquence?.conseils || []).join(' ');
-      return `Votre note globale est de ${score} sur 100. `
+      return t('lu.note_globale', 'Votre note globale est de {n} sur 100.').replace('{n}', score) + ' '
         + `${$('#verdict')?.textContent || ''}. `
         + `${$('#verdict-detail')?.textContent || ''} `
-        + (criteres ? `Détail par critère. ${criteres} ` : '')
-        + (conseils ? `Conseils d'éloquence. ${conseils}` : '');
+        + (criteres ? t('lu.par_critere', 'Détail par critère.') + ' ' + criteres + ' ' : '')
+        + (conseils ? t('lu.eloquence', "Conseils d'éloquence.") + ' ' + conseils : '');
     }
   });
   if (b) zone.appendChild(b);
@@ -46,11 +46,11 @@ function placerEcouteReponses(reponses, bilan) {
       libelle: t('ecoute.ecouter', 'Écouter la correction'),
       libelleArret: t('ecoute.arreter', 'Arrêter'),
       texte: () => [
-        `Question ${i + 1}. ${r.question}`,
-        `Note : ${d.note} sur 20.`,
-        d.forts?.length ? `Ce qui fonctionne : ${d.forts.join('. ')}.` : '',
-        d.axes?.length ? `À renforcer : ${d.axes.join('. ')}.` : '',
-        d.reecriture ? `Réponse réécrite : ${d.reecriture}` : ''
+        `${t('sim.question', 'Question')} ${i + 1}. ${r.question}`,
+        t('lu.note_sur_20', 'Note : {n} sur 20.').replace('{n}', d.note),
+        d.forts?.length ? `${t('rapport.ce_qui_fonctionne', 'Ce qui fonctionne')} : ${d.forts.join('. ')}.` : '',
+        d.axes?.length ? `${t('rapport.a_renforcer', 'À renforcer')} : ${d.axes.join('. ')}.` : '',
+        d.reecriture ? `${t('rapport.reponse_reecrite', 'Réponse réécrite')} : ${d.reecriture}` : ''
       ].filter(Boolean).join(' ')
     });
     if (b) zone.appendChild(b);
@@ -59,7 +59,7 @@ function placerEcouteReponses(reponses, bilan) {
 
 export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
   arreterEcoute();
-  const type = typeParId(contexte.typeId);
+  const type = typeTraduit(contexte.typeId);
   const score = Math.round(bilan.global || 0);
 
   /* ── En-tête ── */
@@ -69,12 +69,14 @@ export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
   arc.setAttribute('stroke', couleurNote(score));
   requestAnimationFrame(() => arc.setAttribute('stroke-dashoffset', CIRCONFERENCE * (1 - score / 100)));
 
-  $('#verdict').textContent = score >= 70 ? 'Vous êtes prêt' : score >= 45 ? 'Bonne base, à resserrer' : 'À retravailler avant le jour J';
+  $('#verdict').textContent = score >= 70 ? t('rapport.verdict.pret', 'Vous êtes prêt')
+    : score >= 45 ? t('rapport.verdict.base', 'Bonne base, à resserrer')
+    : t('rapport.verdict.retravailler', 'À retravailler avant le jour J');
   placerEcouteBilan(score, bilan);
 
   $('#verdict-detail').textContent = score >= 70
-    ? "Vos réponses sont structurées et appuyées sur des faits. Reprenez seulement les questions les plus faibles ci-dessous, puis refaites une passe en conditions réelles."
-    : "Travaillez d'abord les axes signalés question par question, puis relancez une simulation : c'est la répétition qui installe les réflexes.";
+    ? t('rapport.verdict.pret_detail', 'Vos réponses sont structurées et appuyées sur des faits. Reprenez seulement les questions les plus faibles ci-dessous, puis refaites une passe en conditions réelles.')
+    : t('rapport.verdict.retravailler_detail', "Travaillez d'abord les axes signalés question par question, puis relancez une simulation : c'est la répétition qui installe les réflexes.");
 
   const mots = reponses.reduce((s, r) => s + compterMots(r.texte), 0);
   $('#stat-questions').textContent = reponses.length;
@@ -102,14 +104,22 @@ export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
   /* ── Éloquence ── */
   const e = bilan.eloquence || {};
   $('#eloq-note').textContent = (e.note ?? '–') + ' / 20';
-  $('#eloq-debit').textContent = e.debit ? e.debit + ' mots/min' : 'non mesuré';
+  $('#eloq-debit').textContent = e.debit
+    ? t('rapport.mots_min', '{n} mots/min').replace('{n}', e.debit)
+    : t('rapport.non_mesure', 'non mesuré');
   $('#eloq-debit-note').textContent = e.debit
-    ? (e.debit > 175 ? 'Trop rapide' : e.debit < 105 ? 'Un peu lent' : 'Rythme idéal')
-    : 'Répondez au micro pour la mesure';
+    ? (e.debit > 175 ? t('rapport.trop_rapide', 'Trop rapide')
+       : e.debit < 105 ? t('rapport.un_peu_lent', 'Un peu lent')
+       : t('rapport.rythme_ideal', 'Rythme idéal'))
+    : t('rapport.micro_pour_mesure', 'Répondez au micro pour la mesure');
   $('#eloq-richesse').textContent = (e.richesse ?? 0) + ' / 100';
-  $('#eloq-richesse-note').textContent = (e.richesse ?? 0) >= 55 ? 'Vocabulaire varié' : 'Vocabulaire à enrichir';
+  $('#eloq-richesse-note').textContent = (e.richesse ?? 0) >= 55
+    ? t('rapport.vocabulaire_varie', 'Vocabulaire varié')
+    : t('rapport.vocabulaire_enrichir', 'Vocabulaire à enrichir');
   $('#eloq-clarte').textContent = (e.clarte ?? 0) + ' / 100';
-  $('#eloq-clarte-note').textContent = e.motsParPhrase ? `${e.motsParPhrase} mots par phrase en moyenne` : '';
+  $('#eloq-clarte-note').textContent = e.motsParPhrase
+    ? t('rapport.mots_par_phrase', '{n} mots par phrase en moyenne').replace('{n}', e.motsParPhrase)
+    : '';
   $('#eloq-conseils').innerHTML = (e.conseils || []).map(c =>
     `<li class="flex gap-2"><span class="text-iris2">•</span><span>${echappe(c)}</span></li>`).join('');
 
@@ -121,7 +131,7 @@ export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
     <details class="group rounded-2xl border border-line bg-surface shadow-lift" ${i === 0 ? 'open' : ''}>
       <summary class="flex cursor-pointer list-none items-start justify-between gap-4 p-5">
         <div>
-          <p class="text-xs text-muted">Question ${i + 1}${r.categorie ? ' · ' + echappe(r.categorie) : ''}</p>
+          <p class="text-xs text-muted">${t('sim.question', 'Question')} ${i + 1}${r.categorie ? ' · ' + echappe(r.categorie) : ''}</p>
           <p class="mt-1 font-display font-bold leading-snug">${echappe(r.question)}</p>
         </div>
         <span class="shrink-0 font-display text-lg font-extrabold tabular-nums ${teinte}">${d.note}<span class="text-xs text-muted"> / 20</span></span>
@@ -129,19 +139,19 @@ export function afficherRapport({ bilan, reponses, contexte, tempsTotal }) {
       <div class="space-y-5 border-t border-line/70 p-5">
         <div data-ecoute-reponse="${i}" class="sans-impression"></div>
         <div>
-          <p class="text-xs text-muted">Ce que vous avez répondu${r.dureeParole ? ` · ${Math.round(r.dureeParole)} s de parole` : ''}</p>
-          <p class="mt-1 text-sm leading-relaxed text-soft/90">${r.texte ? echappe(r.texte) : '<span class="text-muted">Question passée.</span>'}</p>
+          <p class="text-xs text-muted">${t('rapport.votre_reponse', 'Ce que vous avez répondu')}${r.dureeParole ? ' · ' + t('rapport.s_de_parole', '{n} s de parole').replace('{n}', Math.round(r.dureeParole)) : ''}</p>
+          <p class="mt-1 text-sm leading-relaxed text-soft/90">${r.texte ? echappe(r.texte) : `<span class="text-muted">${echappe(t('rapport.question_passee', 'Question passée.'))}</span>`}</p>
         </div>
         ${d.forts?.length ? `<div>
-          <p class="text-xs font-medium text-mint">Ce qui fonctionne</p>
+          <p class="text-xs font-medium text-mint">${echappe(t('rapport.ce_qui_fonctionne', 'Ce qui fonctionne'))}</p>
           <ul class="mt-2 space-y-1.5 text-sm text-muted">${d.forts.map(f => `<li class="flex gap-2"><span class="text-mint">+</span><span>${echappe(f)}</span></li>`).join('')}</ul>
         </div>` : ''}
         ${d.axes?.length ? `<div>
-          <p class="text-xs font-medium text-amber">À renforcer</p>
+          <p class="text-xs font-medium text-amber">${echappe(t('rapport.a_renforcer', 'À renforcer'))}</p>
           <ul class="mt-2 space-y-1.5 text-sm text-muted">${d.axes.map(a => `<li class="flex gap-2"><span class="text-amber">→</span><span>${echappe(a)}</span></li>`).join('')}</ul>
         </div>` : ''}
         ${d.reecriture ? `<div class="rounded-xl border border-iris/30 bg-iris/5 p-4">
-          <p class="text-xs font-medium text-iris2">Réponse réécrite</p>
+          <p class="text-xs font-medium text-iris2">${echappe(t('rapport.reponse_reecrite', 'Réponse réécrite'))}</p>
           <p class="mt-2 text-sm leading-relaxed text-soft/90">${echappe(d.reecriture)}</p>
         </div>` : ''}
       </div>
@@ -158,7 +168,8 @@ export function exporterPDF() {
   ouverts.forEach(d => (d.open = true));
 
   const titreInitial = document.title;
-  document.title = `Oralixia - bilan du ${new Date().toLocaleDateString('fr-FR')}`;
+  document.title = t('rapport.titre_pdf', 'Oralixia - bilan du {date}')
+    .replace('{date}', new Date().toLocaleDateString(region()));
 
   const restaurer = () => {
     ouverts.forEach((d, i) => (d.open = etatInitial[i]));

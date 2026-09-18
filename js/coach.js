@@ -9,14 +9,16 @@ import { session, exigerCompte } from './auth.js';
 import { ouvrirPaywall } from './paywall.js';
 import { ouvrirAppel, Appel } from './appel.js';
 import { preparerPiece, piecePourApi, PIECES_MAX } from './upload.js';
-import { langue, t } from './i18n.js';
+import { langue, t, region } from './i18n.js';
+import { messageRefus } from './questions.js';
 
 const historique = [];
 let lectureAuto = true;
 let dictee = null;
 let occupe = false;
 
-const ACCUEIL = "Bonjour, je suis votre coach Oralixia. Dites-moi quel oral vous préparez, ou collez votre plan, votre texte ou votre sujet : je vous aide à structurer, reformuler et anticiper les questions du jury.";
+/* Lu à l'appel, pas au chargement : les traductions arrivent après. */
+const accueil = () => t('coach.accueil', 'Bonjour, je suis votre coach Oralixia. Dites-moi quel oral vous préparez, ou collez votre plan, votre texte ou votre sujet : je vous aide à structurer, reformuler et anticiper les questions du jury.');
 
 function bulle(role, texte, id, { ecoutable = true } = {}) {
   const fil = $('#fil-coach');
@@ -91,7 +93,7 @@ async function envoyer(texteSaisi) {
       const data = await r.json().catch(() => ({}));
       attente.remove();
       historique.pop();                       // la question n'a pas été traitée
-      return refuser(data.code, data.erreur);
+      return refuser(data.code, messageRefus(data));
     }
     /* 413, 415, 400 : le serveur a lu la demande et l'a refusée. Servir
        un repli hors ligne masquerait la vraie raison — un fichier trop
@@ -149,7 +151,7 @@ function rendrePieces() {
     <span class="inline-flex max-w-full items-center gap-2 rounded-lg border border-line bg-raised px-2.5 py-1.5 text-xs">
       <span class="shrink-0 text-iris2">${p.media?.startsWith('image/') ? ICONE_IMAGE : ICONE_FICHIER}</span>
       <span class="truncate">${echappe(p.nom)}</span>
-      <span class="shrink-0 text-muted">${p.type === 'texte' ? echappe(p.octets.toLocaleString('fr-FR') + ' c.') : echappe(poidsLisible(p.octets))}</span>
+      <span class="shrink-0 text-muted">${p.type === 'texte' ? echappe(p.octets.toLocaleString(region()) + ' c.') : echappe(poidsLisible(p.octets))}</span>
       <button type="button" data-retirer="${i}" class="shrink-0 rounded p-0.5 text-muted transition hover:text-coral"
         aria-label="${echappe(t('coach.retirer_piece', 'Retirer'))} ${echappe(p.nom)}">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
@@ -193,7 +195,7 @@ function reprendreSimulationConfiee() {
 
   const d = new Date(confiee.date);
   const entete = t('coach.simulation_confiee', 'Voici ma simulation du {date}. Qu\'est-ce que je dois travailler en priorité ?')
-    .replace('{date}', isNaN(d) ? '' : d.toLocaleDateString('fr-FR'));
+    .replace('{date}', isNaN(d) ? '' : d.toLocaleDateString(region()));
 
   // Un délai laisse le message d'accueil s'afficher avant celui-ci.
   setTimeout(() => envoyer(entete + '\n\n' + confiee.texte), 500);
@@ -217,7 +219,7 @@ async function tourDAppel(texte) {
   if (r.status === 402) {
     const data = await r.json().catch(() => ({}));
     historique.pop();
-    setTimeout(() => refuser(data.code, data.erreur), 400);
+    setTimeout(() => refuser(data.code, messageRefus(data)), 400);
     return null;                      // raccroche : inutile de poursuivre
   }
   if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -272,7 +274,7 @@ function majSolde(restant) {
   if (restant === null || restant === undefined) { el.textContent = ''; return; }
   el.textContent = restant > 0
     ? t(restant > 1 ? 'coach.echanges_restants' : 'coach.echange_restant',
-        `${restant} échange${restant > 1 ? 's' : ''} offert${restant > 1 ? 's' : ''} aujourd'hui`)
+        restant > 1 ? "{n} échanges offerts aujourd'hui" : "{n} échange offert aujourd'hui")
         .replace('{n}', restant)
     : t('coach.dernier_echange', 'Dernier échange offert du jour.');
 }
@@ -285,17 +287,17 @@ function brancherMicro() {
   if (!dicteeSupportee) {
     bouton.disabled = true;
     bouton.style.opacity = '.45';
-    etat.textContent = "La dictée vocale n'est pas disponible sur ce navigateur (essayez Chrome, Edge ou Safari).";
+    etat.textContent = t('coach.dictee_absente', "La dictée vocale n'est pas disponible sur ce navigateur (essayez Chrome, Edge ou Safari).");
     return;
   }
 
   dictee = new Dictee({
     onDefinitif: seg => { const z = $('#saisie-coach'); z.value = (z.value + ' ' + seg).trim(); },
-    onProvisoire: txt => { etat.textContent = txt ? '« ' + txt + ' »' : 'Je vous écoute…'; },
+    onProvisoire: txt => { etat.textContent = txt ? '« ' + txt + ' »' : t('coach.je_vous_ecoute', 'Je vous écoute…'); },
     onErreur: msg => toast(msg, 'erreur'),
     onFin: () => {
       bouton.classList.remove('micro-actif', 'bg-coral');
-      etat.textContent = 'Appuyez sur le micro pour parler à votre coach.';
+      etat.textContent = t('coach.appuyez_micro', 'Appuyez sur le micro pour parler à votre coach.');
       const z = $('#saisie-coach');
       if (z.value.trim()) envoyer();
     }
@@ -306,14 +308,15 @@ function brancherMicro() {
     if (dictee.enMarche) { dictee.arreter(); return; }
     if (dictee.demarrer()) {
       bouton.classList.add('micro-actif', 'bg-coral');
-      etat.textContent = 'Je vous écoute…';
+      etat.textContent = t('coach.je_vous_ecoute', 'Je vous écoute…');
     }
   });
 }
 
 export function initCoach() {
-  bulle('assistant', ACCUEIL);
-  historique.push({ role: 'assistant', content: ACCUEIL });
+  const bonjour = accueil();
+  bulle('assistant', bonjour);
+  historique.push({ role: 'assistant', content: bonjour });
 
   reprendreSimulationConfiee();
 
@@ -350,15 +353,17 @@ export function initCoach() {
   $('#btn-voix-coach')?.addEventListener('click', e => {
     lectureAuto = !lectureAuto;
     if (!lectureAuto) Voix.stop();
-    e.currentTarget.textContent = 'Lecture audio : ' + (lectureAuto ? 'activée' : 'coupée');
+    e.currentTarget.textContent = t(lectureAuto ? 'coach.lecture_activee' : 'coach.lecture_coupee',
+      lectureAuto ? 'Lecture audio : activée' : 'Lecture audio : coupée');
   });
 
   $('#btn-vider-coach')?.addEventListener('click', () => {
     historique.length = 0;
     $('#fil-coach').innerHTML = '';
     Voix.stop();
-    bulle('assistant', ACCUEIL);
-    historique.push({ role: 'assistant', content: ACCUEIL });
+    const bonjour = accueil();
+    bulle('assistant', bonjour);
+    historique.push({ role: 'assistant', content: bonjour });
   });
 
   brancherMicro();

@@ -414,20 +414,59 @@ test('une photo inaffichable ne condamne pas le choix de couleur', () => {
     'la photo des comptes Google serait bloquée');
 });
 
-test("l'enregistrement n'attend que l'écriture durable", () => {
-  /* Les deux écritures étaient enchaînées et la première commandait
-     tout : quand les métadonnées traînaient, un enregistrement déjà
-     accepté par la base était déclaré perdu. */
+test("l'enregistrement n'attend que les métadonnées, pas la copie en base", () => {
+  /* Les métadonnées font foi pour l'affichage : c'est d'elles que la
+     session se remplit, et ce sont du JSON, donc aucune colonne ne
+     peut y manquer. La table « profils » n'en reçoit qu'une copie.
+
+     La copie était attendue, et commandait tout : tant que la base ne
+     répondait pas — ou refusait une colonne absente du schéma — le
+     candidat regardait « Enregistrement… » jusqu'au délai de garde,
+     puis lisait « Le serveur n'a pas répondu », pour un changement de
+     pseudonyme déjà enregistré dans son compte. */
   const src = modules.find(m => m.nom === 'compte.js').source;
   const debut = src.indexOf('async function enregistrer(');
+  const corps = src.slice(debut, src.indexOf('\n}\n', debut));
+
+  assert.match(corps, /await tenter\('métadonnées'/,
+    'les métadonnées sont la seule écriture attendue');
+  assert.ok(!/await copierEnBase/.test(corps),
+    'attendre la copie fait patienter pour un enregistrement déjà acquis');
+  assert.match(corps, /copierEnBase\(colonnes\)\.catch/,
+    'la copie part quand même, et son échec ne doit pas remonter en rejet non traité');
+
+  // Une colonne manquante reste rattrapée, sans rien dire au candidat.
+  assert.match(corps, /colonneInconnue/, 'le rattrapage de colonne absente a disparu');
+});
+
+test('le monogramme fourni par Google ne tient pas lieu de photo', () => {
+  /* Un compte Google sans photo reçoit tout de même une image :
+     Google en fabrique une, la première lettre du prénom sur un fond
+     terne. Rien ne la distingue d'une vraie photo par son URL. Elle
+     s'affichait donc en grand au milieu de « Gérer mon compte », et
+     verrouillait le choix de couleur au motif qu'une photo existait. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+  const ligne = src.split('\n').find(l => /session\.avatar\s*=\s*m\./.test(l));
+  assert.ok(ligne, 'la reprise de la photo depuis les métadonnées a disparu');
+  assert.ok(!/m\.picture/.test(ligne),
+    "« picture » vient du fournisseur, pas du candidat : il ne doit pas devenir sa photo");
+  assert.match(ligne, /m\.avatar_url/,
+    'seule la photo déposée par le candidat fait une photo de profil');
+});
+
+test('le choix de couleur reste toujours cliquable', () => {
+  /* Il était grisé dès qu'une photo existait. Combiné au monogramme
+     Google, cela donnait un réglage visible sur lequel on ne pouvait
+     jamais appuyer. */
+  const src = modules.find(m => m.nom === 'compte.js').source;
+  const debut = src.indexOf('function rendreCouleurs(');
   const corps = src.slice(debut, src.indexOf('\n}', debut));
 
-  assert.match(corps, /ecritureBase/, 'la base est la source durable');
-  assert.match(corps, /ecritureMeta/, 'les métadonnées partent en parallèle');
-  assert.match(corps, /await ecritureBase/,
-    "seule l'écriture durable doit faire patienter le candidat");
-  assert.ok(!/await Promise\.all/.test(corps),
-    'attendre les deux fait patienter pour un enregistrement déjà acquis');
+  assert.ok(!/pointer-events-none/.test(corps),
+    'le choix de couleur ne doit jamais être rendu inerte');
+  assert.ok(!/opacity-40/.test(corps),
+    'le choix de couleur ne doit jamais être grisé');
+  assert.match(corps, /data-couleur/, 'les pastilles doivent toujours être rendues');
 });
 
 test('la page compte permet de se déconnecter', () => {
@@ -569,4 +608,186 @@ test('chaque langue déclare ce qu\'il faut pour la voix et le balisage', async 
     assert.match(l.voix, /^[a-z]{2}-[A-Z]{2}$/, `${code} : code de voix invalide`);
     assert.ok(l.etiquette && l.drapeau, `${code} : libellé ou drapeau manquant`);
   }
+});
+
+test('les traductions couvrent aussi les clés appelées depuis les modules', async () => {
+  /* Le test précédent ne lit que le balisage. Or l'essentiel de ce que
+     voit un candidat — les messages d'erreur, le rapport, le coach, les
+     CGV — est écrit par les modules via t('clé', 'repli'). Une clé
+     oubliée y retombe sur le français, et la page devient bilingue sans
+     que rien ne le signale. */
+  const cles = new Map();                       // clé -> texte français
+  const modulesJs = readdirSync(join(RACINE, 'js')).filter(f => f.endsWith('.js'));
+
+  for (const f of modulesJs) {
+    const src = readFileSync(join(RACINE, 'js', f), 'utf8');
+    // t('clé', 'repli') et pa('clé', 'repli') — le repli peut aller à la ligne.
+    const re = /\b(t|pa)\(\s*(['"])([a-zA-Z0-9._-]+)\2\s*,\s*(['"`])((?:\\.|(?!\4)[\s\S])*?)\4\s*[,)]/g;
+    for (const m of src.matchAll(re)) {
+      const cle = (m[1] === 'pa' ? 'legal.' : '') + m[3];
+      if (!cles.has(cle)) cles.set(cle, m[5]);
+    }
+  }
+  assert.ok(cles.size > 250, `trop peu de clés trouvées dans les modules : ${cles.size}`);
+
+  // Aucun repli vide : sans repli, une traduction manquante affiche du blanc.
+  const sansRepli = [...cles].filter(([, fr]) => !fr.trim()).map(([c]) => c);
+  assert.deepEqual(sansRepli, [], 'clés sans texte français de repli');
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    const manquantes = [...cles.keys()].filter(c => !(c in dico));
+    assert.deepEqual(manquantes.slice(0, 8), [],
+      `${langue} : ${manquantes.length} clé(s) de module sans traduction`);
+  }
+});
+
+test('le catalogue des épreuves est traduit dans les deux langues', async () => {
+  /* Les sept épreuves vivent dans config.js, en français : leurs noms,
+     les libellés des deux champs, les critères de notation et les
+     catégories de questions. catalogue.js les traduit par clé dérivée
+     de l'identifiant — s'il en manque une, le candidat lit le nom de
+     son épreuve en français au milieu d'une page anglaise. */
+  globalThis.window = globalThis.window || { ORALIXIA_ENV: {} };
+  const { TYPES_ORAL } = await import('../js/config.js');
+
+  const attendues = [];
+  for (const ty of TYPES_ORAL) {
+    attendues.push(`type.${ty.id}.nom`, `type.${ty.id}.court`);
+    for (const cote of ['champA', 'champB']) {
+      if (!ty[cote]) continue;
+      for (const p of ['label', 'aide', 'placeholder']) attendues.push(`type.${ty.id}.${cote}.${p}`);
+    }
+    (ty.criteres || []).forEach((_, i) => attendues.push(`type.${ty.id}.critere.${i}`));
+    (ty.categories || []).forEach((_, i) => attendues.push(`type.${ty.id}.categorie.${i}`));
+    if (ty.sousChoix) {
+      attendues.push(`type.${ty.id}.souschoix.label`);
+      (ty.sousChoix.options || []).forEach((_, i) => attendues.push(`type.${ty.id}.souschoix.${i}`));
+    }
+  }
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    const manquantes = attendues.filter(c => !(c in dico));
+    assert.deepEqual(manquantes.slice(0, 8), [],
+      `${langue} : ${manquantes.length} clé(s) de catalogue sans traduction`);
+  }
+});
+
+test('les questions de secours sont traduites, sauf les épreuves de langue', async () => {
+  /* La banque hors ligne s'affiche quand le modèle est injoignable :
+     elle est donc visible, et doit suivre la langue choisie. Exception
+     assumée : une certification se passe dans la langue de l'examen,
+     seuls les intitulés de catégorie s'y traduisent. */
+  const src = readFileSync(join(RACINE, 'js/questions.js'), 'utf8');
+  const bloc = src.slice(src.indexOf('const BANQUES = {'), src.indexOf('/** Remplace'));
+  assert.ok(bloc.length > 500, 'banques de secours introuvables');
+
+  const attendues = [];
+  for (const m of bloc.matchAll(/^  '?([a-z-]+)'?: \[$([\s\S]*?)^  \],?$/gm)) {
+    const banque = m[1];
+    [...m[2].matchAll(/^    \[/gm)].forEach((_, i) => {
+      attendues.push(`secours.${banque}.${i}.cat`);
+      if (!banque.startsWith('langue')) attendues.push(`secours.${banque}.${i}.q`);
+    });
+  }
+  assert.ok(attendues.length > 100, `trop peu d'entrées de secours : ${attendues.length}`);
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    const manquantes = attendues.filter(c => !(c in dico));
+    assert.deepEqual(manquantes.slice(0, 8), [],
+      `${langue} : ${manquantes.length} question(s) de secours sans traduction`);
+
+    // L'exception doit rester une exception : pas de traduction du texte
+    // d'une épreuve de langue, sinon le candidat passe son TOEIC en anglais
+    // mais lit ses questions en espagnol.
+    const detournees = Object.keys(dico).filter(c => /^secours\.langue[a-z-]*\.\d+\.q$/.test(c));
+    assert.deepEqual(detournees, [],
+      `${langue} : une épreuve de langue se passe dans la langue de l'examen`);
+  }
+});
+
+test('les textes juridiques traduits disent que le français fait foi', async () => {
+  /* Traduire des CGV soumises au droit français sans le dire laisserait
+     croire à deux versions également opposables. */
+  const src = readFileSync(join(RACINE, 'js/legal.js'), 'utf8');
+  const fonction = src.slice(src.indexOf('const avertissementTraduction'), src.indexOf('export const textes'));
+  assert.match(fonction, /langue\(\)\s*===\s*'fr'\s*\?\s*''/,
+    "l'avertissement ne doit s'afficher que hors français");
+  assert.match(fonction, /legal\.version_fr_fait_foi/,
+    "l'avertissement doit passer par une clé traduite");
+
+  // Il doit être posé sur les quatre textes, pas seulement sur les CGV.
+  const corps = src.slice(src.indexOf('export const textes'));
+  const poses = [...corps.matchAll(/\$\{avertissementTraduction\(\)\}/g)].length;
+  assert.equal(poses, 4, `avertissement posé sur ${poses} texte(s) au lieu de 4`);
+
+  for (const langue of ['en', 'es']) {
+    const dico = (await import(`../js/langues/${langue}.js`)).default;
+    assert.ok(dico['legal.version_fr_fait_foi']?.trim(),
+      `${langue} : l'avertissement de traduction n'est pas traduit`);
+  }
+});
+
+test('le modèle reçoit la langue choisie, pour les questions comme pour la correction', async () => {
+  /* Traduire l'interface sans traduire ce que le modèle écrit donnait
+     une page anglaise dont les questions d'examinateur restaient en
+     français — c'est-à-dire le produit lui-même. */
+  const questionsApi = readFileSync(join(RACINE, 'api/questions.js'), 'utf8');
+  assert.match(questionsApi, /langue\s*=\s*'fr'\s*\}\s*=\s*req\.body|langue = 'fr' \} = req\.body/s,
+    '/api/questions doit lire la langue demandée');
+  assert.match(questionsApi, /nomLangue\(langue\)/,
+    'la consigne système doit nommer la langue de rédaction');
+
+  const questionsJs = readFileSync(join(RACINE, 'js/questions.js'), 'utf8');
+  const appel = questionsJs.slice(questionsJs.indexOf('export async function genererQuestions'),
+                                 questionsJs.indexOf('/* ── Extraction de mots-clés'));
+  assert.match(appel, /langue:\s*langue\(\)/,
+    'le navigateur doit envoyer sa langue avec la demande de questions');
+
+  const feedbackJs = readFileSync(join(RACINE, 'js/feedback.js'), 'utf8');
+  const evaluer = feedbackJs.slice(feedbackJs.indexOf('export async function evaluer'),
+                                   feedbackJs.indexOf("/* ═══ Analyse d'éloquence"));
+  assert.match(evaluer, /langue:\s*langue\(\)/, 'la correction doit partir avec la langue');
+  assert.match(evaluer, /criteres:\s*typeTraduit\(typeId\)\.criteres/,
+    'les critères doivent partir traduits : ils reviennent comme libellés du rapport');
+});
+
+test("l'examinateur parle la langue choisie hors épreuve de langue", async () => {
+  const src = readFileSync(join(RACINE, 'js/speech.js'), 'utf8');
+  const fn = src.slice(src.indexOf('export function langueDeLEpreuve'),
+                       src.indexOf('/* ── 3. Bouton'));
+  assert.ok(fn.length > 50, 'langueDeLEpreuve introuvable');
+  assert.match(fn, /return infoLangue\(\)\.voix/,
+    "hors certification, la voix doit suivre la langue d'interface");
+  assert.ok(!/return 'fr-FR'/.test(fn),
+    'le français ne doit plus être le repli figé de la voix');
+});
+
+test("la déclaration d'âge reprend le lancement au lieu de l'abandonner", async () => {
+  /* Le candidat remplissait son dossier, cliquait sur « Lancer »,
+     déclarait son âge — et il ne se passait plus rien. Il fallait
+     cliquer une seconde fois, sans que rien ne le dise. Reproduit
+     dans un navigateur. */
+  const age = readFileSync(join(RACINE, 'js/age.js'), 'utf8');
+  const demande = age.slice(age.indexOf('export function demanderAgeSiNecessaire'),
+                            age.indexOf('export function demanderAgeSiNecessaire') + 400);
+  assert.match(demande, /demanderAgeSiNecessaire\(\s*auRetour/,
+    'la fonction doit accepter une action à reprendre');
+  assert.match(demande, /reprise = auRetour/, "l'action doit être mémorisée");
+
+  // Elle doit être rejouée à la validation, et seulement si l'usage est permis.
+  const validation = age.slice(age.indexOf("valider?.addEventListener"));
+  assert.match(validation, /if \(aReprendre && peutUtiliser\(\)\) aReprendre\(\)/,
+    "l'action doit être rejouée, et refusée tant qu'un accord parental manque");
+  assert.match(validation, /reprise = null/,
+    "l'action ne doit pas pouvoir être rejouée deux fois");
+
+  // Et le simulateur doit effectivement passer son lancement en reprise.
+  const sim = readFileSync(join(RACINE, 'js/simulateur.js'), 'utf8');
+  assert.match(sim, /demanderAgeSiNecessaire\(lancerSimulation\)/,
+    'le simulateur doit se donner lui-même comme reprise');
+  assert.match(sim, /\$\('#btn-lancer'\)\.addEventListener\('click', lancerSimulation\)/,
+    'le bouton doit appeler la même fonction que la reprise');
 });

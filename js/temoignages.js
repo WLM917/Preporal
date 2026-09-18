@@ -13,11 +13,12 @@
    qu'elle est vide et invite à en déposer un.
    ═══════════════════════════════════════════════════════════ */
 
-import { TYPES_ORAL, typeParId } from './config.js';
+import { typeTraduit, catalogueTraduit } from './catalogue.js';
 import { $, $$, echappe, toast, stock } from './ui.js';
 import { CONFIG } from './config.js';
 import { supabase, session } from './auth.js';
 import { brancherNavigation } from './nav.js';
+import { t, region } from './i18n.js';
 
 const etoiles = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
 
@@ -50,7 +51,7 @@ function synthese() {
   const moyenne = Math.round((total / avis.length) * 10) / 10;
   const plusAncien = avis.reduce((min, a) => (!min || a.cree_le < min ? a.cree_le : min), null);
   const depuis = plusAncien
-    ? new Date(plusAncien).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    ? new Date(plusAncien).toLocaleDateString(region(), { month: 'long', year: 'numeric' })
     : null;
 
   el.classList.remove('hidden');
@@ -58,7 +59,9 @@ function synthese() {
     <span class="text-amber text-lg">${etoiles(Math.round(moyenne))}</span>
     <span class="font-display text-xl font-extrabold">${String(moyenne).replace('.', ',')}/5</span>
     <span class="text-sm text-muted">
-      sur ${avis.length} avis vérifié${avis.length > 1 ? 's' : ''}${depuis ? ', collectés depuis ' + echappe(depuis) : ''}
+      ${echappe(t(avis.length > 1 ? 'avis.sur_n_verifies' : 'avis.sur_n_verifie',
+          avis.length > 1 ? 'sur {n} avis vérifiés' : 'sur {n} avis vérifié').replace('{n}', avis.length))}${
+        depuis ? echappe(t('avis.collectes_depuis', ', collectés depuis {date}').replace('{date}', depuis)) : ''}
     </span>`;
 }
 
@@ -71,8 +74,8 @@ function filtres() {
   if (!presents.size) { zone.classList.add('hidden'); return; }
 
   zone.classList.remove('hidden');
-  const boutons = [{ id: 'tous', nom: 'Toutes les épreuves', emoji: '' }]
-    .concat(TYPES_ORAL.filter(t => presents.has(t.id)).map(t => ({ id: t.id, nom: t.court, emoji: t.emoji })));
+  const boutons = [{ id: 'tous', nom: t('avis.toutes_epreuves', 'Toutes les épreuves'), emoji: '' }]
+    .concat(catalogueTraduit().filter(x => presents.has(x.id)).map(x => ({ id: x.id, nom: x.court, emoji: x.emoji })));
 
   zone.innerHTML = boutons.map(b => `
     <button type="button" data-filtre="${b.id}"
@@ -83,19 +86,19 @@ function filtres() {
 }
 
 function carte(a) {
-  const type = a.type_oral ? typeParId(a.type_oral) : null;
+  const type = a.type_oral ? typeTraduit(a.type_oral) : null;
   const d = a.cree_le ? new Date(a.cree_le) : null;
   return `
   <figure class="flex h-full flex-col rounded-2xl border border-line bg-surface p-5 shadow-carte">
     <div class="flex items-center justify-between gap-3">
-      <span class="text-amber" aria-label="${a.note} sur 5">${etoiles(a.note)}</span>
+      <span class="text-amber" aria-label="${echappe(t('avis.note_sur_5', '{n} sur 5').replace('{n}', a.note))}">${etoiles(a.note)}</span>
       ${type ? `<span class="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted">${type.emoji} ${echappe(type.court)}</span>` : ''}
     </div>
     <blockquote class="mt-3 flex-1 text-sm leading-relaxed text-muted">« ${echappe(a.texte)} »</blockquote>
     <figcaption class="mt-4 border-t border-line/70 pt-3 text-sm">
       <span class="font-medium">${echappe(a.nom)}</span>
       <span class="block text-xs text-muted">
-        ${echappe(a.statut || '')}${d ? ' · ' + d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : ''}
+        ${echappe(a.statut || '')}${d ? ' · ' + d.toLocaleDateString(region(), { month: 'long', year: 'numeric' }) : ''}
       </span>
     </figcaption>
   </figure>`;
@@ -111,14 +114,11 @@ function rendre() {
   if (!avis.length) {
     zone.innerHTML = `
       <div class="rounded-3xl border border-dashed border-line bg-surface/50 p-8 text-center sm:col-span-2 lg:col-span-3 sm:p-12">
-        <p class="font-display text-xl font-bold">Aucun témoignage publié pour l'instant.</p>
-        <p class="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-muted">
-          Cette page n'affichera que des retours réellement déposés par des personnes ayant
-          passé une simulation, vérifiés avant publication. Nous préférons une page vide à
-          des témoignages inventés — c'est d'ailleurs interdit.
-        </p>
+        <p class="font-display text-xl font-bold">${echappe(t('avis.aucun_titre', "Aucun témoignage publié pour l'instant."))}</p>
+        <p class="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-muted">${echappe(t('avis.aucun_detail',
+          "Cette page n'affichera que des retours réellement déposés par des personnes ayant passé une simulation, vérifiés avant publication. Nous préférons une page vide à des témoignages inventés — c'est d'ailleurs interdit."))}</p>
         <a href="#deposer" class="mt-6 inline-flex items-center gap-2 rounded-xl bg-inverse px-6 py-3.5 font-display font-bold text-sur-inverse transition hover:opacity-90">
-          Déposer le premier avis
+          ${echappe(t('avis.deposer_premier', 'Déposer le premier avis'))}
         </a>
       </div>`;
     return;
@@ -127,9 +127,8 @@ function rendre() {
   const visibles = filtre === 'tous' ? avis : avis.filter(a => a.type_oral === filtre);
   zone.innerHTML = visibles.length
     ? visibles.map(carte).join('')
-    : `<p class="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-muted sm:col-span-2 lg:col-span-3">
-         Aucun avis pour cette épreuve pour le moment.
-       </p>`;
+    : `<p class="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-muted sm:col-span-2 lg:col-span-3">${
+         echappe(t('avis.aucun_pour_epreuve', 'Aucun avis pour cette épreuve pour le moment.'))}</p>`;
 }
 
 /* ── Dépôt d'un avis ───────────────────────────────────────── */
@@ -139,14 +138,14 @@ function brancherDepot() {
 
   const select = $('#avis-type');
   if (select) {
-    select.innerHTML = '<option value="">Épreuve préparée (facultatif)</option>'
-      + TYPES_ORAL.map(t => `<option value="${t.id}">${echappe(t.emoji + ' ' + t.court)}</option>`).join('');
+    select.innerHTML = `<option value="">${echappe(t('avis.epreuve_facultative', 'Épreuve préparée (facultatif)'))}</option>`
+      + catalogueTraduit().map(x => `<option value="${x.id}">${echappe(x.emoji + ' ' + x.court)}</option>`).join('');
   }
 
   if (zoneNote) {
     const dessiner = () => {
       zoneNote.innerHTML = [1, 2, 3, 4, 5].map(i =>
-        `<button type="button" role="radio" aria-checked="${i === noteChoisie}" aria-label="${i} étoile${i > 1 ? 's' : ''}"
+        `<button type="button" role="radio" aria-checked="${i === noteChoisie}" aria-label="${echappe(t(i > 1 ? 'avis.etoiles' : 'avis.etoile', i > 1 ? '{n} étoiles' : '{n} étoile').replace('{n}', i))}"
            data-note="${i}" class="text-3xl leading-none transition ${i <= noteChoisie ? 'text-amber' : 'text-line hover:text-amber/60'}">★</button>`
       ).join('');
     };
@@ -162,13 +161,13 @@ function brancherDepot() {
   $('#btn-avis')?.addEventListener('click', async () => {
     const brut = ($('#avis-nom')?.value || '').trim();
     const texte = ($('#avis-texte')?.value || '').trim();
-    if (brut.length < 2) return toast('Indiquez au moins votre prénom.', 'erreur');
-    if (texte.length < 20) return toast('Votre retour est un peu court : quelques mots de plus ?', 'erreur');
+    if (brut.length < 2) return toast(t('avis.nom_requis', 'Indiquez au moins votre prénom.'), 'erreur');
+    if (texte.length < 20) return toast(t('avis.trop_court', 'Votre retour est un peu court : quelques mots de plus ?'), 'erreur');
 
     const [nom, ...reste] = brut.split(',');
     const nouvel = {
       nom: nom.trim(),
-      statut: reste.join(',').trim() || 'Utilisateur de Oralixia',
+      statut: reste.join(',').trim() || t('avis.statut_defaut', 'Utilisateur de Oralixia'),
       note: noteChoisie,
       texte,
       type_oral: $('#avis-type')?.value || null,
@@ -194,8 +193,8 @@ function brancherDepot() {
     $('#avis-nom').value = '';
     $('#merci-avis')?.classList.remove('hidden');
     toast(enregistre
-      ? 'Merci ! Votre avis sera publié après vérification.'
-      : "Merci ! Votre avis est enregistré sur cet appareil ; il sera publié après vérification.",
+      ? t('avis.merci_serveur', 'Merci ! Votre avis sera publié après vérification.')
+      : t('avis.merci_local', 'Merci ! Votre avis est enregistré sur cet appareil ; il sera publié après vérification.'),
       'succes');
   });
 }

@@ -3,6 +3,8 @@
    répond (webkitSpeechRecognition)
    ═══════════════════════════════════════════════════════════ */
 
+import { t, infoLangue } from './i18n.js';
+
 /* ── 1. Voix de l'examinateur ───────────────────────────────
 
    Une voix de synthèse paraît robotique pour trois raisons, et
@@ -180,13 +182,13 @@ export class Dictee {
 
     r.onerror = e => {
       const messages = {
-        'not-allowed': "Micro refusé. Autorisez l'accès au micro dans votre navigateur.",
-        'service-not-allowed': "Micro refusé par le système.",
-        'no-speech': "Aucune parole détectée.",
-        'audio-capture': "Aucun micro détecté sur cet appareil.",
-        'network': "La reconnaissance vocale n'a pas pu joindre le réseau."
+        'not-allowed': t('micro.refuse', "Micro refusé. Autorisez l'accès au micro dans votre navigateur."),
+        'service-not-allowed': t('micro.refuse_systeme', 'Micro refusé par le système.'),
+        'no-speech': t('micro.rien_entendu', 'Aucune parole détectée.'),
+        'audio-capture': t('micro.absent', 'Aucun micro détecté sur cet appareil.'),
+        'network': t('micro.reseau', "La reconnaissance vocale n'a pas pu joindre le réseau.")
       };
-      if (e.error !== 'no-speech') this.onErreur(messages[e.error] || "La dictée s'est interrompue.");
+      if (e.error !== 'no-speech') this.onErreur(messages[e.error] || t('micro.interrompue', "La dictée s'est interrompue."));
     };
 
     // Chrome coupe la session toutes les ~60 s : on relance tant que l'utilisateur n'a pas arrêté.
@@ -223,14 +225,22 @@ export class Dictee {
   basculer() { return this.enMarche ? (this.arreter(), false) : this.demarrer(); }
 }
 
-/** Langue de dictée déduite de la certification choisie. */
+/**
+ * Langue parlée pendant la simulation.
+ *
+ * Une certification impose la sienne : un examinateur du TOEIC parle
+ * anglais même si l'interface est en espagnol. Partout ailleurs, c'est
+ * la langue choisie qui décide — les questions sont désormais générées
+ * dans cette langue, un examinateur francophone les lirait de travers.
+ */
 export function langueDeLEpreuve(typeId, sousChoix = '') {
-  if (typeId !== 'langue' && typeId !== 'matiere') return 'fr-FR';
-  const s = (sousChoix || '').toLowerCase();
-  if (/toeic|toefl|ielts|cambridge|anglais/.test(s)) return 'en-US';
-  if (/dele|espagnol/.test(s)) return 'es-ES';
-  if (/goethe|allemand/.test(s)) return 'de-DE';
-  return 'fr-FR';
+  if (typeId === 'langue' || typeId === 'matiere') {
+    const s = (sousChoix || '').toLowerCase();
+    if (/toeic|toefl|ielts|cambridge|anglais/.test(s)) return 'en-US';
+    if (/dele|espagnol/.test(s)) return 'es-ES';
+    if (/goethe|allemand/.test(s)) return 'de-DE';
+  }
+  return infoLangue().voix;
 }
 
 /* ── 3. Bouton « écouter » réutilisable ─────────────────────
@@ -270,8 +280,8 @@ function reposer(bouton, libelle) {
 export function boutonEcoute({
   texte,
   langue = 'fr-FR',
-  libelle = 'Écouter',
-  libelleArret = 'Arrêter',
+  libelle = t('voix.ecouter', 'Écouter'),
+  libelleArret = t('voix.arreter', 'Arrêter'),
   classes = ''
 } = {}) {
   // Sans synthèse vocale, mieux vaut ne rien afficher qu'un bouton inerte.
@@ -288,7 +298,7 @@ export function boutonEcoute({
 
     // Toute lecture en cours s'arrête, y compris celle d'un autre message.
     Voix.stop();
-    if (boutonActif && boutonActif !== b) reposer(boutonActif, boutonActif.dataset.libelle || 'Écouter');
+    if (boutonActif && boutonActif !== b) reposer(boutonActif, boutonActif.dataset.libelle || t('voix.ecouter', 'Écouter'));
     boutonActif = null;
 
     if (enLecture) { reposer(b, libelle); return; }
@@ -331,5 +341,5 @@ export const nettoyerPourLaVoix = (t = '') =>
 /** Arrête toute lecture et remet les boutons au repos. */
 export function arreterEcoute() {
   Voix.stop();
-  if (boutonActif) { reposer(boutonActif, boutonActif.dataset.libelle || 'Écouter'); boutonActif = null; }
+  if (boutonActif) { reposer(boutonActif, boutonActif.dataset.libelle || t('voix.ecouter', 'Écouter')); boutonActif = null; }
 }

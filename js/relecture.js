@@ -10,10 +10,11 @@
    métadonnées de progression.
    ═══════════════════════════════════════════════════════════ */
 
-import { CONFIG, typeParId } from './config.js';
+import { CONFIG } from './config.js';
+import { typeTraduit } from './catalogue.js';
 import { $, echappe, formaterTemps, couleurNote, stock, ouvrirModale, fermerModale } from './ui.js';
 import { lireSimulation, estRelisible } from './history.js';
-import { t } from './i18n.js';
+import { t, region } from './i18n.js';
 import { boutonEcoute, arreterEcoute } from './speech.js';
 
 const note = (v, sur = 20) =>
@@ -51,9 +52,9 @@ function reponse(r, d, i) {
     </summary>
     <div class="space-y-5 border-t border-line/70 p-5">
       <div>
-        <p class="text-xs text-muted">Ce que vous avez répondu${r.dureeParole ? ` · ${Math.round(r.dureeParole)} s de parole` : ''}</p>
+        <p class="text-xs text-muted">${t('rapport.votre_reponse', 'Ce que vous avez répondu')}${r.dureeParole ? ' · ' + t('rapport.s_de_parole', '{n} s de parole').replace('{n}', Math.round(r.dureeParole)) : ''}</p>
         <p class="mt-1 text-sm leading-relaxed text-soft/90">
-          ${r.texte ? echappe(r.texte) : '<span class="text-muted">Question passée.</span>'}
+          ${r.texte ? echappe(r.texte) : `<span class="text-muted">${echappe(t('rapport.question_passee', 'Question passée.'))}</span>`}
         </p>
       </div>
       ${d?.forts?.length ? `<div>
@@ -82,7 +83,7 @@ export function ouvrirRelecture(id) {
   const titre = $('#relecture-titre');
   if (!s || !zone) return;
 
-  const type = typeParId(s.typeId);
+  const type = typeTraduit(s.typeId);
   const d = new Date(s.date);
   if (titre) {
     titre.textContent = `${type.emoji} ${type.court}${s.sousChoix ? ' · ' + s.sousChoix : ''}`;
@@ -93,7 +94,7 @@ export function ouvrirRelecture(id) {
        gardé que leur note : on le dit plutôt que d'afficher un vide. */
     zone.innerHTML = `
       <div class="rounded-2xl border border-line bg-surface p-5">
-        <p class="text-sm text-muted">${d.toLocaleDateString('fr-FR')} · note globale
+        <p class="text-sm text-muted">${d.toLocaleDateString(region())} · note globale
           <span class="font-display font-bold" style="color:${couleurNote(s.score)}">${s.score}/100</span></p>
         ${criteres(s.criteres)}
       </div>
@@ -110,7 +111,7 @@ export function ouvrirRelecture(id) {
     <div class="rounded-2xl border border-line bg-surface p-5">
       <div class="flex flex-wrap items-baseline justify-between gap-3">
         <p class="text-sm text-muted">
-          ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          ${d.toLocaleDateString(region())} à ${d.toLocaleTimeString(region(), { hour: '2-digit', minute: '2-digit' })}
           · ${s.nbQuestions} question${s.nbQuestions > 1 ? 's' : ''}
           ${s.tempsTotal ? ' · ' + formaterTemps(s.tempsTotal) + ' de parole' : ''}
         </p>
@@ -164,12 +165,14 @@ export function ouvrirRelecture(id) {
     libelleArret: t('ecoute.arreter', 'Arrêter'),
     classes: 'px-3 py-1.5',
     texte: () => [
-      `Simulation du ${d.toLocaleDateString('fr-FR')}. Note globale : ${s.score} sur 100.`,
+      t('relecture.lu_entete', 'Session of {date}.').replace('{date}', d.toLocaleDateString(region()))
+        + ' ' + t('lu.note_globale', 'Votre note globale est de {n} sur 100.').replace('{n}', s.score),
       s.verdict,
       ...s.reponses.map((r, i) => {
         const det = (s.details || [])[i] || {};
-        return `Question ${i + 1}. ${r.question} Note : ${det.note} sur 20.`
-          + (det.axes?.length ? ` À renforcer : ${det.axes.join('. ')}.` : '');
+        return `${t('sim.question', 'Question')} ${i + 1}. ${r.question} `
+          + t('lu.note_sur_20', 'Note : {n} sur 20.').replace('{n}', det.note)
+          + (det.axes?.length ? ` ${t('rapport.a_renforcer', 'À renforcer')} : ${det.axes.join('. ')}.` : '');
       })
     ].filter(Boolean).join(' ')
   });
@@ -216,8 +219,9 @@ function boutonTelecharger(s, d) {
   const b = bouton(t('relecture.telecharger', 'Télécharger en PDF'), ICONE_PDF);
   b.addEventListener('click', () => {
     const titreInitial = document.title;
-    const type = typeParId(s.typeId);
-    document.title = `${CONFIG.nomProduit} - ${type.court} du ${d.toLocaleDateString('fr-FR')}`;
+    const type = typeTraduit(s.typeId);
+    document.title = `${CONFIG.nomProduit} - ` + t('relecture.titre_pdf', '{type} du {date}')
+      .replace('{type}', type.court).replace('{date}', d.toLocaleDateString(region()));
     document.body.classList.add('impression-relecture');
 
     const restaurer = () => {
@@ -250,23 +254,27 @@ function boutonCoach(s) {
  * prestation orale.
  */
 export function resumerPourLeCoach(s) {
-  const type = typeParId(s.typeId);
+  const type = typeTraduit(s.typeId);
   const d = new Date(s.date);
   const lignes = [
-    `Simulation du ${d.toLocaleDateString('fr-FR')} — ${type.court}${s.sousChoix ? ' (' + s.sousChoix + ')' : ''}.`,
-    `Note globale : ${s.score}/100.`,
-    s.verdict ? `Verdict : ${s.verdict}` : '',
-    s.eloquence != null ? `Éloquence : ${s.eloquence}/20.` : ''
+    t('coach.resume.entete', 'Simulation du {date} — {type}{precision}.')
+      .replace('{date}', d.toLocaleDateString(region()))
+      .replace('{type}', type.court)
+      .replace('{precision}', s.sousChoix ? ' (' + s.sousChoix + ')' : ''),
+    t('coach.resume.note', 'Note globale : {n}/100.').replace('{n}', s.score),
+    s.verdict ? t('coach.resume.verdict', 'Verdict : {v}').replace('{v}', s.verdict) : '',
+    s.eloquence != null ? t('coach.resume.eloquence', 'Éloquence : {n}/20.').replace('{n}', s.eloquence) : ''
   ].filter(Boolean);
 
   (s.reponses || []).forEach((r, i) => {
     const det = (s.details || [])[i] || {};
     lignes.push(
       '',
-      `Question ${i + 1} : ${r.question}`,
-      `Ma réponse : ${(r.texte || '').slice(0, 1200) || '(pas de réponse)'}`,
-      det.note != null ? `Note : ${det.note}/20.` : '',
-      det.axes?.length ? `Axes signalés : ${det.axes.join(' ; ')}` : ''
+      `${t('sim.question', 'Question')} ${i + 1} : ${r.question}`,
+      t('coach.resume.ma_reponse', 'Ma réponse : {texte}')
+        .replace('{texte}', (r.texte || '').slice(0, 1200) || t('coach.resume.sans_reponse', '(pas de réponse)')),
+      det.note != null ? t('coach.resume.note_20', 'Note : {n}/20.').replace('{n}', det.note) : '',
+      det.axes?.length ? t('coach.resume.axes', 'Axes signalés : {axes}').replace('{axes}', det.axes.join(' ; ')) : ''
     );
   });
 

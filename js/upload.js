@@ -6,7 +6,7 @@
 
 import { $, toast } from './ui.js';
 import { Dictee, dicteeSupportee } from './speech.js';
-import { t, infoLangue } from './i18n.js';
+import { t, infoLangue, region } from './i18n.js';
 
 /* pdf.js et mammoth sont servis par le site lui-même.
    Ils venaient d'un CDN, et c'était une mauvaise idée à trois titres :
@@ -40,7 +40,7 @@ function chargerScript(url) {
        reste bloquée sur « Lecture de… », indéfiniment. */
     const minuteur = setTimeout(() => {
       s.remove();
-      ko(new Error('Bibliothèque de lecture injoignable : ' + url));
+      ko(new Error(t('import.lib_injoignable', 'Bibliothèque de lecture injoignable.') + ' ' + url));
     }, DELAI_SCRIPT);
 
     s.onload = () => { clearTimeout(minuteur); ok(); };
@@ -89,7 +89,7 @@ async function extrairePDF(fichier, onProgres) {
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
   const morceaux = [];
   for (let p = 1; p <= doc.numPages; p++) {
-    onProgres && onProgres(`Lecture de la page ${p}/${doc.numPages}…`);
+    onProgres && onProgres(t('import.page', 'Lecture de la page {p}/{n}…').replace('{p}', p).replace('{n}', doc.numPages));
     const page = await doc.getPage(p);
     const contenu = await page.getTextContent();
     morceaux.push(contenu.items.map(i => i.str).join(' '));
@@ -97,7 +97,7 @@ async function extrairePDF(fichier, onProgres) {
   const texte = morceaux.join('\n\n').replace(/[ \t]+/g, ' ').trim();
   if (texte.length < 40) {
     // PDF scanné : on bascule sur l'OCR de la première page rendue en image.
-    onProgres && onProgres('PDF scanné détecté, lecture optique…');
+    onProgres && onProgres(t('import.ocr', 'PDF scanné détecté, lecture optique…'));
     return await ocrDepuisPDF(doc, onProgres);
   }
   return texte;
@@ -147,11 +147,11 @@ export async function extraireTexte(fichier, onProgres) {
   if (nom.endsWith('.docx')) return extraireDocx(fichier);
   if (type.startsWith('image/')) return extraireImage(fichier, onProgres);
   if (type.startsWith('text/') || /\.(txt|md|rtf|csv|json)$/.test(nom)) return (await lireTexte(fichier)).trim();
-  if (nom.endsWith('.doc')) throw new Error('Format .doc ancien non lisible : enregistrez en .docx ou en PDF.');
+  if (nom.endsWith('.doc')) throw new Error(t('import.doc_ancien', 'Format .doc ancien non lisible : enregistrez en .docx ou en PDF.'));
 
   // Dernier recours : on tente une lecture texte.
   const brut = await lireTexte(fichier);
-  if (/[\x00-\x08\x0E-\x1F]/.test(brut.slice(0, 500))) throw new Error('Format non pris en charge.');
+  if (/[\x00-\x08\x0E-\x1F]/.test(brut.slice(0, 500))) throw new Error(t('import.format', 'Format non pris en charge.'));
   return brut.trim();
 }
 
@@ -167,18 +167,18 @@ export function brancherDepot({ idInput, idZone, idEtat, idCible, onTexte }) {
   const traiter = async fichier => {
     if (!fichier) return;
     zone.classList.remove('survol');
-    etat.textContent = 'Lecture de ' + fichier.name + '…';
+    etat.textContent = t('import.lecture', 'Lecture de {f}…').replace('{f}', fichier.name);
     try {
       const texte = await extraireTexte(fichier, msg => { etat.textContent = msg; });
-      if (!texte || texte.length < 20) throw new Error('Aucun texte exploitable trouvé dans ce fichier.');
+      if (!texte || texte.length < 20) throw new Error(t('import.vide', 'Aucun texte exploitable trouvé dans ce fichier.'));
       cible.value = texte;
       cible.dispatchEvent(new Event('input', { bubbles: true }));
-      etat.textContent = `${fichier.name} · ${texte.length.toLocaleString('fr-FR')} caractères importés`;
+      etat.textContent = `${fichier.name} · ${t('import.importe', '{n} caractères importés').replace('{n}', texte.length.toLocaleString(region()))}`;
       onTexte && onTexte(texte);
-      toast('Document importé. Vérifiez et corrigez si besoin.', 'succes');
+      toast(t('import.ok', 'Document importé. Vérifiez et corrigez si besoin.'), 'succes');
     } catch (e) {
       etat.textContent = libelleInitial;
-      toast(e.message || 'Import impossible.', 'erreur');
+      toast(e.message || t('import.echec', 'Import impossible.'), 'erreur');
     }
   };
 

@@ -6,7 +6,7 @@
    configuration → chargement → simulation → rapport.
    ═══════════════════════════════════════════════════════════ */
 
-import { TYPES_ORAL, typeParId } from './config.js';
+import { typeTraduit, catalogueTraduit } from './catalogue.js';
 import { $, $$, echappe, formaterTemps, compterMots, toast, brancherReglages, reglerGroupe } from './ui.js';
 import { Voix, Dictee, dicteeSupportee, langueDeLEpreuve } from './speech.js';
 import { brancherDepot } from './upload.js';
@@ -18,7 +18,7 @@ import { brancherPaywall, peutLancer, estPremium, consommerSimulation, quotaRest
 import { enregistrerSimulation } from './history.js';
 import { brancherAge, demanderAgeSiNecessaire } from './age.js';
 import { brancherNavigation } from './nav.js';
-import { t } from './i18n.js';
+import { t, region } from './i18n.js';
 import { demarrerChargement, arreterChargement } from './chargement.js';
 import { ouvrirAppel, Appel } from './appel.js';
 
@@ -55,7 +55,7 @@ function allerEcran(nom) {
 
 /* ═══ Étape 1 : choix de l'épreuve ═══ */
 function rendreTypes() {
-  $('#grille-types').innerHTML = TYPES_ORAL.map(t => `
+  $('#grille-types').innerHTML = catalogueTraduit().map(t => `
     <button type="button" data-type="${t.id}"
       class="carte-type rounded-2xl border border-line bg-surface p-4 text-left transition hover:border-iris/60">
       <span class="text-2xl">${t.emoji}</span>
@@ -69,7 +69,7 @@ function rendreTypes() {
 
 function choisirType(id) {
   etat.typeId = id;
-  const type = typeParId(id);
+  const type = typeTraduit(id);
 
   $$('[data-type]').forEach(b => {
     const actif = b.dataset.type === id;
@@ -96,11 +96,11 @@ function choisirType(id) {
   $('#label-A').textContent = type.champA.label;
   $('#aide-A').textContent = type.champA.aide;
   $('#champA').placeholder = type.champA.placeholder;
-  $('#min-A').textContent = `Minimum ${type.champA.min} caractères.`;
+  $('#min-A').textContent = t('sim.minimum', 'Minimum {n} caractères.').replace('{n}', type.champA.min);
   $('#label-B').textContent = type.champB.label;
   $('#aide-B').textContent = type.champB.aide;
   $('#champB').placeholder = type.champB.placeholder;
-  $('#min-B').textContent = `Minimum ${type.champB.min} caractères.`;
+  $('#min-B').textContent = t('sim.minimum', 'Minimum {n} caractères.').replace('{n}', type.champB.min);
 
   reglerGroupe('duree', type.duree);
   verifierFormulaire();
@@ -113,8 +113,8 @@ function brancherCompteur(idChamp, idCompteur) {
   const champ = $('#' + idChamp), compteur = $('#' + idCompteur);
   const maj = () => {
     const n = champ.value.trim().length;
-    const min = typeParId(etat.typeId)[idChamp === 'champA' ? 'champA' : 'champB'].min;
-    compteur.textContent = n.toLocaleString('fr-FR');
+    const min = typeTraduit(etat.typeId)[idChamp === 'champA' ? 'champA' : 'champB'].min;
+    compteur.textContent = n.toLocaleString(region());
     compteur.classList.toggle('text-mint', n >= min);
     compteur.classList.toggle('text-muted', n < min);
     verifierFormulaire();
@@ -124,7 +124,7 @@ function brancherCompteur(idChamp, idCompteur) {
 }
 
 function verifierFormulaire() {
-  const type = typeParId(etat.typeId);
+  const type = typeTraduit(etat.typeId);
   const a = $('#champA').value.trim(), b = $('#champB').value.trim();
   const pret = a.length >= type.champA.min && b.length >= type.champB.min;
   $('#btn-lancer').disabled = !pret;
@@ -150,14 +150,15 @@ function verifierFormulaire() {
 }
 
 /* ═══ Lancement ═══ */
-$('#btn-lancer').addEventListener('click', async () => {
+async function lancerSimulation() {
   /* Un compte d'abord. Sans lui, les deux simulations offertes ne
      tiennent pas : il suffirait de vider son navigateur pour repartir
      à zéro. Rattachées à un compte, elles sont comptées en base. */
   if (!await exigerCompte()) return;
 
-  // Première simulation : on demande la tranche d'âge avant de commencer.
-  if (demanderAgeSiNecessaire()) return;
+  /* Première simulation : on demande la tranche d'âge avant de commencer,
+     et on reprend le lancement dès qu'elle est déclarée. */
+  if (demanderAgeSiNecessaire(lancerSimulation)) return;
   if (!peutLancer()) { ouvrirPaywall('quota'); return; }
 
   etat.index = 0;
@@ -202,7 +203,7 @@ $('#btn-lancer').addEventListener('click', async () => {
   if (demoQuestions) {
     // L'API n'a pas répondu : on ne facture pas au candidat une de ses
     // simulations gratuites pour une panne qui ne vient pas de lui.
-    toast("Mode démo : l'API n'a pas répondu, questions et correction générées localement. Cette simulation ne décompte pas votre quota gratuit.");
+    toast(t('sim.mode_demo', "Mode démo : l'API n'a pas répondu, questions et correction générées localement. Cette simulation ne décompte pas votre quota gratuit."));
   } else {
     consommerSimulation();
   }
@@ -212,18 +213,22 @@ $('#btn-lancer').addEventListener('click', async () => {
 
   allerEcran('simulation');
   afficherQuestion();
-});
+}
+
+$('#btn-lancer').addEventListener('click', lancerSimulation);
 
 /* ═══ Déroulé de la simulation ═══ */
 function afficherQuestion() {
   const q = etat.questions[etat.index];
-  $('#categorie').textContent = q.categorie || 'Question';
+  $('#categorie').textContent = q.categorie || t('sim.question', 'Question');
   $('#question').textContent = q.texte;
   $('#num-question').textContent = etat.index + 1;
   $('#reponse').value = '';
   $('#interim').textContent = '';
-  $('#compteur-reponse').textContent = '0 mot';
-  $('#btn-suivant').textContent = etat.index === etat.questions.length - 1 ? 'Terminer et voir le rapport' : 'Valider et continuer';
+  $('#compteur-reponse').textContent = t('sim.zero_mot', '0 mot');
+  $('#btn-suivant').textContent = etat.index === etat.questions.length - 1
+    ? t('sim.terminer', 'Terminer et voir le rapport')
+    : t('sim.valider', 'Valider et continuer');
   etat.paroleQuestion = 0;
 
   [...$('#segments').children].forEach((s, i) => {
@@ -251,7 +256,7 @@ function demarrerChrono(secondes) {
   clearInterval(etat.timer);
   etat.restant = secondes;
   etat.enPause = false;
-  $('#btn-pause').textContent = 'Mettre en pause';
+  $('#btn-pause').textContent = t('sim.pause', 'Mettre en pause');
   peindreChrono();
   etat.timer = setInterval(() => {
     if (etat.enPause) return;
@@ -270,15 +275,18 @@ function peindreChrono() {
   $('#chrono').textContent = formaterTemps(etat.restant);
   $('#chrono').style.color = etat.restant < 0 ? '#FF5D6C' : '';
   $('#etat-chrono').textContent = etat.modeReel
-    ? (etat.restant <= 10 ? 'Conditions réelles : passage automatique dans ' + etat.restant + ' s.' : 'Conditions réelles : pas de pause.')
-    : etat.restant < 0 ? 'Vous dépassez le temps conseillé. Concluez.'
-    : etat.enPause ? 'En pause.' : 'Le chrono tourne, il ne vous coupe pas.';
+    ? (etat.restant <= 10
+        ? t('sim.chrono_bascule', 'Conditions réelles : passage automatique dans {n} s.').replace('{n}', etat.restant)
+        : t('sim.chrono_sans_pause', 'Conditions réelles : pas de pause.'))
+    : etat.restant < 0 ? t('sim.chrono_depasse', 'Vous dépassez le temps conseillé. Concluez.')
+    : etat.enPause ? t('sim.chrono_en_pause', 'En pause.')
+    : t('sim.chrono_tourne', 'Le chrono tourne, il ne vous coupe pas.');
 }
 
 $('#btn-pause').addEventListener('click', () => {
-  if (etat.modeReel) return toast('Le mode conditions réelles interdit la pause.');
+  if (etat.modeReel) return toast(t('sim.pause_interdite', 'Le mode conditions réelles interdit la pause.'));
   etat.enPause = !etat.enPause;
-  $('#btn-pause').textContent = etat.enPause ? 'Reprendre' : 'Mettre en pause';
+  $('#btn-pause').textContent = etat.enPause ? t('sim.reprendre', 'Reprendre') : t('sim.pause', 'Mettre en pause');
   peindreChrono();
 });
 
@@ -289,12 +297,13 @@ function brancherMicroSimulation() {
   if (!dicteeSupportee) {
     bouton.disabled = true;
     bouton.classList.add('opacity-50', 'cursor-not-allowed');
-    etatTxt.textContent = "La réponse vocale n'est pas disponible sur ce navigateur. Utilisez Chrome, Edge ou Safari, ou écrivez votre réponse.";
+    etatTxt.textContent = t('sim.voix_absente', "La réponse vocale n'est pas disponible sur ce navigateur. Utilisez Chrome, Edge ou Safari, ou écrivez votre réponse.");
     return;
   }
 
   etat.dictee = new Dictee({
-    langue: 'fr-FR',
+    // Le candidat répond dans la langue de l'épreuve, pas en français.
+    langue: langueDeLEpreuve(etat.typeId, etat.sousChoix),
     onDefinitif: seg => {
       const z = $('#reponse');
       z.value = (z.value + ' ' + seg).trim();
@@ -304,8 +313,8 @@ function brancherMicroSimulation() {
     onErreur: msg => toast(msg, 'erreur'),
     onFin: () => {
       bouton.classList.remove('micro-actif');
-      libelle.textContent = 'Répondre à l\'oral';
-      etatTxt.textContent = 'Enregistrement arrêté. Relisez et corrigez si besoin.';
+      libelle.textContent = t('sim.repondre_oral', "Répondre à l'oral");
+      etatTxt.textContent = t('sim.enregistrement_arrete', 'Enregistrement arrêté. Relisez et corrigez si besoin.');
       $('#interim').textContent = '';
       etat.paroleQuestion += (Date.now() - etat.debutParole) / 1000;
     }
@@ -317,17 +326,17 @@ function brancherMicroSimulation() {
     if (etat.dictee.demarrer()) {
       etat.debutParole = Date.now();
       bouton.classList.add('micro-actif');
-      libelle.textContent = "J'écoute — appuyez pour arrêter";
-      etatTxt.textContent = 'Parlez normalement, votre réponse s\'écrit toute seule.';
+      libelle.textContent = t('sim.jecoute', "J'écoute — appuyez pour arrêter");
+      etatTxt.textContent = t('sim.parlez', "Parlez normalement, votre réponse s'écrit toute seule.");
     } else {
-      toast("Le micro n'a pas pu démarrer.", 'erreur');
+      toast(t('sim.micro_echec', "Le micro n'a pas pu démarrer."), 'erreur');
     }
   });
 }
 
 $('#reponse').addEventListener('input', e => {
   const n = compterMots(e.target.value);
-  $('#compteur-reponse').textContent = n + ' mot' + (n > 1 ? 's' : '');
+  $('#compteur-reponse').textContent = t(n > 1 ? 'sim.mots' : 'sim.mot', n > 1 ? '{n} mots' : '{n} mot').replace('{n}', n);
 });
 
 /* ── Enchaînement ── */
@@ -483,7 +492,7 @@ async function demarrer() {
 
   $('#mode-reel').addEventListener('change', e => {
     etat.modeReel = e.target.checked;
-    if (e.target.checked) toast('Mode conditions réelles : chrono strict, aucune pause.');
+    if (e.target.checked) toast(t('sim.mode_reel_actif', 'Mode conditions réelles : chrono strict, aucune pause.'));
   });
   $('#lecture-auto').addEventListener('change', e => {
     etat.lectureAuto = e.target.checked;
@@ -496,7 +505,7 @@ async function demarrer() {
 
   // « Essayer gratuitement » depuis l'accueil peut présélectionner une épreuve.
   const type = new URLSearchParams(location.search).get('type');
-  if (type && TYPES_ORAL.some(t => t.id === type)) choisirType(type);
+  if (type && catalogueTraduit().some(t => t.id === type)) choisirType(type);
 }
 
 demarrer();

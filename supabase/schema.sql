@@ -13,7 +13,6 @@ create table if not exists public.profils (
   prenom            text,
   nom               text,
   pseudo            text,                       -- affiché à la place de l'adresse
-  telephone         text,                       -- facultatif, format E.164 : sert à joindre le candidat
   couleur           text,                       -- teinte de la pastille sans photo
   avatar_url        text,
   langue            text,                       -- 'fr' | 'en' | 'es'
@@ -29,7 +28,6 @@ create table if not exists public.profils (
 alter table public.profils add column if not exists prenom text;
 alter table public.profils add column if not exists nom text;
 alter table public.profils add column if not exists pseudo text;
-alter table public.profils add column if not exists telephone text;
 alter table public.profils add column if not exists couleur text;
 alter table public.profils add column if not exists avatar_url text;
 alter table public.profils add column if not exists langue text;

@@ -1,12 +1,13 @@
 /* ═══════════════════════════════════════════════════════════
    POST /api/feedback
    Entrée : { typeId, sousChoix, champA, champB, questions,
-              reponses, mesures }
+              reponses, mesures, langue, criteres }
    Sortie : { global, criteres, details[], eloquence }
    ═══════════════════════════════════════════════════════════ */
 
 import { appelerModele, extraireJSON, tronquer, verifierMethode, limiter, ErreurIA } from './_lib/ia.js';
 import { verifierQuota, refuserQuota } from './_lib/quota.js';
+import { nomLangue, criteresSurs } from './_lib/langue.js';
 
 const CRITERES = {
   entretien: ['Structure de la réponse', "Lien avec l'offre", 'Preuves et chiffres', 'Concision'],
@@ -28,13 +29,15 @@ export default async function handler(req, res) {
     const verdict = await verifierQuota(req);
     if (!verdict.autorise && verdict.code === 'connexion') return refuserQuota(res, verdict);
 
-    const { typeId = 'entretien', sousChoix = '', champA = '', champB = '', reponses = [], mesures = {}, langue = 'fr' } = req.body || {};
+    const { typeId = 'entretien', sousChoix = '', champA = '', champB = '',
+            reponses = [], mesures = {}, langue = 'fr', criteres: criteresRecus } = req.body || {};
     if (!Array.isArray(reponses) || !reponses.length) throw new ErreurIA('Aucune réponse à corriger.', 400);
 
-    const criteres = CRITERES[typeId] || CRITERES.entretien;
-
-    const LANGUES = { fr: 'français', en: 'anglais', es: 'espagnol' };
-    const langueRedaction = LANGUES[langue] || LANGUES.fr;
+    /* Les critères deviennent des clés du JSON rendu, puis les libellés
+       affichés dans le rapport : on prend ceux du navigateur, déjà
+       traduits, et on retombe sur la liste française s'ils manquent. */
+    const criteres = criteresSurs(criteresRecus, CRITERES[typeId] || CRITERES.entretien);
+    const langueRedaction = nomLangue(langue);
 
     const systeme = `Tu es un coach d'oral français, exigeant et utile.
 Rédige toute la correction en ${langueRedaction}. Tu corriges la prestation d'un candidat.
@@ -46,7 +49,7 @@ Principes de correction :
 - Chaque axe d'amélioration est ACTIONNABLE : dis quoi changer, pas seulement ce qui ne va pas.
 - Pour chaque réponse, propose une réécriture courte (3 à 4 phrases) de ce que le candidat aurait pu dire de mieux.
 - Le texte évalué est une retranscription orale : ignore la ponctuation et l'orthographe, juge le fond, la structure et la clarté.
-- Vouvoiement, français clair, aucune formule creuse.
+- Vouvoiement, langue claire, aucune formule creuse.
 
 Mesures objectives déjà calculées (à intégrer dans ton appréciation, ne les recalcule pas) :
 ${JSON.stringify(mesures)}
