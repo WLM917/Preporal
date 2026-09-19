@@ -1037,3 +1037,51 @@ test('aucune page servie n’est oubliée par Tailwind', () => {
       'sinon ses classes n\'existent pas dans la feuille livrée');
   }
 });
+
+test("la synchronisation n'écrase plus le détail des simulations", () => {
+  /* Le serveur ne garde qu'une trace de progression : note, critères,
+     nombre de questions. Le détail — questions, réponses, correction —
+     ne vit que dans le navigateur d'origine, et c'est voulu.
+
+     La synchronisation remplaçait l'historique local par la version
+     distante. Le détail était donc enregistré, puis effacé à la
+     première relecture. La fusion s'éprouve dans tests/fusion.test.mjs ;
+     ici, on vérifie seulement qu'elle est bien employée. */
+  const src = modules.find(m => m.nom === 'history.js').source;
+  const debut = src.indexOf('export async function chargerDepuisServeur');
+  assert.ok(debut > -1, 'chargerDepuisServeur a disparu');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  assert.match(corps, /fusionnerHistoriques\(/,
+    "le distant doit être fusionné avec le local, pas posé par-dessus");
+  assert.doesNotMatch(corps, /stock\.ecrire\([^)]*historique[^)]*,\s*distant\s*\)/,
+    "écrire « distant » tel quel efface le détail de chaque simulation");
+});
+
+test("le message d'une simulation sans détail dit la vérité", () => {
+  /* Il affirmait qu'elle était « antérieure à l'ajout de la relecture ».
+     C'était faux : elle datait de trois minutes, et c'est la
+     synchronisation qui avait effacé son détail. */
+  const src = modules.find(m => m.nom === 'relecture.js').source;
+  assert.doesNotMatch(src, /ant[ée]rieure à\s*\n?\s*l'ajout de la relecture/,
+    "ce message accusait le passé d'un bug du jour");
+  assert.match(src, /relecture\.detail_ailleurs/,
+    "il faut expliquer que le détail reste sur l'appareil d'origine");
+});
+
+test('le mode oral offre un retour trouvable et atteignable', () => {
+  /* Deux raisons de ne pas trouver la sortie, toutes deux mesurées :
+     le bouton s'appelait « Raccrocher », ce qui se lit « j'arrête
+     tout » ; et sur un téléphone tenu à l'horizontale il tombait hors
+     de l'écran, le panneau ne défilant pas. */
+  const src = modules.find(m => m.nom === 'appel.js').source;
+
+  assert.match(src, /appel\.repasser_ecrit/,
+    "le bouton doit dire ce qu'il fait : il ramène à l'écrit, il n'arrête pas l'oral");
+  assert.doesNotMatch(src, /t\('appel\.raccrocher'/,
+    "« Raccrocher » se lit « j'abandonne » : personne ne le cherche pour revenir");
+
+  const panneau = src.slice(src.indexOf("panneau.className ="), src.indexOf('\n', src.indexOf("panneau.className =")));
+  assert.match(panneau, /overflow-y-auto/,
+    'sans défilement, un écran trop court rend le bouton injoignable');
+});
