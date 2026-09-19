@@ -1139,10 +1139,16 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
 4. **Portail client Stripe.** Pour que le changement de formule fonctionne :
    Stripe → Settings → Billing → Customer portal → autorisez la mise à jour
    d'abonnement et listez-y les deux tarifs (mensuel et six mois).
-5. **Compartiment `avatars`.** Créé par `supabase/schema.sql` : relancez le
-   script pour que les photos de profil fonctionnent. Le script ajoute aussi
-   les colonnes `pseudo`, `telephone`, `couleur` et `avatar_url` — sans elles,
-   l'enregistrement du profil échoue.
+5. **Colonnes du profil.** `supabase/schema.sql` ajoute `pseudo`,
+   `telephone`, `couleur` et `avatar_url`. Sans elles, les réglages
+   s'affichent bien mais ne survivent pas à un changement d'appareil : la
+   copie en base échoue en silence, et seules les métadonnées du compte
+   gardent la trace. Relancez le script.
+
+   Le compartiment `avatars`, lui, n'attend plus personne : `api/avatar.js`
+   le crée au premier envoi de photo, avec la clé de service. Le script SQL
+   le crée aussi, avec ses règles RLS — utile si vous voulez un jour
+   redonner au navigateur le droit de déposer en direct.
 6. **Modèles d'e-mail Supabase.** Les messages d'authentification partent en
    anglais tant que vous n'avez pas collé les modèles multilingues, et le SMTP
    intégré est limité aux tests. Voir *Configuration Supabase → Des e-mails

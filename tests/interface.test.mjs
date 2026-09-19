@@ -402,11 +402,18 @@ test("un enregistrement qui échoue rend la main et dit pourquoi", () => {
   /* L'envoi de photo souffrait du même mal, et n'était couvert par
      aucun test : un compartiment injoignable laissait la page sur
      « Envoi de la photo… », sans message et sans fin. */
-  const photo = corps('televerserPhoto');
-  assert.match(photo, /avecDelai\s*\(\s*supabase\.storage/,
+  const envoi = corps('appelerApiAvatar');
+  assert.match(envoi, /avecDelai\s*\(/,
     "l'envoi de la photo doit avoir son propre délai de garde");
-  assert.match(photo, /messageCompartiment\(/,
-    'un compartiment absent doit se dire en clair, pas en jargon de stockage');
+
+  /* Le navigateur ne dépose plus lui-même dans le stockage : il n'a pas
+     le droit de créer le compartiment « avatars », et le site se
+     contentait donc de dire au candidat d'en avertir l'éditeur. */
+  const photo = corps('televerserPhoto');
+  assert.doesNotMatch(photo, /supabase\.storage/,
+    "le dépôt doit passer par l'API, qui a les droits de créer le compartiment");
+  assert.match(envoi, /fetch\(\s*['"`]\/api\/avatar/,
+    "l'API du site est le seul chemin d'envoi de photo");
 });
 
 test('une photo inaffichable ne condamne pas le choix de couleur', () => {

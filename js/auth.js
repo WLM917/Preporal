@@ -12,6 +12,7 @@
    EXIGER_CONNEXION dans le README.
    ═══════════════════════════════════════════════════════════ */
 
+import { fileDAttente } from './verrou.js';
 import { CONFIG } from './config.js';
 import { $, $$, echappe, toast, ouvrirModale, fermerModale } from './ui.js';
 import { langue, t, surChangementLangue, region } from './i18n.js';
@@ -139,12 +140,28 @@ export async function initAuth() {
       new Promise((_, rejeter) =>
         setTimeout(() => rejeter(new Error('client Supabase injoignable')), DELAI_CLIENT))
     ]);
-    supabase = createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey);
+    supabase = createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey,
+      { auth: { lock: fileDAttente() } });
 
     const { data } = await supabase.auth.getSession();
     await appliquerSession(data?.session);
 
-    supabase.auth.onAuthStateChange(async (_evt, s) => { await appliquerSession(s); });
+    /* Le rappel rend la main immédiatement, et ce n'est pas un détail.
+
+       supabase-js l'appelle depuis _notifyAllSubscribers, qui fait
+       « await Promise.all(rappels) » À L'INTÉRIEUR du verrou. Or
+       appliquerSession interroge la table profils : tant que cette
+       requête n'était pas revenue, le verrou restait pris, et le
+       updateUser() du bouton « Enregistrer » attendait derrière,
+       sans limite de temps. C'est précisément ce que la
+       documentation de Supabase déconseille de faire ici.
+
+       On repart donc au tour de boucle suivant, verrou rendu. */
+    supabase.auth.onAuthStateChange((_evt, s) => {
+      setTimeout(() => {
+        appliquerSession(s).catch(e => console.warn('Session non appliquée', e));
+      }, 0);
+    });
   } catch (e) {
     console.warn('Supabase indisponible, mode local activé.', e);
   }
@@ -197,6 +214,19 @@ async function appliquerSession(s) {
     if (!$('#modal-auth')?.hidden) fermerModale('modal-auth');
     libererAttentes();
   }
+}
+
+/** Le jeton d'accès du moment, renouvelé s'il a expiré.
+
+    session.jeton date de la dernière ouverture de session : au bout
+    d'une heure il ne vaut plus rien, et l'API rejetterait l'envoi
+    d'une photo avec un message que personne ne saurait lire. */
+export async function jetonAcces() {
+  if (!supabase) return session.jeton || '';
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token || session.jeton || '';
+  } catch { return session.jeton || ''; }
 }
 
 async function chargerProfil() {

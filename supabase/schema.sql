@@ -244,6 +244,12 @@ create policy "usage coach visible par son proprietaire"
 -- Un compartiment public en lecture (l'URL d'une photo n'a rien de
 -- secret), mais où chacun n'écrit que dans son propre dossier :
 -- les fichiers sont rangés sous « <identifiant>/… ».
+--
+-- Ce bloc n'est plus indispensable : api/avatar.js crée le
+-- compartiment au premier envoi, avec la clé de service, et dépose
+-- pour le compte du candidat après avoir vérifié son jeton. Il reste
+-- ici parce qu'il coûte peu et qu'il garde la porte ouverte si l'on
+-- veut un jour redonner au navigateur le droit de déposer en direct.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('avatars', 'avatars', true, 2097152,
         array['image/jpeg','image/png','image/webp','image/gif'])
