@@ -13,6 +13,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { fileDAttente } from './verrou.js';
+import { estPhotoDeposee } from './photo.js';
 import { CONFIG } from './config.js';
 import { $, $$, echappe, toast, ouvrirModale, fermerModale } from './ui.js';
 import { langue, t, surChangementLangue, region } from './i18n.js';
@@ -71,8 +72,7 @@ export const nomComplet = () => nomAffiche();
    suffisait donc pas : il revenait de la base à chaque ouverture, en
    grand au milieu de la page, et la couleur choisie restait invisible
    puisqu'une image la recouvrait. */
-const ADRESSE_PHOTO_DEPOSEE = /\/storage\/v1\/object\/public\/avatars\//;
-export const estPhotoDeposee = url => ADRESSE_PHOTO_DEPOSEE.test(String(url || ''));
+export { estPhotoDeposee } from './photo.js';
 
 /* ── Erreurs renvoyées par les liens Supabase ───────────────
    Un lien de connexion périmé, déjà cliqué, ou pré-chargé par un

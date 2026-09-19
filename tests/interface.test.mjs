@@ -414,6 +414,44 @@ test("un enregistrement qui échoue rend la main et dit pourquoi", () => {
     "le dépôt doit passer par l'API, qui a les droits de créer le compartiment");
   assert.match(envoi, /fetch\(\s*['"`]\/api\/avatar/,
     "l'API du site est le seul chemin d'envoi de photo");
+
+  /* Le stockage n'est pas activé sur tous les sites. Plutôt que de
+     renvoyer le candidat vers l'éditeur, la photo est alors gardée dans
+     le compte lui-même — réduite pour y tenir. */
+  assert.match(photo, /statut\s*!==\s*503[\s\S]{0,200}photoDeRepli/,
+    'un stockage inactif doit conduire au repli, et lui seul');
+  assert.match(envoi, /erreur\.statut\s*=\s*reponse\.status/,
+    "sans le code HTTP, on ne peut pas distinguer « pas activé » d'une vraie panne");
+
+  /* Les métadonnées du compte sont recopiées dans le jeton d'accès, et
+     ce jeton part en en-tête à chaque requête. Une photo trop lourde
+     rendrait l'en-tête plus gros que ce que les serveurs acceptent. */
+  /* La boucle qui fait tenir la photo vit dans js/photo.js, où elle
+     s'éprouve pour de bon — poids par poids, sans toile ni navigateur.
+     Ici on vérifie seulement que le repli s'en sert et qu'il traite le
+     cas où rien ne rentre. */
+  const repli = corps('photoDeRepli');
+  assert.match(repli, /ajusterAuBudget\(/,
+    'le repli doit passer par la fonction éprouvée, pas refaire sa boucle');
+  assert.match(repli, /budget:\s*POIDS_REPLI_MAX/,
+    'le budget doit être celui que le jeton peut porter');
+  assert.match(repli, /if\s*\(!rendu\)[\s\S]{0,120}throw/,
+    'une photo qui ne rentre dans aucun format doit le dire, pas être enregistrée quand même');
+});
+
+test('une photo de téléphone n’est pas refusée pour son poids d’origine', () => {
+  /* Le garde-fou portait sur le fichier CHOISI, à deux mégaoctets. Une
+     photo prise avec un iPhone en pèse trois à cinq : le site la
+     refusait d'emblée, alors qu'il s'apprêtait à la réduire à quelques
+     kilooctets. On refusait une photo pour un poids qu'on allait
+     soi-même faire disparaître. */
+  const src = modules.find(m => m.nom === 'compte.js').source;
+  const ligne = src.split('\n').find(l => l.includes('const TAILLE_PHOTO_MAX'));
+  assert.ok(ligne, 'la borne a disparu');
+
+  const mo = Number((ligne.match(/(\d+)\s*\*\s*1024\s*\*\s*1024/) || [])[1]);
+  assert.ok(mo >= 10,
+    `la borne est à ${mo} Mo : une photo de téléphone n'y entre pas`);
 });
 
 test('une photo inaffichable ne condamne pas le choix de couleur', () => {
@@ -477,11 +515,14 @@ test('le monogramme fourni par Google ne tient pas lieu de photo', () => {
   /* Ne plus lire « picture » dans les métadonnées ne suffisait pas : une
      version précédente l'avait recopié dans profils.avatar_url, d'où il
      revenait à chaque ouverture de session. Il faut donc reconnaître
-     une vraie photo à son adresse — la nôtre, dans notre compartiment. */
-  assert.match(src, /estPhotoDeposee\s*=\s*url\s*=>/,
-    "il faut savoir distinguer une photo déposée d'une image fournie par le compte");
-  assert.match(src, /storage\\\/v1\\\/object\\\/public\\\/avatars/,
-    'la reconnaissance doit porter sur notre compartiment de stockage');
+     une vraie photo à son adresse.
+
+     La règle elle-même vit dans js/photo.js et s'éprouve dans
+     tests/photo.test.mjs, cas par cas. Ici, on vérifie seulement
+     qu'auth.js s'en sert à chacun des deux endroits où une photo peut
+     entrer. */
+  assert.match(src, /estPhotoDeposee[\s\S]{0,40}from '\.\/photo\.js'/,
+    "auth.js doit s'appuyer sur la règle commune, pas en redéfinir une");
 
   for (const source of ['m.avatar_url', 'data.avatar_url']) {
     const ligne = src.split('\n').find(l => l.includes('session.avatar =') && l.includes(source));
