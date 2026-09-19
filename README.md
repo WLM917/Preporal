@@ -141,10 +141,20 @@ renvoie vers **Mes simulations passées**, qui reste dans Mon espace : chaque li
 s'y rouvre avec les questions posées, les réponses données et la correction
 complète de l'examinateur.
 
-Ce détail est conservé **dans le navigateur uniquement**. La synchronisation
-Supabase ne transporte que des métadonnées de progression (type d'oral, date,
-notes), conformément à la politique de confidentialité : ni les réponses, ni les
-documents déposés ne quittent l'appareil.
+Ce détail est rattaché **au compte**, pas à l'appareil : se connecter depuis un
+autre téléphone, une tablette ou un ordinateur rend les simulations passées
+relisibles en entier, pas seulement leur note. Les questions posées, les
+réponses et la correction remontent donc dans Supabase, à hauteur de huit mille
+caractères par réponse — une dizaine de minutes de parole — et de quarante
+réponses par simulation.
+
+Ce qui ne remonte pas, et ne remontera pas : **le fichier de CV, le sujet déposé
+et l'audio**. Ils sont lus dans le navigateur, servent à produire les questions,
+et s'arrêtent là. La politique de confidentialité dit exactement cela.
+
+« Tout effacer », dans Mes simulations passées, efface les deux côtés. Un
+effacement qui ne toucherait que le navigateur serait un mensonge : les
+simulations reviendraient au rechargement suivant.
 
 ---
 

@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG } from './config.js';
-import { fusionnerHistoriques } from './fusion.js';
+import { fusionnerHistoriques, bornerDetail } from './fusion.js';
 import { typeTraduit } from './catalogue.js';
 import { $, stock, echappe, toast, couleurNote, jeton } from './ui.js';
 import { supabase, session } from './auth.js';
@@ -37,21 +37,14 @@ export async function enregistrerSimulation(entree) {
     details: entree.details || [],
 
     /* Questions posées, réponses données et correction complète.
-       Conservés dans ce navigateur uniquement : c'est ce qui permet
-       de rouvrir une simulation passée et de tout relire. Rien de
-       tout cela ne part sur le serveur — la synchronisation
-       n'envoie que des métadonnées de progression, conformément à
-       la politique de confidentialité. */
-    reponses: (entree.reponses || []).map(r => ({
-      question: r.question,
-      categorie: r.categorie || '',
-      texte: r.texte || '',
-      duree: r.duree || 0,
-      dureeParole: r.dureeParole || 0
-    })),
-    eloquenceDetail: entree.eloquenceDetail || null,
-    tempsTotal: entree.tempsTotal || 0,
-    verdict: entree.verdict || ''
+       Elles suivent le COMPTE, pas l'appareil : se connecter depuis
+       un autre téléphone doit rendre la simulation relisible en
+       entier, pas seulement sa note.
+
+       Ce qui ne remonte toujours pas : le fichier de CV, le sujet
+       déposé, l'audio. Lus dans le navigateur, ils servent à
+       produire les questions et s'arrêtent là. */
+    ...bornerDetail(entree)
   };
 
   const liste = [ligne, ...lireHistorique()].slice(0, MAX);
@@ -67,7 +60,12 @@ export async function enregistrerSimulation(entree) {
         score: ligne.score,
         eloquence: ligne.eloquence,
         nb_questions: ligne.nbQuestions,
-        criteres: ligne.criteres
+        criteres: ligne.criteres,
+        reponses: ligne.reponses,
+        eloquence_detail: ligne.eloquenceDetail,
+        verdict: ligne.verdict,
+        temps_total: ligne.tempsTotal,
+        details: ligne.details
       });
     } catch (e) { console.warn('Historique non synchronisé', e); }
   }
@@ -81,7 +79,7 @@ export async function chargerDepuisServeur() {
   try {
     const { data } = await supabase
       .from('simulations')
-      .select('id, cree_le, type_id, sous_choix, score, eloquence, nb_questions, criteres')
+      .select('id, cree_le, type_id, sous_choix, score, eloquence, nb_questions, criteres, reponses, eloquence_detail, verdict, temps_total, details')
       .eq('utilisateur_id', session.id)
       .order('cree_le', { ascending: false })
       .limit(MAX);
@@ -90,7 +88,14 @@ export async function chargerDepuisServeur() {
     const distant = data.map(d => ({
       id: d.id, date: d.cree_le, typeId: d.type_id, sousChoix: d.sous_choix,
       score: d.score, eloquence: d.eloquence, nbQuestions: d.nb_questions,
-      criteres: d.criteres || {}, details: []
+      criteres: d.criteres || {},
+      // Le détail vient de la base : c'est lui qui rend la simulation
+      // relisible depuis un appareil où elle n'a pas eu lieu.
+      reponses: Array.isArray(d.reponses) ? d.reponses : [],
+      eloquenceDetail: d.eloquence_detail || null,
+      verdict: d.verdict || '',
+      tempsTotal: d.temps_total || 0,
+      details: Array.isArray(d.details) ? d.details : []
     }));
 
     /* On FUSIONNE, on n'écrase pas.
@@ -190,8 +195,22 @@ function courbe(points) {
 }
 
 export function brancherHistorique() {
-  $('#btn-vider-historique')?.addEventListener('click', () => {
+  $('#btn-vider-historique')?.addEventListener('click', async () => {
     if (!confirm(t('hist.vider_confirmer', 'Effacer définitivement toutes vos simulations enregistrées ?'))) return;
+
+    /* Le vidage ne touchait que ce navigateur. Depuis que
+       l'historique suit le compte, cela ne l'effaçait donc pas : il
+       revenait au rechargement suivant, et le bouton mentait. */
+    if (supabase && session.id) {
+      const { error } = await supabase.from('simulations')
+        .delete().eq('utilisateur_id', session.id);
+      if (error) {
+        console.warn('Historique non effacé en base', error);
+        return toast(t('hist.vider_echec',
+          "L'historique n'a pas pu être effacé. Réessayez dans un instant."), 'erreur');
+      }
+    }
+
     stock.supprimer(CONFIG.cles.historique);
     rendreHistorique();
     toast(t('hist.vide', 'Historique effacé.'));

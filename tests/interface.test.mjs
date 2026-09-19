@@ -1085,3 +1085,67 @@ test('le mode oral offre un retour trouvable et atteignable', () => {
   assert.match(panneau, /overflow-y-auto/,
     'sans défilement, un écran trop court rend le bouton injoignable');
 });
+
+test("l'historique appartient au compte, pas à l'appareil", () => {
+  /* « Moi je veux que la simulation soit enregistrée sur le compte.
+     Pas sur l'appareil. » Se connecter depuis un autre téléphone doit
+     rendre la simulation relisible en entier, pas seulement sa note. */
+  const src = modules.find(m => m.nom === 'history.js').source;
+  const DETAIL = ['reponses', 'eloquence_detail', 'verdict', 'temps_total', 'details'];
+
+  const insertion = src.slice(src.indexOf("from('simulations').insert("), src.indexOf('});', src.indexOf("from('simulations').insert(")));
+  for (const colonne of DETAIL) {
+    assert.match(insertion, new RegExp(`\\b${colonne}\\s*:`),
+      `« ${colonne} » doit remonter en base, sinon la simulation n'est relisible que sur cet appareil`);
+  }
+  assert.match(insertion, /bornerDetail|ligne\.reponses/,
+    'le détail envoyé doit être celui qui a été borné');
+
+  const lecture = src.slice(src.indexOf('.select('), src.indexOf(')', src.indexOf('.select(')));
+  for (const colonne of DETAIL) {
+    assert.ok(lecture.includes(colonne),
+      `« ${colonne} » doit être relu, sinon il repart aussitôt effacé par la fusion`);
+  }
+});
+
+test("« Tout effacer » efface aussi sur le serveur", () => {
+  /* Le vidage ne touchait que ce navigateur. Depuis que l'historique
+     suit le compte, l'effacer localement ne l'efface pas : il revient
+     au rechargement suivant, et le bouton ment. */
+  const src = modules.find(m => m.nom === 'history.js').source;
+  const debut = src.indexOf('export function brancherHistorique');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  assert.match(corps, /from\('simulations'\)[\s\S]{0,60}\.delete\(\)/,
+    'sans suppression en base, le bouton ne fait que cacher');
+  assert.match(corps, /eq\('utilisateur_id'/,
+    "on n'efface que les simulations du compte connecté");
+  assert.match(corps, /if \(error\)[\s\S]{0,200}return/,
+    'un échec en base ne doit pas faire croire que c\'est effacé');
+});
+
+test("les mentions de confidentialité disent ce qui est vraiment gardé", () => {
+  /* Elles promettaient que les réponses ne quittaient jamais
+     l'appareil. Ce n'est plus vrai : elles suivent le compte. Un
+     document juridique qui ment est pire qu'un bug. */
+  const legal = modules.find(m => m.nom === 'legal.js').source;
+
+  assert.doesNotMatch(legal, /notes et réponses ne sont pas conservés/,
+    'les réponses SONT conservées désormais : la phrase doit changer');
+  assert.doesNotMatch(legal, /contenu de vos réponses n'y est pas enregistré/,
+    'cette promesse est devenue fausse');
+  assert.match(legal, /vos réponses et la correction associée/,
+    'il faut énoncer ce qui est gardé');
+  assert.match(legal, /effacés avec lui|supprimer à tout moment/,
+    'et dire comment s\'en débarrasser');
+
+  // Ce qui reste vrai doit rester dit : le CV ne remonte toujours pas.
+  assert.match(legal, /jamais téléversés sur nos serveurs/,
+    'les fichiers déposés ne remontent toujours pas');
+
+  for (const langue of ['en', 'es']) {
+    const dict = readFileSync(join(RACINE, 'js', 'langues', `${langue}.js`), 'utf8');
+    assert.doesNotMatch(dict, /answers are not kept|respuestas no se conservan/,
+      `${langue}.js : la promesse devenue fausse est encore traduite`);
+  }
+});

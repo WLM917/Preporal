@@ -116,3 +116,52 @@ test('rien à fusionner ne casse rien', () => {
   assert.deepEqual(fusionnerHistoriques(), []);
   assert.deepEqual(fusionnerHistoriques([], []), []);
 });
+
+/* ═══ Ce qui part en base ════════════════════════════════════ */
+
+import { bornerDetail } from '../js/fusion.js';
+
+test('une réponse démesurée est coupée avant de partir', () => {
+  /* Le champ de réponse est libre : rien n'empêche d'y coller un
+     roman. C'est la base du service qui le porterait ensuite, et le
+     réseau qui le relirait à chaque ouverture de l'historique. */
+  const r = bornerDetail({ reponses: [{ question: 'Q', texte: 'x'.repeat(50_000) }] });
+
+  assert.ok(r.reponses[0].texte.length <= 8_000,
+    `coupée à ${r.reponses[0].texte.length} caractères : la borne ne tient pas`);
+  assert.ok(r.reponses[0].texte.length >= 8_000 - 1,
+    'et pas plus court que nécessaire : une réponse longue reste lisible');
+});
+
+test('une réponse normale n’est pas touchée', () => {
+  const texte = 'Ma réponse, environ trois cents mots. ' .repeat(20);
+  const r = bornerDetail({ reponses: [{ question: 'Q', texte }] });
+  assert.equal(r.reponses[0].texte, texte, 'aucune troncature sur un usage réel');
+});
+
+test('le nombre de réponses est borné lui aussi', () => {
+  const beaucoup = Array.from({ length: 200 }, (_, i) => ({ question: 'Q' + i, texte: 'r' }));
+  assert.equal(bornerDetail({ reponses: beaucoup }).reponses.length, 40);
+});
+
+test('le détail garde tout ce qui rend une simulation relisible', () => {
+  const r = bornerDetail({
+    reponses: [{ question: 'Présentez-vous', categorie: 'Parcours', texte: 'Voici', duree: 90, dureeParole: 70 }],
+    eloquenceDetail: { debit: 140 }, verdict: 'Vous y êtes presque',
+    tempsTotal: 400, details: ['a', 'b']
+  });
+
+  assert.deepEqual(r.reponses[0],
+    { question: 'Présentez-vous', categorie: 'Parcours', texte: 'Voici', duree: 90, dureeParole: 70 });
+  assert.deepEqual(r.eloquenceDetail, { debit: 140 });
+  assert.equal(r.verdict, 'Vous y êtes presque');
+  assert.equal(r.tempsTotal, 400);
+  assert.deepEqual(r.details, ['a', 'b']);
+});
+
+test('une entrée vide ne fait pas tomber le bornage', () => {
+  const r = bornerDetail();
+  assert.deepEqual(r.reponses, []);
+  assert.equal(r.verdict, '');
+  assert.equal(r.eloquenceDetail, null);
+});

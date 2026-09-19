@@ -1,21 +1,17 @@
 /* ═══════════════════════════════════════════════════════════
-   fusion.js — réunir l'historique local et l'historique distant
+   fusion.js — les règles pures de l'historique
 
-   Les deux ne disent pas la même chose. Le serveur garde une
-   trace de progression : type d'oral, note, critères, nombre de
-   questions. Il ne garde ni les questions posées, ni les
-   réponses, ni la correction — c'est délibéré, et la politique
-   de confidentialité le promet.
+   Réunir le local et le distant, et borner ce qui part en base.
 
-   Le détail, lui, ne vit que dans le navigateur où la simulation
-   a eu lieu.
+   L'historique appartient au compte : questions posées, réponses
+   données et correction remontent en base, et se retrouvent
+   depuis n'importe quel appareil.
 
-   La synchronisation écrasait simplement le local par le
-   distant. Le détail était donc bien enregistré, puis effacé à
-   la première relecture de l'historique : rouvrir une simulation
-   ne montrait plus qu'une note, sous un message affirmant
-   qu'elle était « antérieure à l'ajout de la relecture ». Elle
-   datait de trois minutes.
+   Le local reste une copie d'avance — il s'affiche sans attendre
+   le réseau, et garde ce qui n'a pas encore pu remonter. Les deux
+   listes se réunissent donc au lieu que l'une écrase l'autre : la
+   synchronisation remplaçait le local par le distant, et le
+   détail disparaissait à la première relecture.
    ═══════════════════════════════════════════════════════════ */
 
 /* Les identifiants ne peuvent pas servir de clé : le navigateur pose
@@ -62,4 +58,38 @@ export function fusionnerHistoriques(locales = [], distantes = [], max = 60) {
   return [...fusion, ...restantes]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, max);
+}
+
+
+/* ── Ce qui part en base ────────────────────────────────────
+   Une réponse dictée fait quelques centaines de mots. Rien
+   n'empêche pourtant d'en coller cinquante mille : le champ est
+   libre, et c'est la base du service qui le porterait ensuite à
+   chaque relecture. On borne donc, largement — huit mille
+   caractères, soit une dizaine de minutes de parole — plutôt que
+   de découvrir la limite le jour où elle coûte cher. */
+const CARACTERES_MAX = 8_000;
+const REPONSES_MAX = 40;
+
+const couper = (v, max = CARACTERES_MAX) =>
+  typeof v === 'string' && v.length > max ? v.slice(0, max) : v;
+
+/**
+ * Le détail d'une simulation, ramené à une taille raisonnable.
+ * @param {object} entree
+ */
+export function bornerDetail(entree = {}) {
+  return {
+    reponses: (entree.reponses || []).slice(0, REPONSES_MAX).map(r => ({
+      question: couper(r.question),
+      categorie: couper(r.categorie || '', 120),
+      texte: couper(r.texte || ''),
+      duree: r.duree || 0,
+      dureeParole: r.dureeParole || 0
+    })),
+    eloquenceDetail: entree.eloquenceDetail || null,
+    verdict: couper(entree.verdict || ''),
+    tempsTotal: entree.tempsTotal || 0,
+    details: (entree.details || []).slice(0, REPONSES_MAX)
+  };
 }
