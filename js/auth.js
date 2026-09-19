@@ -59,6 +59,20 @@ export function nomAffiche() {
  */
 export const nomComplet = () => nomAffiche();
 
+/* ── Ce qui compte comme photo de profil ────────────────────
+   Une photo de profil est celle que le candidat a déposée : elle vit
+   dans notre compartiment Supabase, et son adresse le dit.
+
+   Tout le reste n'en est pas une. Au premier chef le monogramme que
+   Google fabrique pour un compte sans photo — la première lettre du
+   prénom sur un fond terne — qu'une version précédente recopiait dans
+   « profils.avatar_url ». Ne plus le lire dans les métadonnées ne
+   suffisait donc pas : il revenait de la base à chaque ouverture, en
+   grand au milieu de la page, et la couleur choisie restait invisible
+   puisqu'une image la recouvrait. */
+const ADRESSE_PHOTO_DEPOSEE = /\/storage\/v1\/object\/public\/avatars\//;
+export const estPhotoDeposee = url => ADRESSE_PHOTO_DEPOSEE.test(String(url || ''));
+
 /* ── Erreurs renvoyées par les liens Supabase ───────────────
    Un lien de connexion périmé, déjà cliqué, ou pré-chargé par un
    antivirus de messagerie ne ramène pas une session : il ramène
@@ -166,7 +180,7 @@ async function appliquerSession(s) {
        silhouette et la couleur choisie qui s'affichent. */
     // Nouvelle session, nouvelle chance : la photo n'est plus réputée cassée.
     photoCassee = false;
-    session.avatar = m.avatar_url || '';
+    session.avatar = estPhotoDeposee(m.avatar_url) ? m.avatar_url : '';
     session.pseudo = (m.pseudo || '').trim();
     session.couleur = m.couleur || '';
     await chargerProfil();
@@ -205,7 +219,7 @@ async function chargerProfil() {
          autre appareil, retrouve ainsi ses réglages. */
       session.pseudo = session.pseudo || data.pseudo || '';
       session.couleur = session.couleur || data.couleur || '';
-      session.avatar = session.avatar || data.avatar_url || '';
+      session.avatar = session.avatar || (estPhotoDeposee(data.avatar_url) ? data.avatar_url : '');
     }
   } catch (e) { console.warn('Profil non chargé', e); }
 }
