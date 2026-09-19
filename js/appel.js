@@ -167,41 +167,48 @@ export function ouvrirAppel({ titre, sousTitre = '', ...options }) {
 
   const panneau = document.createElement('div');
   panneau.id = 'panneau-appel';
-  /* « place-items-center » centre la carte, mais sur un téléphone tenu
-     à l'horizontale elle est plus haute que l'écran : le bas déborde, et
-     rien ne défile — le bouton de sortie devient injoignable. Mesuré à
-     844×390 : il tombait à 394 px pour une vue de 390.
+  /* Trois exigences qui se contredisent facilement : la carte reste
+     compacte, elle est centrée, et elle demeure entièrement atteignable
+     sur un écran trop court.
 
-     « overflow-y-auto » rend la main, et « my-auto » garde le centrage
-     tant que la place suffit. */
-  panneau.className = 'modale fixed inset-0 z-[60] flex justify-center overflow-y-auto bg-ink/90 p-4 backdrop-blur';
+     « flex » seul ne suffit pas : align-items vaut « stretch » par
+     défaut, et la carte s'étire sur toute la hauteur — invisible dans
+     Chromium, flagrant dans Safari, qui l'a étirée d'un bord à l'autre
+     de l'iPad.
+
+     D'où ce montage : le panneau défile, une enveloppe interne d'au
+     moins une hauteur d'écran centre la carte tant que la place suffit,
+     et grandit au-delà plutôt que de rogner le haut. */
+  panneau.className = 'modale fixed inset-0 z-[60] overflow-y-auto bg-ink/90 backdrop-blur';
   panneau.setAttribute('role', 'dialog');
   panneau.setAttribute('aria-modal', 'true');
   panneau.setAttribute('aria-label', titre);
 
   panneau.innerHTML = `
-    <div class="entree my-auto w-full max-w-md rounded-3xl border border-line bg-surface p-7 text-center shadow-carte">
-      <p class="font-display text-lg font-extrabold">${echappe(titre)}</p>
-      ${sousTitre ? `<p class="mt-1 text-sm text-muted">${echappe(sousTitre)}</p>` : ''}
+    <div class="flex min-h-full items-center justify-center p-4">
+    <div class="entree w-full max-w-sm rounded-3xl border border-line bg-surface p-6 text-center shadow-carte">
+      <p class="font-display text-base font-extrabold">${echappe(titre)}</p>
+      ${sousTitre ? `<p class="mt-1 text-xs text-muted">${echappe(sousTitre)}</p>` : ''}
 
-      <div class="mt-8 flex h-16 items-center justify-center gap-1.5" aria-hidden="true">
+      <div class="mt-5 flex h-10 items-center justify-center gap-1.5" aria-hidden="true">
         ${[0, 1, 2, 3, 4].map(ONDE).join('')}
       </div>
 
-      <p id="appel-etat" class="mt-6 font-medium" role="status">${echappe(t('appel.connexion', 'Connexion…'))}</p>
-      <p id="appel-apercu" class="mt-2 min-h-[3rem] text-sm italic leading-relaxed text-muted"></p>
+      <p id="appel-etat" class="mt-4 text-sm font-medium" role="status">${echappe(t('appel.connexion', 'Connexion…'))}</p>
+      <p id="appel-apercu" class="mt-2 min-h-[2.5rem] text-xs italic leading-relaxed text-muted"></p>
 
       <!-- Ce bouton ne met pas fin à l'oral : il repasse à l'écrit, à la
            même question, sans rien perdre. Il s'appelait « Raccrocher »,
            ce qui se lit « j'arrête tout » — on ne le trouvait donc pas
            quand on cherchait comment revenir. -->
       <button id="appel-raccrocher" type="button"
-        class="mt-7 inline-flex items-center gap-2 rounded-xl bg-inverse px-6 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90">
+        class="mt-5 inline-flex items-center gap-2 rounded-xl bg-inverse px-5 py-2.5 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>
         </svg>
         <span>${echappe(t('appel.repasser_ecrit', "Repasser à l'écrit"))}</span>
       </button>
+    </div>
     </div>`;
 
   document.body.appendChild(panneau);

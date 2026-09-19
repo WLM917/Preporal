@@ -1093,13 +1093,25 @@ test("l'historique appartient au compte, pas à l'appareil", () => {
   const src = modules.find(m => m.nom === 'history.js').source;
   const DETAIL = ['reponses', 'eloquence_detail', 'verdict', 'temps_total', 'details'];
 
-  const insertion = src.slice(src.indexOf("from('simulations').insert("), src.indexOf('});', src.indexOf("from('simulations').insert(")));
+  const debutRemontee = src.indexOf('async function remonter');
+  assert.ok(debutRemontee > -1, 'la remontée en base a disparu');
+  const remontee = src.slice(debutRemontee, src.indexOf('\n}', debutRemontee));
+
   for (const colonne of DETAIL) {
-    assert.match(insertion, new RegExp(`\\b${colonne}\\s*:`),
+    assert.match(remontee, new RegExp(`\\b${colonne}\\s*:`),
       `« ${colonne} » doit remonter en base, sinon la simulation n'est relisible que sur cet appareil`);
   }
-  assert.match(insertion, /bornerDetail|ligne\.reponses/,
-    'le détail envoyé doit être celui qui a été borné');
+  assert.match(remontee, /ligne\.reponses/,
+    'le détail envoyé doit être celui qui a été borné à l\'enregistrement');
+
+  /* Les cinq colonnes ont été ajoutées après coup. Tant que le schéma
+     n'est pas à jour, PostgREST refuse la ligne ENTIÈRE — pas seulement
+     les colonnes inconnues. Le premier jet ne le prévoyait pas : plus
+     aucune simulation ne remontait, pas même sa note. */
+  assert.match(remontee, /colonneAbsente\(/,
+    'une colonne manquante doit être reconnue, pas confondue avec une panne');
+  assert.match(remontee, /insert\(base\)/,
+    'sans les colonnes de détail, la note doit remonter quand même');
 
   const lecture = src.slice(src.indexOf('.select('), src.indexOf(')', src.indexOf('.select(')));
   for (const colonne of DETAIL) {
@@ -1148,4 +1160,51 @@ test("les mentions de confidentialité disent ce qui est vraiment gardé", () =>
     assert.doesNotMatch(dict, /answers are not kept|respuestas no se conservan/,
       `${langue}.js : la promesse devenue fausse est encore traduite`);
   }
+});
+
+test("chaque simulation peut être effacée individuellement", () => {
+  /* Une simulation dont le détail a été perdu avant le correctif ne
+     peut pas être réparée. La seule chose honnête est de permettre de
+     la retirer, plutôt que de la laisser afficher « détail non
+     conservé » pour toujours. */
+  const src = modules.find(m => m.nom === 'history.js').source;
+
+  assert.match(src, /data-effacer="\$\{s\.id\}"/,
+    'chaque ligne doit porter son propre bouton d\'effacement');
+
+  const debut = src.indexOf('async function effacerUne');
+  assert.ok(debut > -1, 'effacerUne a disparu');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  /* La présence du mot « confirm » ne prouve rien : un « if (false &&
+     !confirm(…)) » le garde et neutralise la garde. On exige la forme
+     qui arrête réellement. */
+  assert.match(corps, /if \(!confirm\([\s\S]{0,160}?\)\) return;/,
+    'un effacement définitif doit être arrêté net par un refus');
+  assert.match(corps, /from\('simulations'\)[\s\S]{0,40}\.delete\(\)/,
+    'effacer localement ne suffit pas : la ligne reviendrait du serveur');
+  assert.match(corps, /eq\('utilisateur_id', session\.id\)/,
+    "on n'efface que dans son propre compte");
+  assert.match(corps, /if \(error\)[\s\S]{0,200}return/,
+    "un échec ne doit pas faire croire que c'est effacé");
+  assert.match(corps, /filter\(s => s\.id !== id\)/,
+    'la ligne doit aussi disparaître du navigateur');
+});
+
+test("la carte du mode oral reste compacte et centrée", () => {
+  /* Elle s'étirait sur toute la hauteur de l'iPad : « flex » sans
+     « items-center » laisse align-items à « stretch ». Invisible dans
+     Chromium, flagrant dans Safari. */
+  const src = modules.find(m => m.nom === 'appel.js').source;
+
+  const panneau = src.slice(src.indexOf("panneau.className ="), src.indexOf('\n', src.indexOf("panneau.className =")));
+  assert.match(panneau, /overflow-y-auto/,
+    'sans défilement, un écran trop court rend le bouton injoignable');
+  assert.doesNotMatch(panneau, /\bflex\b|\bgrid\b/,
+    'le panneau doit rester un simple bloc défilant : centrer ici rogne le haut');
+
+  assert.match(src, /flex min-h-full items-center justify-center/,
+    "l'enveloppe doit centrer sans étirer, et grandir plutôt que rogner");
+  assert.match(src, /class="entree w-full max-w-sm/,
+    'la carte doit rester un rectangle compact');
 });
