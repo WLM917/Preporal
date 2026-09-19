@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════
    POST /api/create-checkout-session
    Entrée : { plan: 'mensuel' | 'pass48' | 'extra', userId?,
-              origine?, langue? }
+              origine?, langue?, retour? }
    Sortie : { url }  → le navigateur est redirigé vers Stripe
    ═══════════════════════════════════════════════════════════ */
 
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
   try {
     const stripe = new Stripe(cle, { apiVersion: '2024-06-20' });
-    const { plan = 'mensuel', userId, origine, langue = 'fr' } = req.body || {};
+    const { plan = 'mensuel', userId, origine, langue = 'fr', retour } = req.body || {};
 
     const config = PLANS[plan];
     if (!config) return res.status(400).json({ erreur: 'Offre inconnue.' });
@@ -44,6 +44,25 @@ export default async function handler(req, res) {
     const identifiant = utilisateur?.id || userId || null;
 
     const base = process.env.URL_PUBLIQUE || origine || `https://${req.headers.host}`;
+
+    /* Où revenir en quittant la page de paiement. Stripe affiche en haut
+       un bouton de retour vers le site : il ramenait toujours à
+       l'accueil, alors qu'on venait d'ouvrir les offres depuis « Mon
+       espace » ou depuis le simulateur.
+
+       Le chemin vient du navigateur, donc on le borne : un chemin
+       absolu de ce site, et rien d'autre. « //ailleurs.fr » est une URL
+       protocole-relative — elle ressemble à un chemin et mène dehors.
+
+       La chaîne de requête est admise : « /index.html?vue=compte » est
+       un chemin courant du site. L'ancre ne l'est pas, elle ne sert à
+       rien ici, et l'espace non plus. */
+    const cheminSur = valeur => {
+      const c = String(valeur || '');
+      return /^\/(?![/\\])[^\s\\#]*$/.test(c) ? c : '/';
+    };
+    const chemin = cheminSur(retour);
+    const separateur = chemin.includes('?') ? '&' : '?';
 
     /* Le diagnostic ci-dessous a besoin du client et de l'offre. */
     diagnostic = { stripe, priceId, config };
@@ -82,8 +101,8 @@ export default async function handler(req, res) {
       locale: ['fr', 'en', 'es'].includes(langue) ? langue : 'auto',
       billing_address_collection: 'auto',
       automatic_tax: { enabled: process.env.STRIPE_TVA_AUTO === 'true' },
-      success_url: `${base}/?paiement=ok&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${base}/?paiement=annule`
+      success_url: `${base}${chemin}${separateur}paiement=ok&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${base}${chemin}${separateur}paiement=annule`
     });
 
     return res.status(200).json({ url: session.url, id: session.id });

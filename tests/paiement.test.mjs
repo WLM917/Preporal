@@ -163,3 +163,36 @@ test("l'adresse de facturation n'écrase pas celle du compte", () => {
   assert.ok(!/email: s\.customer_details\?\.email/.test(src),
     "le courriel saisi chez Stripe ne doit pas être écrit dans le profil");
 });
+
+test('quitter la page de paiement ramène là où on était', async () => {
+  /* Le bouton de retour de Stripe ramenait toujours à l'accueil, même
+     quand les offres avaient été ouvertes depuis « Mon espace ». */
+  globalThis.__stripeDouble.typeDePrix = 'recurring';
+  const { session } = await appeler({ plan: 'extra', retour: '/compte.html' });
+  assert.match(session.cancel_url, /\/compte\.html\?paiement=annule$/);
+  assert.match(session.success_url, /\/compte\.html\?paiement=ok&plan=extra/);
+});
+
+test("un chemin de retour qui mène ailleurs est refusé", async () => {
+  /* Le chemin vient du navigateur. « //ailleurs.fr » ressemble à un
+     chemin absolu mais c'est une URL protocole-relative : elle mène
+     hors du site. Un retour de paiement qui atterrit chez un tiers
+     serait une porte ouverte à l'hameçonnage. */
+  globalThis.__stripeDouble.typeDePrix = 'recurring';
+  for (const mauvais of ['//ailleurs.fr', 'https://ailleurs.fr', '/\\ailleurs.fr',
+                         'compte.html', '', null, '/page#ancre', '/page avec espace']) {
+    const { session } = await appeler({ plan: 'extra', retour: mauvais });
+    for (const url of [session.cancel_url, session.success_url]) {
+      assert.ok(!/ailleurs\.fr/.test(url), `« ${mauvais} » a traversé : ${url}`);
+      assert.match(url, /^https:\/\/www\.oralixia\.com\//,
+        `« ${mauvais} » doit retomber sur le site : ${url}`);
+    }
+  }
+});
+
+test('un chemin de retour qui porte déjà des paramètres reste valable', async () => {
+  globalThis.__stripeDouble.typeDePrix = 'recurring';
+  const { session } = await appeler({ plan: 'extra', retour: '/index.html?vue=compte' });
+  assert.match(session.cancel_url, /\/index\.html\?vue=compte&paiement=annule$/,
+    'le second paramètre doit être ajouté avec &, pas avec un deuxième ?');
+});

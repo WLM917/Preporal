@@ -129,6 +129,13 @@ export function ouvrirPaywall(raison = 'quota') {
   ouvrirModale('modal-paywall');
 }
 
+/** Chemin courant, débarrassé des traces d'un paiement précédent. */
+function pageDeRetour() {
+  const url = new URL(window.location.href);
+  ['paiement', 'plan', 'session_id'].forEach(c => url.searchParams.delete(c));
+  return url.pathname + (url.searchParams.toString() ? '?' + url.searchParams : '');
+}
+
 /* ── Déclaration d'âge, exigée avant tout paiement ──────────── */
 
 /** Met la case en évidence, et la ramène sous les yeux. */
@@ -186,6 +193,11 @@ export async function lancerCheckout(planId) {
         plan: planId,
         userId: session.id || undefined,
         origine: window.location.origin,
+        /* La page d'où l'on part, pour y revenir. Le bouton de retour
+           de Stripe ramenait à l'accueil, même venu de « Mon espace ».
+           Les paramètres d'un paiement précédent sont retirés : ils
+           relanceraient la confirmation au retour. */
+        retour: pageDeRetour(),
         // La page de paiement fait partie du site : elle s'ouvre
         // dans la langue choisie, pas systématiquement en français.
         langue: langue()

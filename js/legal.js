@@ -136,6 +136,26 @@ export function verifierMentions() {
     .filter(([, v]) => !String(v || '').trim())
     .map(([k]) => k);
 
+  /* Cet avertissement s'adresse à l'éditeur du site, pas à ses
+     visiteurs : c'est à lui de compléter ses mentions, et un candidat
+     venu s'entraîner n'a rien à faire de cette liste au bas de chaque
+     page. Il part donc dans la console, où l'éditeur le retrouve, et
+     réapparaît dans la page si ORALIXIA_ENV.AFFICHER_ALERTE_MENTIONS
+     vaut true.
+
+     Il ne disparaît pas pour autant : les mentions légales restent
+     obligatoires avant toute vente (art. L111-1 s. du code de la
+     consommation), et le README le rappelle. */
+  console.warn(
+    'Mentions légales incomplètes : ' + manquantes.join(', ') +
+    '. Complétez window.ORALIXIA_ENV dans index.html avant de vendre ' +
+    '(art. L111-1 s. du code de la consommation).');
+
+  if (!(window.ORALIXIA_ENV || {}).AFFICHER_ALERTE_MENTIONS) {
+    alerte.classList.add('hidden');
+    return;
+  }
+
   alerte.classList.remove('hidden');
   alerte.innerHTML =
     `<strong>${t('legal.alerte.titre', "Configuration incomplète — ne pas mettre en vente en l'état.")}</strong> ` +

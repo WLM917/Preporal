@@ -377,16 +377,36 @@ test("un enregistrement qui échoue rend la main et dit pourquoi", () => {
   };
 
   const infos = corps('enregistrerInfos');
-  assert.match(infos, /finally\s*\{[^}]*disabled\s*=\s*false/,
-    'le bouton doit être réactivé dans un finally, sinon une exception le bloque');
+  /* La propriété qui compte : le bouton redevient utilisable sur les
+     DEUX chemins, succès comme échec. Peu importe que ce soit un
+     finally ou deux branches — la version précédente de ce test
+     exigeait le mot-clé, et serait devenue rouge sur un code correct. */
+  const reactivations = [...infos.matchAll(/disabled\s*=\s*false/g)].length;
+  assert.ok(reactivations >= 1,
+    'le bouton doit redevenir utilisable, sinon il reste bloqué sur « Enregistrement… »');
   assert.match(infos, /catch/,
     'une exception doit devenir un message, pas une console vide');
-  assert.ok(!/textContent\s*=\s*\w+\s*\?[^:]+:\s*''/.test(infos),
-    'un échec muet est pire qu\'un échec : la raison doit s\'afficher');
+  assert.match(infos, /marquerEnregistre\(bouton\)/,
+    'le succès doit se voir sur le bouton lui-même');
+
+  const succes = corps('marquerEnregistre');
+  assert.match(succes, /disabled\s*=\s*false/,
+    'le bouton doit être rendu au candidat après un succès aussi');
+  assert.match(succes, /setTimeout/,
+    'le vert doit s\'effacer tout seul, sinon le bouton ment au prochain passage');
 
   const ecriture = corps('enregistrer');
   assert.match(ecriture, /avecDelai\s*\(/,
     'sans délai de garde, une requête qui ne revient jamais bloque le bouton');
+
+  /* L'envoi de photo souffrait du même mal, et n'était couvert par
+     aucun test : un compartiment injoignable laissait la page sur
+     « Envoi de la photo… », sans message et sans fin. */
+  const photo = corps('televerserPhoto');
+  assert.match(photo, /avecDelai\s*\(\s*supabase\.storage/,
+    "l'envoi de la photo doit avoir son propre délai de garde");
+  assert.match(photo, /messageCompartiment\(/,
+    'un compartiment absent doit se dire en clair, pas en jargon de stockage');
 });
 
 test('une photo inaffichable ne condamne pas le choix de couleur', () => {
@@ -446,12 +466,25 @@ test('le monogramme fourni par Google ne tient pas lieu de photo', () => {
      s'affichait donc en grand au milieu de « Gérer mon compte », et
      verrouillait le choix de couleur au motif qu'une photo existait. */
   const src = modules.find(m => m.nom === 'auth.js').source;
-  const ligne = src.split('\n').find(l => /session\.avatar\s*=\s*m\./.test(l));
-  assert.ok(ligne, 'la reprise de la photo depuis les métadonnées a disparu');
-  assert.ok(!/m\.picture/.test(ligne),
+
+  /* Ne plus lire « picture » dans les métadonnées ne suffisait pas : une
+     version précédente l'avait recopié dans profils.avatar_url, d'où il
+     revenait à chaque ouverture de session. Il faut donc reconnaître
+     une vraie photo à son adresse — la nôtre, dans notre compartiment. */
+  assert.match(src, /estPhotoDeposee\s*=\s*url\s*=>/,
+    "il faut savoir distinguer une photo déposée d'une image fournie par le compte");
+  assert.match(src, /storage\\\/v1\\\/object\\\/public\\\/avatars/,
+    'la reconnaissance doit porter sur notre compartiment de stockage');
+
+  for (const source of ['m.avatar_url', 'data.avatar_url']) {
+    const ligne = src.split('\n').find(l => l.includes('session.avatar =') && l.includes(source));
+    assert.ok(ligne, `la reprise de la photo depuis ${source} a disparu`);
+    assert.match(ligne, /estPhotoDeposee\(/,
+      `${source} doit passer le contrôle : sinon le monogramme du compte revient`);
+  }
+
+  assert.ok(!/session\.avatar[^\n]*m\.picture/.test(src),
     "« picture » vient du fournisseur, pas du candidat : il ne doit pas devenir sa photo");
-  assert.match(ligne, /m\.avatar_url/,
-    'seule la photo déposée par le candidat fait une photo de profil');
 });
 
 test('le choix de couleur reste toujours cliquable', () => {
@@ -820,4 +853,24 @@ test("une offre reste cliquable sans la déclaration d'âge, et dit pourquoi", (
     assert.match(page, /id="bloc-confirmation-age"/, `${fichier} : bloc de la case absent`);
     assert.match(page, /id="rappel-confirmation-age"/, `${fichier} : rappel absent`);
   }
+});
+
+test("l'avertissement des mentions s'adresse à l'éditeur, pas aux visiteurs", () => {
+  /* Il listait au bas de chaque page les mentions manquantes — nom,
+     SIRET, TVA, adresse… — devant des candidats venus s'entraîner, qui
+     n'y peuvent rien. Il part désormais dans la console, où l'éditeur
+     le retrouve, et ne revient dans la page que s'il le demande.
+
+     Il ne disparaît pas : les mentions restent obligatoires avant toute
+     vente, et le message doit continuer de le dire. */
+  const src = modules.find(m => m.nom === 'legal.js').source;
+  const fn = src.slice(src.indexOf('export function verifierMentions'),
+                       src.indexOf('\n}', src.indexOf('export function verifierMentions')));
+
+  assert.match(fn, /console\.warn/, "l'éditeur doit continuer d'être averti");
+  assert.match(fn, /L111-1/, "l'avertissement doit rappeler le fondement légal");
+  assert.match(fn, /AFFICHER_ALERTE_MENTIONS/,
+    "l'éditeur doit pouvoir réafficher le bandeau dans la page");
+  assert.match(fn, /AFFICHER_ALERTE_MENTIONS[\s\S]{0,120}classList\.add\('hidden'\)/,
+    'sans ce réglage, le bandeau doit rester caché aux visiteurs');
 });

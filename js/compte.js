@@ -296,26 +296,60 @@ async function enregistrerInfos() {
   const pseudo = ($('#c-pseudo')?.value || '').trim();
 
 
-  /* try/finally : sans lui, une exception ou une requête qui ne revient
-     jamais laissait le bouton bloqué sur « Enregistrement… », désactivé,
-     sans un mot d'explication. Reproduit dans un navigateur. */
+  /* Le bouton dit lui-même où il en est : « Enregistrer », puis
+     « Enregistrement… », puis « Enregistré » en vert. Le message à côté
+     ne servait qu'à ça, et il restait affiché bien après coup. */
   if (bouton) { bouton.disabled = true; bouton.textContent = t('compte.enregistrement', 'Enregistrement…'); }
+  if (etat) etat.textContent = '';
+
   let resultat;
   try {
     resultat = await enregistrer({ prenom, nom, pseudo }, { prenom, nom, pseudo });
   } catch (e) {
     resultat = e?.message || t('compte.echec', "L'enregistrement a échoué.");
-  } finally {
-    if (bouton) { bouton.disabled = false; bouton.textContent = t('compte.enregistrer', 'Enregistrer'); }
   }
 
   const reussi = resultat === true;
-  if (etat) {
-    // Un échec muet était pire qu'un échec : on affiche toujours la raison.
-    etat.textContent = reussi ? t('compte.enregistre', 'Enregistré.') : String(resultat);
-    etat.className = 'text-sm ' + (reussi ? 'text-mint' : 'text-coral');
+  if (reussi) {
+    rafraichirEntete(); majApercuNom();
+    marquerEnregistre(bouton);
+  } else {
+    /* try/finally à la main : le bouton doit toujours redevenir
+       utilisable, y compris après une exception. */
+    if (bouton) { bouton.disabled = false; bouton.textContent = t('compte.enregistrer', 'Enregistrer'); }
+    // Un échec muet serait pire qu'un échec : on affiche toujours la raison.
+    if (etat) {
+      etat.textContent = String(resultat);
+      etat.className = 'text-sm text-coral';
+    }
   }
-  if (reussi) { rafraichirEntete(); majApercuNom(); }
+}
+
+/* Deux secondes de vert, puis le bouton reprend son libellé. */
+const CLASSES_SUCCES = ['bg-mint', 'text-ink', 'border-mint'];
+function marquerEnregistre(bouton) {
+  if (!bouton) return;
+  bouton.disabled = false;
+  bouton.textContent = t('compte.enregistre_court', 'Enregistré');
+  bouton.classList.add(...CLASSES_SUCCES);
+  clearTimeout(bouton._minuteurSucces);
+  bouton._minuteurSucces = setTimeout(() => {
+    bouton.classList.remove(...CLASSES_SUCCES);
+    bouton.textContent = t('compte.enregistrer', 'Enregistrer');
+  }, 2000);
+}
+
+/* Le stockage renvoie des messages destinés à un développeur. Celui-ci
+   revient à chaque fois que le compartiment « avatars » n'existe pas
+   encore dans Supabase — c'est la cause la plus fréquente, et la seule
+   que le candidat ne peut pas corriger lui-même. */
+function messageCompartiment(erreur) {
+  const brut = erreur?.message || String(erreur);
+  if (/bucket not found|not found/i.test(brut)) {
+    return t('compte.photo_compartiment',
+      "L'espace de stockage des photos n'est pas encore créé sur ce site. Prévenez l'éditeur.");
+  }
+  return brut;
 }
 
 async function televerserPhoto(fichier) {
@@ -340,9 +374,12 @@ async function televerserPhoto(fichier) {
     const extension = (fichier.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
     const chemin = `${session.id}/photo-${Date.now()}.${extension}`;
 
-    const { error } = await supabase.storage.from('avatars')
-      .upload(chemin, fichier, { upsert: true, contentType: fichier.type });
-    if (error) throw error;
+    /* Sans délai de garde, un compartiment absent ou injoignable laissait
+       la page sur « Envoi de la photo… » indéfiniment : aucun message,
+       aucun moyen de comprendre. */
+    const { error } = await avecDelai(supabase.storage.from('avatars')
+      .upload(chemin, fichier, { upsert: true, contentType: fichier.type }));
+    if (error) throw new Error(messageCompartiment(error));
 
     const { data } = supabase.storage.from('avatars').getPublicUrl(chemin);
     const url = data?.publicUrl;
