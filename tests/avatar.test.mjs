@@ -187,3 +187,35 @@ test('un dépôt en échec ne rend pas une fausse adresse', async () => {
   assert.equal(corps.url, undefined);
   assert.match(corps.erreur, /saturé/);
 });
+
+test('un site mal configuré ne montre pas un nom de variable au candidat', async () => {
+  /* Le message partait tel quel dans la page : « Le stockage n'est pas
+     configuré sur ce site (SUPABASE_SERVICE_ROLE_KEY manquante). »
+     Cela ne veut rien dire pour un candidat, et cela renseigne un
+     curieux sur la pile technique. */
+  const { default: handler } = await import('../api/avatar.js');
+  const avant = { url: process.env.SUPABASE_URL, cle: process.env.SUPABASE_SERVICE_ROLE_KEY };
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  const journal = [];
+  const erreurOriginale = console.error;
+  console.error = (...a) => journal.push(a.join(' '));
+
+  const res = { code: null, corps: null,
+    status(c) { this.code = c; return this; }, json(o) { this.corps = o; return this; },
+    end() { return this; } };
+  try {
+    await handler({ method: 'POST', headers: {}, body: {} }, res);
+  } finally {
+    console.error = erreurOriginale;
+    if (avant.url) process.env.SUPABASE_URL = avant.url;
+    if (avant.cle) process.env.SUPABASE_SERVICE_ROLE_KEY = avant.cle;
+  }
+
+  assert.equal(res.code, 503, 'un service non configuré est indisponible, pas en panne');
+  assert.doesNotMatch(res.corps.erreur, /SUPABASE|SERVICE_ROLE|process\.env/,
+    'aucun nom de variable ne doit atteindre la page');
+  assert.match(journal.join(' '), /SUPABASE_SERVICE_ROLE_KEY/,
+    "l'éditeur doit tout de même savoir ce qui manque, dans les journaux");
+});

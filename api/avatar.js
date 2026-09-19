@@ -123,7 +123,14 @@ export default async function handler(req, res) {
 
   const sb = supabaseAdmin();
   if (!sb) {
-    return res.status(500).json({ erreur: "Le stockage n'est pas configuré sur ce site (SUPABASE_SERVICE_ROLE_KEY manquante)." });
+    /* Le nom de la variable manquante regarde l'éditeur, pas le
+       candidat : il part dans les journaux du serveur, et la page se
+       contente d'une phrase qu'on peut lire sans être développeur. */
+    const manquantes = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'].filter(v => !process.env[v]);
+    console.error('api/avatar : stockage non configuré, il manque ' + manquantes.join(' et '));
+    return res.status(503).json({
+      erreur: "L'envoi de photos n'est pas encore activé sur ce site. Réessayez plus tard."
+    });
   }
 
   const utilisateur = await utilisateurDepuisJeton(req);
