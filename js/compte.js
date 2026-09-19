@@ -21,6 +21,7 @@
 import { CONFIG, OFFRES } from './config.js';
 import { $, $$, echappe, toast } from './ui.js';
 import { t, langue, region } from './i18n.js';
+import { ajusterAuBudget } from './photo.js';
 import { brancherNavigation } from './nav.js';
 import {
   session, profil, supabase, configure, nomAffiche, deconnexion,
@@ -29,7 +30,17 @@ import {
 } from './auth.js';
 import { quotaRestant, estPremium, ouvrirPaywall, ouvrirPortail } from './paywall.js';
 
-const TAILLE_PHOTO_MAX = 2 * 1024 * 1024;   // 2 Mo, comme le compartiment Supabase
+/* Ce que le candidat a le droit de CHOISIR, et non ce qui part sur le
+   réseau. La distinction n'est pas théorique : une photo prise avec un
+   iPhone pèse trois à cinq mégaoctets, et le site la refusait d'emblée
+   — « Photo trop lourde : 2 Mo maximum » — alors qu'il s'apprêtait à la
+   réduire à quelques kilooctets. On refusait une photo à cause d'un
+   poids qu'on allait soi-même faire disparaître.
+
+   Vingt-cinq mégaoctets restent une borne utile : au-delà, décoder
+   l'image dans une toile fait tomber l'onglet sur un téléphone. Le vrai
+   plafond de ce qui part, lui, est vérifié côté serveur. */
+const TAILLE_PHOTO_MAX = 25 * 1024 * 1024;
 
 /* La photo est réduite avant d'être envoyée. Une photo prise au
    téléphone pèse plusieurs mégaoctets et finit affichée dans un rond
@@ -38,6 +49,20 @@ const TAILLE_PHOTO_MAX = 2 * 1024 * 1024;   // 2 Mo, comme le compartiment Supab
    même en 4G, et la limite de taille des fonctions serveur n'est
    jamais approchée. */
 const COTE_PHOTO = 512;
+
+/* Quand le stockage n'est pas disponible, la photo voyage dans le compte
+   lui-même. Or les métadonnées du compte sont recopiées dans le jeton
+   d'accès, et ce jeton part en en-tête à chaque requête : une photo de
+   quelques dizaines de kilooctets rendrait l'en-tête plus gros que ce
+   que la plupart des serveurs acceptent, et tout le site tomberait.
+
+   D'où ces deux bornes. Cent vingt-huit pixels suffisent pour un rond de
+   quatre-vingts, et la qualité descend jusqu'à ce que la photo tienne
+   dans le budget — on ne parie pas sur le poids d'une photo inconnue,
+   on le vérifie. */
+const COTE_PHOTO_REPLI = 128;
+const POIDS_REPLI_MAX = 3 * 1024;
+const QUALITES_REPLI = [0.7, 0.55, 0.45, 0.35, 0.25];
 
 /* ── Affichage ─────────────────────────────────────────────── */
 
@@ -359,21 +384,52 @@ function chargerImage(fichier) {
   });
 }
 
-/** Réduit la photo et la rend en base64, prête à partir. */
-async function reduirePhoto(fichier) {
-  const img = await chargerImage(fichier);
-  const grandCote = Math.max(img.naturalWidth, img.naturalHeight);
-  if (!grandCote) throw new Error(t('compte.photo_illisible', "Cette image n'a pas pu être lue."));
-
+/** Dessine l'image à la taille voulue et rend une adresse « data: ». */
+function dessiner(img, cote, qualite) {
   // On ne l'agrandit jamais : une petite photo reste à sa taille.
-  const facteur = Math.min(1, COTE_PHOTO / grandCote);
+  const grandCote = Math.max(img.naturalWidth, img.naturalHeight);
+  const facteur = Math.min(1, cote / grandCote);
   const toile = document.createElement('canvas');
   toile.width = Math.max(1, Math.round(img.naturalWidth * facteur));
   toile.height = Math.max(1, Math.round(img.naturalHeight * facteur));
   toile.getContext('2d').drawImage(img, 0, 0, toile.width, toile.height);
+  return toile.toDataURL('image/jpeg', qualite);
+}
 
-  const donnees = toile.toDataURL('image/jpeg', 0.85);
+/** Réduit la photo et la rend en base64, prête à partir. */
+async function reduirePhoto(fichier) {
+  const img = await chargerImage(fichier);
+  if (!Math.max(img.naturalWidth, img.naturalHeight)) {
+    throw new Error(t('compte.photo_illisible', "Cette image n'a pas pu être lue."));
+  }
+  const donnees = dessiner(img, COTE_PHOTO, 0.85);
   return { contenu: donnees.slice(donnees.indexOf(',') + 1), type: 'image/jpeg' };
+}
+
+/**
+ * La photo réduite jusqu'à tenir dans le budget, pour voyager dans le
+ * compte quand le stockage n'est pas disponible.
+ *
+ * On essaie les qualités l'une après l'autre et on mesure : le poids
+ * d'un JPEG dépend de ce qu'il y a dessus, pas seulement de ses
+ * dimensions. Un portrait sur fond uni et une photo de foule ne pèsent
+ * pas du tout pareil à qualité égale.
+ */
+async function photoDeRepli(fichier) {
+  const img = await chargerImage(fichier);
+  if (!Math.max(img.naturalWidth, img.naturalHeight)) {
+    throw new Error(t('compte.photo_illisible', "Cette image n'a pas pu être lue."));
+  }
+
+  const rendu = ajusterAuBudget((cote, qualite) => dessiner(img, cote, qualite), {
+    budget: POIDS_REPLI_MAX, qualites: QUALITES_REPLI,
+    cote: COTE_PHOTO_REPLI, coteDernier: 96
+  });
+  if (!rendu) {
+    throw new Error(t('compte.photo_trop_detaillee',
+      'Cette photo est trop chargée pour être enregistrée ici. Essayez-en une autre.'));
+  }
+  return rendu;
 }
 
 /** Appelle /api/avatar, qui agit avec les droits nécessaires. */
@@ -389,7 +445,9 @@ async function appelerApiAvatar(corps) {
   }));
   const donnees = await reponse.json().catch(() => ({}));
   if (!reponse.ok) {
-    throw new Error(donnees.erreur || t('compte.photo_echec', "L'envoi de la photo a échoué."));
+    const erreur = new Error(donnees.erreur || t('compte.photo_echec', "L'envoi de la photo a échoué."));
+    erreur.statut = reponse.status;   // 503 : le stockage n'est pas activé
+    throw erreur;
   }
   return donnees;
 }
@@ -402,7 +460,7 @@ async function televerserPhoto(fichier) {
 
   if (!fichier) return;
   if (fichier.size > TAILLE_PHOTO_MAX) {
-    return dire(t('compte.photo_trop_lourde', 'Photo trop lourde : 2 Mo maximum.'), true);
+    return dire(t('compte.photo_trop_lourde', 'Photo trop lourde : 25 Mo maximum.'), true);
   }
   if (!session.id) {
     return dire(t('compte.hors_ligne', "Enregistrement impossible : vous n'êtes pas connecté."), true);
@@ -413,8 +471,21 @@ async function televerserPhoto(fichier) {
     /* Le dépôt passe par notre API, et non plus directement par le
        stockage Supabase : le compartiment « avatars » n'existe pas
        forcément, et le navigateur n'a pas le droit de le créer. Le
-       serveur, lui, l'a — il le crée au premier envoi. */
-    const { url } = await appelerApiAvatar(await reduirePhoto(fichier));
+       serveur, lui, l'a — il le crée au premier envoi.
+
+       Et si le stockage n'est pas encore activé sur ce site, la photo
+       ne part pas à la poubelle pour autant : elle voyage alors dans le
+       compte lui-même, réduite pour y tenir. Le jour où la clé de
+       service sera posée, le chemin normal reprendra tout seul, sans
+       rien changer ici. */
+    let url;
+    try {
+      ({ url } = await appelerApiAvatar(await reduirePhoto(fichier)));
+    } catch (e) {
+      if (e?.statut !== 503) throw e;
+      console.warn('Stockage inactif : la photo est gardée dans le compte.');
+      url = await photoDeRepli(fichier);
+    }
     if (!url) throw new Error(t('compte.photo_url', 'URL de la photo introuvable.'));
 
     session.avatar = url;
