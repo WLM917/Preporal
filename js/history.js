@@ -24,6 +24,58 @@ export function lireSimulation(id) {
 export const estRelisible = s =>
   Boolean(s && Array.isArray(s.reponses) && s.reponses.length);
 
+const colonneAbsente = message =>
+  /42703|does not exist|could not find|schema cache/i.test(String(message || ''));
+
+/**
+ * Remonte une simulation en base.
+ *
+ * Le détail vit dans cinq colonnes ajoutées après coup. Tant que
+ * supabase/correctif-simulations.sql n'a pas été joué, elles n'existent
+ * pas — et PostgREST refuse alors la ligne ENTIÈRE, pas seulement les
+ * colonnes inconnues. Le premier jet de ce code ne prévoyait pas ce
+ * cas : plus aucune simulation ne remontait, pas même sa note, et
+ * l'erreur partait dans la console sans que personne la voie.
+ *
+ * On réessaie donc sans le détail plutôt que de tout perdre. La note
+ * et la progression sont sauves ; le détail reprendra sa place dès que
+ * les colonnes existeront.
+ */
+async function remonter(ligne) {
+  const base = {
+    utilisateur_id: session.id,
+    type_id: ligne.typeId,
+    sous_choix: ligne.sousChoix,
+    score: ligne.score,
+    eloquence: ligne.eloquence,
+    nb_questions: ligne.nbQuestions,
+    criteres: ligne.criteres
+  };
+  const complet = {
+    ...base,
+    reponses: ligne.reponses,
+    eloquence_detail: ligne.eloquenceDetail,
+    verdict: ligne.verdict,
+    temps_total: ligne.tempsTotal,
+    details: ligne.details
+  };
+
+  try {
+    const { error } = await supabase.from('simulations').insert(complet);
+    if (!error) return true;
+    if (!colonneAbsente(error.message)) throw error;
+
+    console.warn('Colonnes de détail absentes : la simulation remonte sans son détail. '
+      + 'Jouez supabase/correctif-simulations.sql pour la rendre relisible ailleurs.');
+    const reduit = await supabase.from('simulations').insert(base);
+    if (reduit.error) throw reduit.error;
+    return true;
+  } catch (e) {
+    console.warn('Historique non synchronisé', e);
+    return false;
+  }
+}
+
 export async function enregistrerSimulation(entree) {
   const ligne = {
     id: 'sim_' + Date.now(),
@@ -51,24 +103,7 @@ export async function enregistrerSimulation(entree) {
   stock.ecrire(CONFIG.cles.historique, liste);
 
   // Synchronisation multi-appareils si l'utilisateur est connecté.
-  if (supabase && session.id) {
-    try {
-      await supabase.from('simulations').insert({
-        utilisateur_id: session.id,
-        type_id: ligne.typeId,
-        sous_choix: ligne.sousChoix,
-        score: ligne.score,
-        eloquence: ligne.eloquence,
-        nb_questions: ligne.nbQuestions,
-        criteres: ligne.criteres,
-        reponses: ligne.reponses,
-        eloquence_detail: ligne.eloquenceDetail,
-        verdict: ligne.verdict,
-        temps_total: ligne.tempsTotal,
-        details: ligne.details
-      });
-    } catch (e) { console.warn('Historique non synchronisé', e); }
-  }
+  if (supabase && session.id) await remonter(ligne);
 
   rendreHistorique();
   return ligne;
@@ -100,17 +135,13 @@ export async function chargerDepuisServeur() {
 
     /* On FUSIONNE, on n'écrase pas.
 
-       Le serveur ne porte que des métadonnées de progression : ni les
-       questions, ni les réponses, ni la correction. C'est délibéré, et
-       la politique de confidentialité le promet. Mais la ligne qui
-       suivait écrasait l'historique local avec cette version appauvrie :
-       le détail était bien enregistré, puis effacé à la première
-       synchronisation. Rouvrir une simulation ne montrait plus qu'une
-       note et un message expliquant qu'elle était « antérieure à
-       l'ajout de la relecture » — ce qui était faux.
+       Le serveur porte maintenant le détail, mais il peut ne pas encore
+       l'avoir : une simulation remontée avant l'ajout des colonnes, ou
+       depuis un site dont le schéma n'est pas à jour, n'a que sa note.
+       Le navigateur d'origine, lui, l'a toujours.
 
-       Le détail local est donc greffé sur la ligne distante, et les
-       simulations faites ici mais pas encore remontées sont gardées. */
+       Écraser le local par le distant perdrait donc ce détail — c'est
+       exactement ce que faisait la version précédente. On greffe. */
     stock.ecrire(CONFIG.cles.historique,
       fusionnerHistoriques(lireHistorique(), distant, MAX));
     rendreHistorique();
@@ -137,8 +168,11 @@ export function rendreHistorique() {
     const type = typeTraduit(s.typeId);
     const d = new Date(s.date);
     const relisible = estRelisible(s);
-    return `<button type="button" data-relire="${s.id}"
-      class="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-ink/40 p-4 text-left transition hover:border-iris/60">
+    /* La ligne était un bouton unique. Il en faut deux — relire, et
+       effacer — et un bouton ne s'imbrique pas dans un autre. */
+    return `<div class="group relative flex items-stretch gap-2">
+    <button type="button" data-relire="${s.id}"
+      class="flex min-w-0 flex-1 items-center justify-between gap-4 rounded-xl border border-line bg-ink/40 p-4 text-left transition hover:border-iris/60">
       <div class="min-w-0">
         <p class="truncate font-medium">${type.emoji} ${echappe(type.court)}${s.sousChoix ? ' · ' + echappe(s.sousChoix) : ''}</p>
         <p class="text-xs text-muted">${d.toLocaleDateString(region())} ${t('hist.a', 'à')} ${d.toLocaleTimeString(region(), { hour: '2-digit', minute: '2-digit' })} · ${s.nbQuestions} ${t(s.nbQuestions > 1 ? 'hist.questions' : 'hist.question', s.nbQuestions > 1 ? 'questions' : 'question')}${s.eloquence != null ? ' · ' + t('hist.eloquence', 'éloquence') + ' ' + s.eloquence + '/20' : ''}</p>
@@ -147,8 +181,57 @@ export function rendreHistorique() {
         </p>
       </div>
       <span class="shrink-0 font-display text-xl font-extrabold tabular-nums" style="color:${couleurNote(s.score)}">${s.score}</span>
-    </button>`;
+    </button>
+    <button type="button" data-effacer="${s.id}"
+      title="${echappe(t('hist.effacer_une', 'Effacer cette simulation'))}"
+      aria-label="${echappe(t('hist.effacer_une', 'Effacer cette simulation'))}"
+      class="shrink-0 rounded-xl border border-line bg-ink/40 px-3 text-muted transition hover:border-coral/60 hover:text-coral">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m5 6 1 14h12l1-14"/>
+      </svg>
+    </button>
+    </div>`;
   }).join('');
+
+  zone.querySelectorAll('[data-effacer]').forEach(b =>
+    b.addEventListener('click', () => effacerUne(b.dataset.effacer)));
+}
+
+/**
+ * Efface une simulation, ici et en base.
+ *
+ * Une simulation dont le détail a été perdu avant le correctif ne peut
+ * pas être réparée : la seule chose honnête est de permettre de la
+ * retirer, plutôt que de la laisser afficher « détail non conservé »
+ * pour toujours.
+ */
+async function effacerUne(id) {
+  if (!id) return;
+  if (!confirm(t('hist.effacer_une_confirmer',
+    'Effacer définitivement cette simulation et sa correction ?'))) return;
+
+  const ligne = lireSimulation(id);
+
+  if (supabase && session.id) {
+    /* L'identifiant local (« sim_… ») n'existe pas en base : on vise la
+       ligne par ce qui l'identifie vraiment, et on borne au compte. */
+    let requete = supabase.from('simulations').delete().eq('utilisateur_id', session.id);
+    requete = String(id).startsWith('sim_') && ligne
+      ? requete.eq('type_id', ligne.typeId).eq('score', ligne.score)
+          .eq('nb_questions', ligne.nbQuestions)
+      : requete.eq('id', id);
+
+    const { error } = await requete;
+    if (error) {
+      console.warn('Simulation non effacée en base', error);
+      return toast(t('hist.effacer_echec',
+        "Cette simulation n'a pas pu être effacée. Réessayez dans un instant."), 'erreur');
+    }
+  }
+
+  stock.ecrire(CONFIG.cles.historique, lireHistorique().filter(s => s.id !== id));
+  rendreHistorique();
+  toast(t('hist.effacee', 'Simulation effacée.'));
 }
 
 /** Petite courbe SVG maison : pas de librairie à charger. */
