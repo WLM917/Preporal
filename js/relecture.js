@@ -90,8 +90,19 @@ export function ouvrirRelecture(id) {
   }
 
   if (!estRelisible(s)) {
-    /* Les simulations passées avant l'ajout de la relecture n'ont
-       gardé que leur note : on le dit plutôt que d'afficher un vide. */
+    /* Le détail ne quitte jamais l'appareil où la simulation a eu
+       lieu : le serveur ne reçoit que la note et les critères. Une
+       simulation ouverte ailleurs n'a donc pas de quoi être relue, et
+       on l'explique plutôt que d'afficher un vide.
+
+       L'ancien message affirmait qu'elle était « antérieure à l'ajout
+       de la relecture ». C'était faux : la synchronisation écrasait le
+       détail local, et ce message accusait le passé d'un bug du jour.
+
+       Le nouveau n'affirme pas non plus qu'elle vient d'un autre
+       appareil — on n'en sait rien. Les simulations effacées par
+       l'ancien défaut ont bien eu lieu ici. On dit donc ce qu'on sait :
+       le détail n'est pas là, et il ne voyage pas. */
     zone.innerHTML = `
       <div class="rounded-2xl border border-line bg-surface p-5">
         <p class="text-sm text-muted">${d.toLocaleDateString(region())} · note globale
@@ -99,8 +110,11 @@ export function ouvrirRelecture(id) {
         ${criteres(s.criteres)}
       </div>
       <p class="rounded-xl border border-dashed border-line p-5 text-sm leading-relaxed text-muted">
-        Le détail de cette simulation n'a pas été conservé : elle est antérieure à
-        l'ajout de la relecture. Les prochaines seront relisibles intégralement.
+        ${echappe(t('relecture.detail_ailleurs',
+          "Le détail de cette simulation n'est pas disponible sur cet appareil. Vos questions, "
+          + "vos réponses et leur correction ne quittent jamais l'appareil où la simulation a eu "
+          + "lieu : elles ne partent pas sur nos serveurs. Seules la note et les critères vous "
+          + "suivent d'un appareil à l'autre."))}
       </p>`;
     ouvrirModale('modal-relecture');
     return;

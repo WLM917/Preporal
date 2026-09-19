@@ -3,6 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG } from './config.js';
+import { fusionnerHistoriques } from './fusion.js';
 import { typeTraduit } from './catalogue.js';
 import { $, stock, echappe, toast, couleurNote, jeton } from './ui.js';
 import { supabase, session } from './auth.js';
@@ -84,15 +85,30 @@ export async function chargerDepuisServeur() {
       .eq('utilisateur_id', session.id)
       .order('cree_le', { ascending: false })
       .limit(MAX);
-    if (data?.length) {
-      const distant = data.map(d => ({
-        id: d.id, date: d.cree_le, typeId: d.type_id, sousChoix: d.sous_choix,
-        score: d.score, eloquence: d.eloquence, nbQuestions: d.nb_questions,
-        criteres: d.criteres || {}, details: []
-      }));
-      stock.ecrire(CONFIG.cles.historique, distant);
-      rendreHistorique();
-    }
+    if (!data?.length) return;
+
+    const distant = data.map(d => ({
+      id: d.id, date: d.cree_le, typeId: d.type_id, sousChoix: d.sous_choix,
+      score: d.score, eloquence: d.eloquence, nbQuestions: d.nb_questions,
+      criteres: d.criteres || {}, details: []
+    }));
+
+    /* On FUSIONNE, on n'écrase pas.
+
+       Le serveur ne porte que des métadonnées de progression : ni les
+       questions, ni les réponses, ni la correction. C'est délibéré, et
+       la politique de confidentialité le promet. Mais la ligne qui
+       suivait écrasait l'historique local avec cette version appauvrie :
+       le détail était bien enregistré, puis effacé à la première
+       synchronisation. Rouvrir une simulation ne montrait plus qu'une
+       note et un message expliquant qu'elle était « antérieure à
+       l'ajout de la relecture » — ce qui était faux.
+
+       Le détail local est donc greffé sur la ligne distante, et les
+       simulations faites ici mais pas encore remontées sont gardées. */
+    stock.ecrire(CONFIG.cles.historique,
+      fusionnerHistoriques(lireHistorique(), distant, MAX));
+    rendreHistorique();
   } catch (e) { console.warn('Historique distant indisponible', e); }
 }
 
