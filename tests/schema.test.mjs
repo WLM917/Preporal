@@ -82,3 +82,31 @@ test('le correctif rattrape les comptes antérieurs au déclencheur', () => {
   assert.match(sql, /on conflict \(id\) do nothing/,
     'le rattrapage doit pouvoir être rejoué sans écraser ce qui existe');
 });
+
+test("l'historique du compte porte le détail des simulations", () => {
+  /* Sans ces colonnes, une simulation ouverte depuis un autre appareil
+     ne montre qu'une note : le détail ne serait jamais remonté. */
+  const COLONNES = ['reponses', 'eloquence_detail', 'verdict', 'temps_total', 'details'];
+
+  for (const fichier of ['schema.sql', 'correctif-simulations.sql']) {
+    const sql = lire(fichier);
+    for (const colonne of COLONNES) {
+      assert.match(sql, new RegExp(`add column if not exists\\s+${colonne}\\b`),
+        `${fichier} : la colonne ${colonne} manque`);
+    }
+  }
+});
+
+test('chacun ne lit et n’efface que ses propres simulations', () => {
+  /* Ces lignes portent maintenant des réponses personnelles : une règle
+     trop large les exposerait à tous les comptes. */
+  for (const fichier of ['schema.sql', 'correctif-simulations.sql']) {
+    const sql = lire(fichier);
+    for (const action of ['select', 'delete']) {
+      const regle = sql.match(new RegExp(`for ${action} using \\(auth\\.uid\\(\\) = utilisateur_id\\)`));
+      assert.ok(regle, `${fichier} : la règle « ${action} » doit être restreinte à l'auteur`);
+    }
+    assert.match(sql, /for insert with check \(auth\.uid\(\) = utilisateur_id\)/,
+      `${fichier} : personne ne doit pouvoir écrire une simulation au nom d'un autre`);
+  }
+});

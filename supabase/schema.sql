@@ -125,8 +125,14 @@ from auth.users u
 on conflict (id) do nothing;
 
 -- ── Historique des simulations ─────────────────────────────
--- Aucun contenu de CV ni de réponse n'est stocké : uniquement
--- des métadonnées de progression.
+-- L'historique appartient au COMPTE, pas à l'appareil : un
+-- candidat qui se connecte depuis son téléphone, sa tablette ou
+-- son ordinateur doit retrouver ses simulations passées avec
+-- leurs questions, ses réponses et la correction complète.
+--
+-- Ce qui n'est PAS ici, et n'y sera pas : le fichier de CV, le
+-- sujet déposé, l'audio. Ils sont lus dans le navigateur, servent
+-- à produire les questions, et ne remontent jamais.
 create table if not exists public.simulations (
   id              uuid primary key default gen_random_uuid(),
   utilisateur_id  uuid not null references auth.users(id) on delete cascade,
@@ -138,6 +144,15 @@ create table if not exists public.simulations (
   criteres        jsonb default '{}'::jsonb,
   cree_le         timestamptz not null default now()
 );
+
+-- Le détail, ajouté après coup : questions posées, réponses
+-- données, correction et conseils. Sans lui, « Mes simulations
+-- passées » ne montre qu'une note.
+alter table public.simulations add column if not exists reponses         jsonb  default '[]'::jsonb;
+alter table public.simulations add column if not exists eloquence_detail jsonb;
+alter table public.simulations add column if not exists verdict          text;
+alter table public.simulations add column if not exists temps_total      int;
+alter table public.simulations add column if not exists details          jsonb  default '[]'::jsonb;
 
 create index if not exists simulations_utilisateur_date
   on public.simulations (utilisateur_id, cree_le desc);
