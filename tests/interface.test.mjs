@@ -962,3 +962,78 @@ test('le profil est relu auprès du serveur, pas seulement dans le cache local',
   assert.match(src, /visibilitychange/,
     "revenir sur l'onglet doit suffire : sur un téléphone, on ne recharge pas une page");
 });
+
+test("« Essayer gratuitement » disparaît une fois l'accès payé", () => {
+  /* Proposer un essai gratuit à quelqu'un qui vient de payer, c'est lui
+     dire qu'il a eu tort. L'en-tête nomme son offre, l'accueil l'invite
+     à lancer une simulation. */
+  const src = modules.find(m => m.nom === 'paywall.js').source;
+  const debut = src.indexOf('export function majAppelsALAction');
+  assert.ok(debut > -1, 'majAppelsALAction a disparu');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  assert.match(corps, /estPremium\(\)/,
+    "le libellé doit dépendre de l'état de l'abonnement");
+  assert.match(corps, /removeAttribute\('href'\)/,
+    "une pastille « Pass 48 heures » qui lancerait une simulation serait un piège : " +
+    "l'en-tête cesse d'être un lien");
+  assert.match(corps, /setAttribute\('href'/,
+    "et le redevient pour qui n'a pas payé, sinon le bouton d'entrée ne mène nulle part");
+
+  /* Le piège de ce genre de correctif : écrire le texte en dur. Changer
+     de langue repasse sur tous les [data-i18n] et réécrirait « Essayer
+     gratuitement » par-dessus la pastille. */
+  assert.match(corps, /dataset\.i18n\s*=/,
+    'le libellé doit passer par data-i18n, sinon un changement de langue l\'écrase');
+  assert.match(corps, /dataset\.i18nFr\s*=/,
+    'le repli français doit suivre la clé, sinon le retour au français montre l\'ancien texte');
+
+  assert.match(corps, /accueil\.lancer_une_simulation/,
+    "l'accueil doit inviter à lancer une simulation");
+  assert.doesNotMatch(corps, /premi[eè]re/i,
+    "« votre première simulation » est faux dès la deuxième");
+
+  // Sans cet appel, le libellé ne changerait jamais.
+  const nav = modules.find(m => m.nom === 'nav.js').source;
+  assert.match(nav, /surChangementCompte\(\(\) => \{[\s\S]{0,200}majAppelsALAction\(\)/,
+    'le libellé doit se remettre à jour quand le compte change');
+});
+
+test("le nom d'une offre passe par le dictionnaire", () => {
+  /* Les cartes affichaient « Pass 48 heures » en anglais comme en
+     espagnol : le nom venait de config.js sans passer par t(). */
+  const paywall = modules.find(m => m.nom === 'paywall.js').source;
+  assert.match(paywall, /export const nomOffre = o => t\(`offre\.\$\{o\.id\}\.nom`/,
+    'un nom d\'offre doit pouvoir être traduit');
+  assert.doesNotMatch(paywall, /echappe\(o\.nom\)/,
+    'plus aucun nom d\'offre affiché sans passer par le dictionnaire');
+
+  const compte = modules.find(m => m.nom === 'compte.js').source;
+  assert.doesNotMatch(compte, /offre\?\.nom/,
+    '« Mon abonnement » doit nommer l\'offre dans la langue choisie');
+
+  for (const langue of ['en', 'es']) {
+    const dict = readFileSync(join(RACINE, 'js', 'langues', `${langue}.js`), 'utf8');
+    for (const cle of ['offre.pass48.nom', 'offre.mensuel.nom', 'offre.extra.nom',
+                       'accueil.lancer_une_simulation', 'accueil.acces_complet']) {
+      assert.match(dict, new RegExp(`"${cle.replace(/\./g, '\\.')}"`),
+        `${langue}.js : la clé ${cle} manque`);
+    }
+  }
+});
+
+test('aucune page servie n’est oubliée par Tailwind', () => {
+  /* compte.html manquait dans la liste : cinq de ses classes n'avaient
+     aucun CSS, dont la grille à deux colonnes sur grand écran. La page
+     s'affichait donc en une seule colonne pleine largeur, sans qu'aucune
+     erreur ne le signale. Une page oubliée ne se voit pas, elle se
+     constate. */
+  const config = readFileSync(join(RACINE, 'tailwind.config.cjs'), 'utf8');
+  const listees = config.slice(config.indexOf('content:'), config.indexOf(']', config.indexOf('content:')));
+
+  for (const { fichier } of PAGES) {
+    assert.ok(listees.includes(`'./${fichier}'`),
+      `${fichier} doit figurer dans le content de tailwind.config.cjs, ` +
+      'sinon ses classes n\'existent pas dans la feuille livrée');
+  }
+});

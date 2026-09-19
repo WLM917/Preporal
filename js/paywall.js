@@ -35,6 +35,64 @@ export function estPremium() {
 
 export function peutLancer() { return estPremium() || quotaRestant() > 0; }
 
+/** L'offre en cours, quand on sait laquelle. */
+const offreCourante = () => OFFRES[profil.plan] || null;
+
+/* Le libellé d'une offre passait à côté du dictionnaire : les cartes
+   affichaient « Pass 48 heures » en anglais comme en espagnol. */
+export const nomOffre = o => t(`offre.${o.id}.nom`, o.nom);
+
+/* Les deux visages du bouton d'en-tête : appel à l'action tant que
+   l'accès n'est pas payé, simple pastille d'information ensuite. */
+const ENTETE_ACTION = 'rounded-xl bg-inverse px-4 py-2.5 font-display text-sm font-bold text-sur-inverse transition hover:opacity-90';
+const ENTETE_PASTILLE = 'rounded-full border border-mint/40 bg-mint/10 px-3 py-1.5 font-display text-xs font-semibold text-mint';
+
+/**
+ * « Essayer gratuitement » n'a plus de sens une fois l'accès payé.
+ *
+ * En-tête : le bouton devient une pastille qui nomme l'offre en cours.
+ * Elle cesse d'être un lien, et ce n'est pas un détail : un libellé
+ * « Pass 48 heures » qui lancerait une simulation serait un piège.
+ *
+ * Accueil : le grand bouton invite à lancer une simulation. Pas « la
+ * première » — rien ne dit que c'en est une, et un abonné en a déjà
+ * fait dix.
+ *
+ * Le libellé passe par data-i18n plutôt que par du texte figé : sans
+ * cela, changer de langue le réécrirait en « Essayer gratuitement ».
+ */
+export function majAppelsALAction() {
+  const premium = estPremium();
+  const offre = offreCourante();
+
+  const poser = (el, cle, francais) => {
+    if (!el) return;
+    el.dataset.i18n = cle;
+    el.dataset.i18nFr = francais;      // le repli que relit appliquerTraductions
+    el.textContent = t(cle, francais);
+  };
+
+  const entete = $('#btn-essai');
+  if (entete) {
+    if (premium) {
+      poser(entete, offre ? `offre.${offre.id}.nom` : 'accueil.acces_complet',
+            offre ? offre.nom : 'Accès complet');
+      entete.removeAttribute('href');
+      entete.setAttribute('role', 'status');
+      entete.className = ENTETE_PASTILLE;
+    } else {
+      poser(entete, 'accueil.essayer_gratuitement', 'Essayer gratuitement');
+      entete.setAttribute('href', './simulateur.html');
+      entete.removeAttribute('role');
+      entete.className = ENTETE_ACTION;
+    }
+  }
+
+  const heros = $('#btn-essai-heros [data-i18n]');
+  if (premium) poser(heros, 'accueil.lancer_une_simulation', 'Lancer une simulation');
+  else         poser(heros, 'accueil.essayer_gratuitement', 'Essayer gratuitement');
+}
+
 export function majJauge() {
   const el = $('#jauge-quota');
   if (!el) return;
@@ -69,7 +127,7 @@ export function rendreOffres() {
         ${vedette ? 'border-iris bg-iris/10 hover:brightness-110' : 'border-line bg-ink/50 hover:border-iris/60'}">
       ${vedette ? `<span class="absolute -top-2.5 left-5 rounded-full bg-iris px-2.5 py-0.5 text-[11px] font-semibold text-white">${echappe(t('offre.recommande', 'Recommandé'))}</span>` : ''}
       <span class="text-xs font-medium ${vedette ? 'text-iris2' : 'text-muted'}">${echappe(t(`offre.${o.id}.accroche`, o.accroche))}</span>
-      <span class="mt-1 block font-display text-lg font-bold leading-tight">${echappe(o.nom)}</span>
+      <span class="mt-1 block font-display text-lg font-bold leading-tight">${echappe(nomOffre(o))}</span>
       <span class="mt-3 block">
         <span class="whitespace-nowrap font-display text-2xl font-extrabold">${echappe(o.prix)}</span>
         <span class="ml-1.5 whitespace-nowrap text-xs text-muted">${echappe(t('offre.periode.' + o.periode.replace(/[^a-z0-9]+/gi, '_'), o.periode))}</span>

@@ -28,7 +28,7 @@ import {
   couleurAvatar, COULEURS_AVATAR, surChangementCompte, ouvrirAuth,
   photoCassee, signalerPhotoCassee, jetonAcces
 } from './auth.js';
-import { quotaRestant, estPremium, ouvrirPaywall, ouvrirPortail } from './paywall.js';
+import { quotaRestant, estPremium, ouvrirPaywall, ouvrirPortail, nomOffre } from './paywall.js';
 
 /* Ce que le candidat a le droit de CHOISIR, et non ce qui part sur le
    réseau. La distinction n'est pas théorique : une photo prise avec un
@@ -175,7 +175,7 @@ function rendreAbonnement() {
       <p class="inline-flex rounded-full border border-mint/50 bg-mint/10 px-2.5 py-1 text-xs text-mint">
         ${echappe(t('compte.premium_actif', 'Premium actif'))}
       </p>
-      <p class="font-display text-base font-bold">${echappe(offre?.nom || t('compte.abonnement', 'Abonnement'))}</p>
+      <p class="font-display text-base font-bold">${echappe(offre ? nomOffre(offre) : t('compte.abonnement', 'Abonnement'))}</p>
       ${offre ? `<p class="text-muted">${echappe(offre.prix)} · ${echappe(offre.periode)}</p>` : ''}
       <p class="leading-relaxed text-muted">${echappe(dateLisible
         ? t('compte.actif_jusquau', "Actif jusqu'au {date}").replace('{date}', dateLisible)
