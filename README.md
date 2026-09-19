@@ -512,7 +512,33 @@ npx vercel --prod
 ```
 
 Puis, dans Vercel → Settings → Environment Variables, ajoutez toutes les clés de
-`.env.example`. Redéployez après tout ajout de variable.
+`.env.example`.
+
+Deux pièges, tous deux constatés en production sur ce projet, et tous deux
+muets — le site ne dit pas que la variable manque, il se comporte simplement
+comme si elle n'existait pas.
+
+**1. Une variable ajoutée ne s'applique qu'au déploiement suivant.** Ajoutez,
+puis redéployez : Vercel → Deployments → le dernier → `…` → Redeploy. Un
+`git push` fait aussi l'affaire.
+
+**2. L'onglet « Shared » n'est pas l'onglet « Projects ».** Les variables
+partagées sont posées au niveau de l'équipe, et elles ne s'appliquent à **aucun**
+projet tant qu'on ne les y a pas rattachées — le champ « Link to Projects »,
+présenté comme *(Optional)*, ne l'est pas. Une variable qui apparaît bien dans la
+liste, avec la bonne valeur, peut donc n'être lue par personne.
+
+Pour vérifier depuis l'extérieur, sans chercher dans l'interface :
+
+```bash
+# La clé de service est-elle lue ?   401 = oui · 503 = non
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://www.oralixia.com/api/avatar \
+  -H 'Content-Type: application/json' -d '{}'
+
+# Le secret du webhook est-il lu ?   400 = oui · 500 = non
+curl -s -X POST https://www.oralixia.com/api/webhook \
+  -H 'Content-Type: application/json' -d '{}'
+```
 
 ---
 
