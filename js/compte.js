@@ -25,11 +25,19 @@ import { brancherNavigation } from './nav.js';
 import {
   session, profil, supabase, configure, nomAffiche, deconnexion,
   couleurAvatar, COULEURS_AVATAR, surChangementCompte, ouvrirAuth,
-  photoCassee, signalerPhotoCassee
+  photoCassee, signalerPhotoCassee, jetonAcces
 } from './auth.js';
 import { quotaRestant, estPremium, ouvrirPaywall, ouvrirPortail } from './paywall.js';
 
 const TAILLE_PHOTO_MAX = 2 * 1024 * 1024;   // 2 Mo, comme le compartiment Supabase
+
+/* La photo est réduite avant d'être envoyée. Une photo prise au
+   téléphone pèse plusieurs mégaoctets et finit affichée dans un rond
+   de quatre-vingts pixels : la ramener à 512 pixels de côté la fait
+   tenir en quelques dizaines de kilooctets. L'envoi devient immédiat,
+   même en 4G, et la limite de taille des fonctions serveur n'est
+   jamais approchée. */
+const COTE_PHOTO = 512;
 
 /* ── Affichage ─────────────────────────────────────────────── */
 
@@ -339,17 +347,51 @@ function marquerEnregistre(bouton) {
   }, 2000);
 }
 
-/* Le stockage renvoie des messages destinés à un développeur. Celui-ci
-   revient à chaque fois que le compartiment « avatars » n'existe pas
-   encore dans Supabase — c'est la cause la plus fréquente, et la seule
-   que le candidat ne peut pas corriger lui-même. */
-function messageCompartiment(erreur) {
-  const brut = erreur?.message || String(erreur);
-  if (/bucket not found|not found/i.test(brut)) {
-    return t('compte.photo_compartiment',
-      "L'espace de stockage des photos n'est pas encore créé sur ce site. Prévenez l'éditeur.");
+/** Charge le fichier choisi dans une image, pour pouvoir le redimensionner. */
+function chargerImage(fichier) {
+  return new Promise((ok, ko) => {
+    const url = URL.createObjectURL(fichier);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); ko(new Error(
+      t('compte.photo_illisible', "Cette image n'a pas pu être lue."))); };
+    img.src = url;
+  });
+}
+
+/** Réduit la photo et la rend en base64, prête à partir. */
+async function reduirePhoto(fichier) {
+  const img = await chargerImage(fichier);
+  const grandCote = Math.max(img.naturalWidth, img.naturalHeight);
+  if (!grandCote) throw new Error(t('compte.photo_illisible', "Cette image n'a pas pu être lue."));
+
+  // On ne l'agrandit jamais : une petite photo reste à sa taille.
+  const facteur = Math.min(1, COTE_PHOTO / grandCote);
+  const toile = document.createElement('canvas');
+  toile.width = Math.max(1, Math.round(img.naturalWidth * facteur));
+  toile.height = Math.max(1, Math.round(img.naturalHeight * facteur));
+  toile.getContext('2d').drawImage(img, 0, 0, toile.width, toile.height);
+
+  const donnees = toile.toDataURL('image/jpeg', 0.85);
+  return { contenu: donnees.slice(donnees.indexOf(',') + 1), type: 'image/jpeg' };
+}
+
+/** Appelle /api/avatar, qui agit avec les droits nécessaires. */
+async function appelerApiAvatar(corps) {
+  const jeton = await jetonAcces();
+  const reponse = await avecDelai(fetch('/api/avatar', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(jeton ? { Authorization: 'Bearer ' + jeton } : {})
+    },
+    body: JSON.stringify(corps)
+  }));
+  const donnees = await reponse.json().catch(() => ({}));
+  if (!reponse.ok) {
+    throw new Error(donnees.erreur || t('compte.photo_echec', "L'envoi de la photo a échoué."));
   }
-  return brut;
+  return donnees;
 }
 
 async function televerserPhoto(fichier) {
@@ -362,27 +404,17 @@ async function televerserPhoto(fichier) {
   if (fichier.size > TAILLE_PHOTO_MAX) {
     return dire(t('compte.photo_trop_lourde', 'Photo trop lourde : 2 Mo maximum.'), true);
   }
-  if (!supabase || !session.id) {
+  if (!session.id) {
     return dire(t('compte.hors_ligne', "Enregistrement impossible : vous n'êtes pas connecté."), true);
   }
 
   dire(t('compte.envoi_photo', 'Envoi de la photo…'));
   try {
-    /* Le chemin commence par l'identifiant du compte : c'est ce que
-       vérifie la règle de sécurité du compartiment. Le nom change à
-       chaque envoi pour contourner les caches. */
-    const extension = (fichier.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const chemin = `${session.id}/photo-${Date.now()}.${extension}`;
-
-    /* Sans délai de garde, un compartiment absent ou injoignable laissait
-       la page sur « Envoi de la photo… » indéfiniment : aucun message,
-       aucun moyen de comprendre. */
-    const { error } = await avecDelai(supabase.storage.from('avatars')
-      .upload(chemin, fichier, { upsert: true, contentType: fichier.type }));
-    if (error) throw new Error(messageCompartiment(error));
-
-    const { data } = supabase.storage.from('avatars').getPublicUrl(chemin);
-    const url = data?.publicUrl;
+    /* Le dépôt passe par notre API, et non plus directement par le
+       stockage Supabase : le compartiment « avatars » n'existe pas
+       forcément, et le navigateur n'a pas le droit de le créer. Le
+       serveur, lui, l'a — il le crée au premier envoi. */
+    const { url } = await appelerApiAvatar(await reduirePhoto(fichier));
     if (!url) throw new Error(t('compte.photo_url', 'URL de la photo introuvable.'));
 
     session.avatar = url;
@@ -397,9 +429,16 @@ async function televerserPhoto(fichier) {
 
 async function retirerPhoto() {
   session.avatar = '';
+  rendreAvatar(); rendreCouleurs(); rafraichirEntete();
+
+  /* Le fichier part aussi du stockage : le retirer de l'affichage sans
+     l'effacer laisserait une photo de quelqu'un sur un serveur, à une
+     adresse publique, après qu'il a demandé son retrait. */
+  appelerApiAvatar({ supprimer: true })
+    .catch(e => console.warn('Photo non effacée du stockage', e));
+
   const r = await enregistrer({ avatar_url: '' }, { avatar_url: null });
   if (r !== true) return toast(r, 'erreur');
-  rendreAvatar(); rendreCouleurs(); rafraichirEntete();
   const etat = $('#etat-avatar');
   if (etat) etat.textContent = t('compte.photo_retiree', 'Photo retirée.');
 }
