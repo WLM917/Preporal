@@ -13,7 +13,7 @@ import { brancherTheme, brancherCookies } from './theme.js';
 import { LANGUES, langue, infoLangue, initLangue, changerLangue, surChangementLangue } from './i18n.js';
 import { initAuth, surChangementCompte } from './auth.js';
 import { brancherLegal } from './legal.js';
-import { majJauge } from './paywall.js';
+import { majJauge, majAppelsALAction } from './paywall.js';
 
 /* Marque l'entrée de menu active.
 
@@ -126,6 +126,7 @@ export async function brancherNavigation({ auChangementDeCompte } = {}) {
   initAuth().then(() => {
     surChangementCompte(() => {
       majJauge();
+      majAppelsALAction();
       auChangementDeCompte?.();
     });
   });

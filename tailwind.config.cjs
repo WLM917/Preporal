@@ -2,7 +2,14 @@
    Les couleurs pointent vers les variables CSS définies dans index.html,
    ce qui permet aux thèmes clair et sombre de partager les mêmes classes. */
 module.exports = {
-  content: ['./index.html', './simulateur.html', './temoignages.html', './moderation.html', './js/**/*.js'],
+  /* Toute page servie doit figurer ici. Une page oubliée ne provoque
+     aucune erreur : ses classes n'existent simplement pas dans la
+     feuille, et elle s'affiche de travers sans que rien ne le signale.
+     compte.html manquait — cinq classes sans CSS, dont sa grille à deux
+     colonnes sur grand écran, qui ne s'est donc jamais affichée.
+     tests/interface.test.mjs vérifie désormais cette liste. */
+  content: ['./index.html', './simulateur.html', './temoignages.html', './compte.html',
+            './moderation.html', './js/**/*.js'],
   theme: {
     extend: {
       colors: {
