@@ -42,6 +42,26 @@ drop policy if exists "profil modifiable par son proprietaire" on public.profils
 create policy "profil modifiable par son proprietaire"
   on public.profils for update using (auth.uid() = id);
 
+drop policy if exists "profil cree par son proprietaire" on public.profils;
+create policy "profil cree par son proprietaire"
+  on public.profils for insert with check (auth.uid() = id);
+
+-- Une règle RLS choisit quelles LIGNES on peut modifier ; elle ne dit
+-- rien des COLONNES, et Supabase accorde l'écriture sur toutes par
+-- défaut. Sans ce qui suit, un compte connecté écrit « premium = true »
+-- sur sa propre ligne depuis la console de son navigateur.
+--
+-- premium, plan, premium_jusqu_au et stripe_client_id restent donc hors
+-- d'atteinte : seules les fonctions serveur les écrivent, avec la clé
+-- de service, après vérification de la signature Stripe.
+revoke update on public.profils from authenticated, anon;
+grant  update (prenom, nom, pseudo, couleur, avatar_url, langue, maj_le)
+  on public.profils to authenticated;
+
+revoke insert on public.profils from authenticated, anon;
+grant  insert (id, prenom, nom, pseudo, couleur, avatar_url, langue)
+  on public.profils to authenticated;
+
 -- Création automatique du profil à l'inscription.
 -- Le prénom, le nom et la langue sont joints au compte par
 -- js/auth.js (options.data de signUp) : ils arrivent ici dans
@@ -62,9 +82,12 @@ begin
     nullif(new.raw_user_meta_data->>'nom', ''),
     nullif(new.raw_user_meta_data->>'pseudo', ''),
     nullif(new.raw_user_meta_data->>'couleur', ''),
-    -- Google et les autres fournisseurs apportent déjà une photo.
-    coalesce(nullif(new.raw_user_meta_data->>'avatar_url', ''),
-             nullif(new.raw_user_meta_data->>'picture', '')),
+    -- « picture » n'est PAS repris, et ce n'est pas un oubli : un compte
+    -- Google sans photo en reçoit une quand même, fabriquée par Google
+    -- — la première lettre du prénom sur un fond terne. C'est de là que
+    -- venait le grand W au milieu de « Gérer mon compte ». Seule une
+    -- photo déposée par le candidat est une photo.
+    nullif(new.raw_user_meta_data->>'avatar_url', ''),
     nullif(new.raw_user_meta_data->>'langue', '')
   )
   on conflict (id) do update set
@@ -83,6 +106,23 @@ drop trigger if exists au_nouvel_utilisateur on auth.users;
 create trigger au_nouvel_utilisateur
   after insert on auth.users
   for each row execute function public.creer_profil();
+
+-- Le déclencheur ne vaut que pour les inscriptions à venir. Les comptes
+-- ouverts avant sa création n'ont jamais eu de ligne — et modifier une
+-- ligne absente ne touche rien, sans lever la moindre erreur.
+insert into public.profils (id, email, prenom, nom, pseudo, couleur, avatar_url, langue)
+select u.id,
+       u.email,
+       coalesce(nullif(u.raw_user_meta_data->>'prenom', ''),
+                nullif(u.raw_user_meta_data->>'given_name', '')),
+       coalesce(nullif(u.raw_user_meta_data->>'nom', ''),
+                nullif(u.raw_user_meta_data->>'family_name', '')),
+       nullif(u.raw_user_meta_data->>'pseudo', ''),
+       nullif(u.raw_user_meta_data->>'couleur', ''),
+       nullif(u.raw_user_meta_data->>'avatar_url', ''),
+       nullif(u.raw_user_meta_data->>'langue', '')
+from auth.users u
+on conflict (id) do nothing;
 
 -- ── Historique des simulations ─────────────────────────────
 -- Aucun contenu de CV ni de réponse n'est stocké : uniquement

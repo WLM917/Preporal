@@ -922,3 +922,43 @@ test("l'avertissement des mentions s'adresse à l'éditeur, pas aux visiteurs", 
   assert.match(fn, /AFFICHER_ALERTE_MENTIONS[\s\S]{0,120}classList\.add\('hidden'\)/,
     'sans ce réglage, le bandeau doit rester caché aux visiteurs');
 });
+
+test('le profil est relu auprès du serveur, pas seulement dans le cache local', () => {
+  /* Même compte, même adresse, deux appareils : la photo déposée depuis
+     le téléphone n'apparaissait jamais sur la tablette. getSession() ne
+     parle pas au serveur — elle relit la session rangée dans CE
+     navigateur, où les métadonnées du compte (photo, pseudonyme,
+     couleur) sont figées depuis la dernière ouverture de session.
+
+     Chaque appareil gardait donc sa propre idée du profil. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+
+  assert.match(src, /supabase\.auth\.getUser\(\)/,
+    'sans relecture serveur, chaque appareil garde sa propre copie du profil');
+
+  /* Bornes strictes : sans cela l'extrait déborde sur la fonction
+     suivante, et le test se satisfait d'un appel qui n'est pas le bon.
+     Deux mutations sont passées ainsi avant que ces bornes existent. */
+  const corpsDe = nom => {
+    const debut = src.indexOf(nom);
+    assert.ok(debut > -1, `${nom} a disparu`);
+    const fin = src.indexOf('\n}', debut);
+    assert.ok(fin > debut, `${nom} n'est pas refermée`);
+    return src.slice(debut, fin);
+  };
+
+  const init = corpsDe('export async function initAuth');
+  const posSession = init.indexOf('getSession()');
+  const posRelecture = init.indexOf('rafraichirDepuisLeServeur(');
+  assert.ok(posRelecture > posSession,
+    "la copie locale s'affiche d'abord : la relecture ne doit pas retarder l'en-tête");
+  assert.doesNotMatch(init.slice(posSession, posRelecture + 60), /await\s+rafraichirDepuisLeServeur/,
+    "la relecture ne doit pas être attendue, sinon l'en-tête s'affiche après elle");
+
+  const relecture = corpsDe('async function rafraichirDepuisLeServeur');
+  assert.match(relecture, /await appliquerSession\(/,
+    'une différence trouvée doit être appliquée, pas seulement constatée');
+
+  assert.match(src, /visibilitychange/,
+    "revenir sur l'onglet doit suffire : sur un téléphone, on ne recharge pas une page");
+});

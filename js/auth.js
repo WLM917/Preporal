@@ -146,6 +146,20 @@ export async function initAuth() {
     const { data } = await supabase.auth.getSession();
     await appliquerSession(data?.session);
 
+    /* getSession() ne parle pas au serveur : elle relit la session
+       rangée dans ce navigateur. Les métadonnées du compte — photo,
+       pseudonyme, couleur — datent donc de la dernière ouverture de
+       session SUR CET APPAREIL, et elles y restent tant que le jeton
+       n'a pas expiré.
+
+       Une photo déposée depuis le téléphone n'apparaissait donc jamais
+       sur la tablette : même compte, même adresse, mais deux copies
+       indépendantes du profil, dont une figée.
+
+       On redemande au serveur, après avoir affiché la copie locale pour
+       ne pas retarder l'en-tête. */
+    rafraichirDepuisLeServeur(data?.session);
+
     /* Le rappel rend la main immédiatement, et ce n'est pas un détail.
 
        supabase-js l'appelle depuis _notifyAllSubscribers, qui fait
@@ -175,6 +189,49 @@ export async function initAuth() {
     dire(t('auth.erreur_' + echec.code, echec.message), true);
   }
 }
+
+/* Combien de temps une copie locale reste acceptable avant qu'on
+   redemande au serveur. Assez court pour qu'un retour sur l'onglet
+   montre la photo déposée ailleurs, assez long pour ne pas interroger
+   le serveur à chaque coup d'œil. */
+const FRAICHEUR_PROFIL = 30_000;
+let dernierRafraichissement = 0;
+
+/**
+ * Relit le compte auprès du serveur et redessine si quelque chose a
+ * changé depuis un autre appareil.
+ *
+ * getUser() interroge /auth/v1/user, là où getSession() se contente de
+ * la copie locale. C'est toute la différence entre « mon profil » et
+ * « ma dernière idée de mon profil ».
+ */
+async function rafraichirDepuisLeServeur(sessionLocale) {
+  if (!supabase || !sessionLocale?.user) return;
+  dernierRafraichissement = Date.now();
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    const frais = data?.user;
+    if (error || !frais) return;
+
+    // Rien n'a bougé ailleurs : inutile de tout redessiner.
+    const avant = JSON.stringify(sessionLocale.user.user_metadata || {});
+    const apres = JSON.stringify(frais.user_metadata || {});
+    if (avant === apres) return;
+
+    await appliquerSession({ ...sessionLocale, user: frais });
+  } catch (e) {
+    console.warn('Profil non rafraîchi', e);
+  }
+}
+
+/* Revenir sur l'onglet doit suffire : sur un téléphone, on ne recharge
+   pas une page, on y retourne. Safari garde l'onglet en vie et aucun
+   script ne repart de lui-même. */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !session.id) return;
+  if (Date.now() - dernierRafraichissement < FRAICHEUR_PROFIL) return;
+  supabase?.auth.getSession().then(({ data }) => rafraichirDepuisLeServeur(data?.session));
+});
 
 async function appliquerSession(s) {
   if (s?.user) {
