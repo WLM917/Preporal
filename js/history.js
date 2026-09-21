@@ -184,9 +184,22 @@ async function rattraper(liste, brutes) {
          pas encore posée. Inutile d'insister neuf fois de plus. */
       console.warn('Détail non rattrapé : ' + (error.message || error)
         + ' — jouez supabase/correctif-rattrapage.sql.');
-      break;
+      toast(t('hist.rattrapage_echec',
+        "Certaines simulations n'ont pas pu être complétées. Réessayez plus tard."), 'erreur');
+      return remontees;
     }
     remontees++;
+  }
+
+  /* Le rattrapage se faisait en silence. Quand rien ne bouge à l'écran,
+     on ne peut pas distinguer « ça a marché » de « ça n'a pas tourné » —
+     et c'est exactement ce qui s'est passé. */
+  if (remontees) {
+    rendreHistorique();
+    toast(remontees > 1
+      ? t('hist.rattrapees', '{n} simulations sont de nouveau relisibles partout.')
+          .replace('{n}', remontees)
+      : t('hist.rattrapee', 'Cette simulation est de nouveau relisible partout.'));
   }
   return remontees;
 }

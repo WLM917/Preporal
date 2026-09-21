@@ -80,6 +80,19 @@ async function demarrer() {
     chargerAgeProfil();
   });
 
+  /* Revenir sur l'onglet doit suffire. Sur une tablette, on ne recharge
+     pas une page : on y retourne. Un site resté ouvert depuis le matin
+     n'avait donc jamais resynchronisé, et le rattrapage du détail des
+     simulations n'était jamais parti. */
+  const FRAICHEUR_HISTORIQUE = 30_000;
+  let derniereSynchro = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !session.id) return;
+    if (Date.now() - derniereSynchro < FRAICHEUR_HISTORIQUE) return;
+    derniereSynchro = Date.now();
+    chargerDepuisServeur();
+  });
+
   // Vue demandée par l'URL : ?vue=compte au retour d'une simulation,
   // ou ?vue=coach depuis le menu.
   allerVue(new URLSearchParams(location.search).get('vue') || 'accueil', { historique: false });
