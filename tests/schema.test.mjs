@@ -110,3 +110,33 @@ test('chacun ne lit et n’efface que ses propres simulations', () => {
       `${fichier} : personne ne doit pouvoir écrire une simulation au nom d'un autre`);
   }
 });
+
+test('compléter une simulation ne permet pas de réécrire sa note', () => {
+  /* Le rattrapage a besoin d'écrire sur une ligne existante. Une règle
+     RLS choisit quelles LIGNES on peut modifier, jamais quelles
+     COLONNES : sans restriction, un compte réécrirait sa propre note ou
+     déplacerait une simulation chez quelqu'un d'autre. */
+  const INTOUCHABLES = ['score', 'eloquence', 'utilisateur_id', 'cree_le', 'criteres'];
+
+  for (const fichier of ['schema.sql', 'correctif-rattrapage.sql']) {
+    const sql = lire(fichier);
+
+    assert.match(sql, /for update\s*\n?\s*using\s*\(auth\.uid\(\) = utilisateur_id\)/,
+      `${fichier} : on ne complète que ses propres simulations`);
+    assert.match(sql, /with check\s*\(auth\.uid\(\) = utilisateur_id\)/,
+      `${fichier} : et on ne peut pas en donner une à quelqu'un d'autre`);
+    assert.match(sql, /revoke update on public\.simulations from authenticated/,
+      `${fichier} : sans révocation, toutes les colonnes restent ouvertes`);
+
+    const grant = sql.match(/grant\s+update\s*\(([^)]*)\)\s*\n?\s*on public\.simulations/i);
+    assert.ok(grant, `${fichier} : les colonnes modifiables doivent être énumérées`);
+
+    const accordees = grant[1].split(',').map(c => c.trim());
+    for (const colonne of INTOUCHABLES) {
+      assert.ok(!accordees.includes(colonne),
+        `${fichier} : « ${colonne} » ne doit pas être réécrivable depuis le navigateur`);
+    }
+    assert.ok(accordees.includes('reponses') && accordees.includes('verdict'),
+      `${fichier} : le détail doit, lui, pouvoir être complété`);
+  }
+});

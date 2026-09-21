@@ -171,6 +171,22 @@ drop policy if exists "simulations supprimables par leur auteur" on public.simul
 create policy "simulations supprimables par leur auteur"
   on public.simulations for delete using (auth.uid() = utilisateur_id);
 
+-- Compléter une ligne existante : le détail d'une simulation peut
+-- n'avoir jamais pu remonter — réseau coupé, colonnes pas encore
+-- créées. Le site le rattrape au chargement suivant, et il lui faut ce
+-- droit. Les colonnes sont énumérées : une règle RLS choisit quelles
+-- lignes on peut modifier, jamais quelles colonnes, et sans cela un
+-- compte réécrirait sa propre note ou changerait utilisateur_id.
+drop policy if exists "simulations completables par leur auteur" on public.simulations;
+create policy "simulations completables par leur auteur"
+  on public.simulations for update
+  using       (auth.uid() = utilisateur_id)
+  with check  (auth.uid() = utilisateur_id);
+
+revoke update on public.simulations from authenticated, anon;
+grant  update (reponses, eloquence_detail, verdict, temps_total, details)
+  on public.simulations to authenticated;
+
 -- ── Avis utilisateurs ──────────────────────────────────────
 -- publie = false par défaut : un avis n'apparaît publiquement
 -- qu'après modération, pour rester conforme au droit français.

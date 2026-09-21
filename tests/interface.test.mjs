@@ -1208,3 +1208,38 @@ test("la carte du mode oral reste compacte et centrée", () => {
   assert.match(src, /class="entree w-full max-w-sm/,
     'la carte doit rester un rectangle compact');
 });
+
+test("un détail resté sur un appareil finit par remonter", () => {
+  /* Sans rattrapage, un détail bloqué par une coupure réseau — ou par
+     un schéma pas encore à jour — y restait pour toujours : rien ne
+     retentait. L'historique cessait d'appartenir au compte. */
+  const src = modules.find(m => m.nom === 'history.js').source;
+  const debut = src.indexOf('async function rattraper');
+  assert.ok(debut > -1, 'le rattrapage a disparu');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  assert.match(corps, /aRattraper\(/,
+    'la sélection doit passer par la règle éprouvée, pas être refaite ici');
+  /* Chercher « .update({ … reponses: » ne prouve rien : un
+     « await Promise.resolve({error:null}) || await supabase… » le garde
+     et n'écrit jamais. On exige la forme qui part vraiment et dont le
+     résultat est lu. */
+  assert.match(corps, /const \{ error \} = await supabase\.from\('simulations'\)\.update\(\{/,
+    "l'écriture doit partir pour de bon, et son résultat être lu");
+  assert.match(corps, /reponses:\s*d\.reponses/,
+    'le détail borné doit être celui qui remonte');
+  assert.match(corps, /eq\('id', s\.id\)[\s\S]{0,60}eq\('utilisateur_id', session\.id\)/,
+    "on ne complète qu'une ligne précise, et seulement dans son compte");
+  assert.match(corps, /slice\(0, RATTRAPAGE_MAX\)/,
+    'un rattrapage est un rattrapage, pas une migration');
+  assert.match(corps, /if \(error\)[\s\S]{0,300}break;/,
+    'un refus vaut pour tous : inutile de répéter neuf fois la même erreur');
+
+  // Il doit être déclenché, et sans retarder l'affichage.
+  const chargement = src.slice(src.indexOf('export async function chargerDepuisServeur'),
+                               src.indexOf('\n}', src.indexOf('export async function chargerDepuisServeur')));
+  assert.match(chargement, /rendreHistorique\(\);[\s\S]{0,200}rattraper\(/,
+    "la liste s'affiche d'abord : le rattrapage ne doit pas la faire attendre");
+  assert.doesNotMatch(chargement, /await rattraper\(/,
+    'attendre le rattrapage retarderait l\'affichage pour rien');
+});
