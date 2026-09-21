@@ -1273,3 +1273,155 @@ test("le rattrapage ne dépend plus d'un rechargement, et il se voit", () => {
   assert.match(corps, /if \(error\)[\s\S]{0,400}toast\([\s\S]{0,120}'erreur'\)/,
     'un échec aussi');
 });
+
+/* ── Les modales sur un écran de téléphone ──────────────────── */
+
+/** Toutes les modales d'une page : identifiant, classes, corps. */
+function modales(source) {
+  const trouvees = [];
+  const ouverture = /<div id="(modal-[\w-]+)" class="modale ([^"]*)"[^>]*>\n([^\n]*)\n/g;
+  for (const m of source.matchAll(ouverture)) {
+    trouvees.push({ id: m[1], classes: m[2], suivante: m[3] });
+  }
+  return trouvees;
+}
+
+test("aucune modale ne garde son contenu hors d'atteinte sur un téléphone", () => {
+  /* « grid place-items-center » centre, mais ne laisse jamais défiler :
+     ce qui dépasse est perdu des deux côtés. Sur un iPhone SE, la carte
+     d'offres mesurait 1174 px pour 667 px de vue, et la case de
+     confirmation d'âge — sans laquelle lancerCheckout refuse de partir —
+     restait hors de l'écran quoi qu'on fasse. Personne ne pouvait donc
+     payer depuis un téléphone, et l'inscription souffrait du même mal
+     (977 px, rognés en haut comme en bas).
+
+     Le montage qui tient : le panneau défile, une enveloppe d'au moins
+     une hauteur d'écran centre la carte tant que la place suffit, et
+     grandit au-delà plutôt que de rogner le haut. */
+  for (const { fichier } of PAGES) {
+    const source = lire(fichier);
+    const liste = modales(source);
+    assert.ok(liste.length >= 3, `${fichier} : les modales devraient être retrouvées`);
+
+    for (const { id, classes, suivante } of liste) {
+      assert.match(classes, /overflow-y-auto/,
+        `${fichier} · ${id} : sans défilement, ce qui dépasse est inatteignable`);
+      assert.doesNotMatch(classes, /place-items-center/,
+        `${fichier} · ${id} : centrer sans défiler rogne le haut et le bas`);
+      assert.match(suivante, /data-fond/,
+        `${fichier} · ${id} : toucher le fond doit encore fermer`);
+      assert.match(suivante, /min-h-full/,
+        `${fichier} · ${id} : l'enveloppe doit faire au moins une hauteur d'écran`);
+      assert.match(suivante, /items-center/,
+        `${fichier} · ${id} : sans align-items, la carte s'étire d'un bord à l'autre`);
+    }
+  }
+
+  const ui = modules.find(m => m.nom === 'ui.js').source;
+  const fond = ui.slice(ui.indexOf("addEventListener('click'"));
+  assert.match(fond.slice(0, 400), /data-fond/,
+    "c'est l'enveloppe qui reçoit le clic désormais, plus le panneau");
+});
+
+/* Échelles Tailwind, pour comparer deux valeurs plutôt que constater
+   qu'une classe est écrite quelque part. */
+const TAILLES = {
+  'text-xs': 12, 'text-[13px]': 13, 'text-sm': 14, 'text-base': 16,
+  'text-lg': 18, 'text-xl': 20, 'text-2xl': 24, 'text-3xl': 30,
+  'leading-none': 1, 'leading-tight': 1.25, 'leading-snug': 1.375,
+  'leading-normal': 1.5, 'leading-relaxed': 1.625, 'leading-loose': 2
+};
+
+/** Valeur numérique d'une classe d'espacement ou de taille. */
+function valeur(classe) {
+  if (classe in TAILLES) return TAILLES[classe];
+  const m = /^(?:p|px|py|pt|pb|m|mt|mb|gap|gap-x|gap-y)-(\d+(?:\.\d+)?)$/.exec(classe);
+  return m ? Number(m[1]) : null;
+}
+
+/** Paires (base, sm:) d'un attribut class, avec leurs valeurs. */
+function paires(attribut) {
+  const classes = attribut.split(/\s+/).filter(Boolean);
+  const base = new Map();
+  for (const c of classes) {
+    const v = valeur(c);
+    if (v !== null) base.set(c.replace(/-[\d.]+$/, '').replace(/^(text|leading)-.*/, '$1'), { c, v });
+  }
+  const trouvees = [];
+  for (const c of classes) {
+    if (!c.startsWith('sm:')) continue;
+    const nu = c.slice(3);
+    const v = valeur(nu);
+    if (v === null) continue;
+    const cle = nu.replace(/-[\d.]+$/, '').replace(/^(text|leading)-.*/, '$1');
+    const avant = base.get(cle);
+    if (avant) trouvees.push({ mobile: avant.c, bureau: nu, petit: avant.v, grand: v });
+  }
+  return trouvees;
+}
+
+test("la modale d'offre est plus petite sur téléphone que sur grand écran", () => {
+  /* Le reproche était « ça s'affiche trop grand sur mobile, on a du mal
+     à lire toutes les informations ». Le remède n'est pas d'écrire des
+     classes « sm: » quelque part : c'est que chaque réglage réduit
+     vraiment la place prise sur un téléphone. On compare donc les deux
+     valeurs, au lieu de vérifier qu'une classe existe.
+
+     Mesures avant/après, iPhone SE : carte 1174 px → 946 px, dont la
+     grille d'offres 762 px → 572 px. */
+  const bouts = [];
+  for (const { fichier } of PAGES) {
+    const source = lire(fichier);
+    const debut = source.indexOf('<div id="modal-paywall"');
+    const fin = source.indexOf('\n</div>', debut);
+    assert.ok(debut > 0 && fin > debut, `${fichier} : modale d'offre introuvable`);
+    bouts.push({ nom: fichier, bloc: source.slice(debut, fin) });
+  }
+  bouts.push({ nom: 'js/paywall.js', bloc: modules.find(m => m.nom === 'paywall.js').source });
+
+  let comptees = 0;
+  for (const { nom, bloc } of bouts) {
+    for (const attribut of bloc.match(/class="[^"]*"/g) || []) {
+      for (const p of paires(attribut.slice(7, -1))) {
+        comptees++;
+        assert.ok(p.petit < p.grand,
+          `${nom} : « ${p.mobile} » devrait être plus petit que « sm:${p.bureau} »`);
+      }
+    }
+  }
+  assert.ok(comptees >= 8,
+    `seulement ${comptees} réglage(s) adapté(s) au téléphone : la modale reste dessinée pour un grand écran`);
+
+  /* Une grande taille de caractère sur téléphone doit être un choix,
+     pas un oubli : le titre en text-2xl repassait sur deux lignes et
+     coûtait à lui seul près de trente pixels. Elle doit donc toujours
+     venir avec la valeur du grand écran à côté. */
+  for (const { nom, bloc } of bouts) {
+    for (const attribut of bloc.match(/class="[^"]*"/g) || []) {
+      const classes = attribut.slice(7, -1).split(/\s+/);
+      const grande = classes.find(c => /^text-(xl|2xl|3xl)$/.test(c));
+      if (!grande) continue;
+      assert.ok(classes.some(c => /^sm:text-/.test(c)),
+        `${nom} : « ${grande} » sans valeur de repli plus petite sur téléphone`);
+    }
+  }
+});
+
+test("le prix d'une offre reste lisible quand il ne tient pas à côté du nom", () => {
+  /* Sur téléphone, le prix remonte sur la ligne du nom pour gagner une
+     ligne par offre. Mais « Oralixia Extra » et « 54,90 € pour 6 mois »
+     ne tiennent pas toujours côte à côte : sans flex-wrap, le prix
+     déborderait de la carte au lieu de repasser dessous. */
+  const src = modules.find(m => m.nom === 'paywall.js').source;
+  const carte = src.slice(src.indexOf('<button type="button" data-plan='),
+                          src.indexOf('</button>`'));
+  assert.match(carte, /flex flex-wrap items-baseline/,
+    'la ligne nom + prix doit pouvoir se replier');
+  assert.match(carte, /sm:block/,
+    'sur grand écran, le prix revient sous le nom');
+  const classesCarte = /class="(plan [^"]*)"/.exec(carte)[1].split(/\s+/);
+  assert.ok(!classesCarte.includes('p-5') && classesCarte.includes('sm:p-5'),
+    'la carte doit être moins rembourrée sur téléphone que sur grand écran');
+  assert.match(carte, /inline-flex self-start/,
+    "une pastille étirée sur toute la largeur n'en est plus une");
+});
