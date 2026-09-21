@@ -1543,3 +1543,60 @@ test("« Gérer mon abonnement » ouvre le portail, pas la liste des offres", ()
   assert.doesNotMatch(menu.slice(0, 600), /#btn-premium|#btn-portail/,
     '…et non déléguer son clic à un bouton absent de la moitié des pages');
 });
+
+/* ── Le produit et ses promesses doivent dire la même chose ── */
+
+test("aucun texte ne promet que le détail reste sur l'appareil", () => {
+  /* « Vos questions, vos réponses et leur correction ne quittent jamais
+     l'appareil où la simulation a eu lieu : elles ne partent pas sur
+     nos serveurs. » C'était vrai le jour où c'était écrit. Depuis que
+     l'historique appartient au compte, le détail remonte en base et se
+     relit partout — le texte, lui, était resté, et promettait à
+     l'utilisateur le contraire de ce que le produit fait.
+
+     Un texte d'interface qui contredit le code est un bug : il se teste
+     comme tel, en confrontant les deux. */
+  const h = modules.find(m => m.nom === 'history.js').source;
+  assert.match(h, /reponses: ligne\.reponses/,
+    'le détail part bel et bien en base…');
+  assert.match(h, /verdict: ligne\.verdict/,
+    '…la correction aussi');
+
+  const PROMESSES_FAUSSES = [
+    /ne quittent jamais/i, /ne partent pas sur nos serveurs/i,
+    /never leave the device/i, /do not reach our servers/i,
+    /nunca salen del dispositivo/i, /no llegan a nuestros servidores/i
+  ];
+  const aFouiller = [
+    ...PAGES.map(p => p.fichier),
+    ...modules.filter(m => m.nom.endsWith('.js')).map(m => 'js/' + m.nom),
+    'js/langues/en.js', 'js/langues/es.js'
+  ];
+  for (const f of aFouiller) {
+    if (!existsSync(join(RACINE, f))) continue;
+    const source = lire(f);
+    for (const promesse of PROMESSES_FAUSSES) {
+      assert.doesNotMatch(source, promesse,
+        `${f} promet que le détail ne quitte pas l'appareil — le code l'envoie pourtant en base`);
+    }
+  }
+
+  /* Et le message affiché quand le détail manque doit dire la vérité :
+     il suit le compte, celle-ci fait exception, voici quoi faire. */
+  const r = modules.find(m => m.nom === 'relecture.js').source;
+  const debutMessage = r.indexOf("t('relecture.detail_ailleurs'");
+  assert.ok(debutMessage > -1, 'le message a disparu');
+  const message = r.slice(debutMessage, r.indexOf('ouvrirModale(', debutMessage));
+  assert.match(message, /suivent votre compte/,
+    'le message doit dire que le détail suit le compte');
+  assert.match(message, /l'appareil où elle a eu lieu/,
+    "…et comment récupérer celle qui manque");
+
+  for (const langue of ['en', 'es']) {
+    const dico = lire(`js/langues/${langue}.js`);
+    const ligne = dico.split('\n').find(l => l.includes('"relecture.detail_ailleurs"'));
+    assert.ok(ligne, `${langue} : la clé a disparu`);
+    assert.ok(/account|cuenta/i.test(ligne),
+      `${langue} : la traduction doit parler du compte, pas de l'appareil seul`);
+  }
+});
