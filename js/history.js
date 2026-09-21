@@ -303,7 +303,7 @@ export function rendreHistorique() {
         <p class="truncate font-medium">${type.emoji} ${echappe(type.court)}${s.sousChoix ? ' · ' + echappe(s.sousChoix) : ''}</p>
         <p class="text-xs text-muted">${d.toLocaleDateString(region())} ${t('hist.a', 'à')} ${d.toLocaleTimeString(region(), { hour: '2-digit', minute: '2-digit' })} · ${s.nbQuestions} ${t(s.nbQuestions > 1 ? 'hist.questions' : 'hist.question', s.nbQuestions > 1 ? 'questions' : 'question')}${s.eloquence != null ? ' · ' + t('hist.eloquence', 'éloquence') + ' ' + s.eloquence + '/20' : ''}</p>
         <p class="mt-1 text-xs ${relisible ? 'text-iris2' : 'text-muted'}">
-          ${relisible ? t('hist.relire', 'Relire les questions et la correction →') : t('hist.non_conserve', 'Détail non conservé')}
+          ${relisible ? t('hist.relire', 'Relire les questions et la correction →') : t('hist.non_conserve', 'Détail indisponible ici')}
         </p>
       </div>
       <span class="shrink-0 font-display text-xl font-extrabold tabular-nums" style="color:${couleurNote(s.score)}">${s.score}</span>

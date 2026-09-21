@@ -99,10 +99,15 @@ export function ouvrirRelecture(id) {
        de la relecture ». C'était faux : la synchronisation écrasait le
        détail local, et ce message accusait le passé d'un bug du jour.
 
-       Le nouveau n'affirme pas non plus qu'elle vient d'un autre
-       appareil — on n'en sait rien. Les simulations effacées par
-       l'ancien défaut ont bien eu lieu ici. On dit donc ce qu'on sait :
-       le détail n'est pas là, et il ne voyage pas. */
+       Celui-ci affirmait ensuite que questions, réponses et correction
+       restaient enfermées dans l'appareil et n'atteignaient pas nos
+       serveurs. C'était vrai quand il a été écrit ; ça ne l'est plus
+       depuis que l'historique appartient au compte. Le détail remonte en base et se relit partout. Le texte,
+       lui, était resté — et promettait le contraire de ce que le
+       produit fait.
+
+       On dit donc ce qui est vrai : le détail suit le compte, celle-ci
+       fait exception, et voici comment la récupérer. */
     zone.innerHTML = `
       <div class="rounded-2xl border border-line bg-surface p-5">
         <p class="text-sm text-muted">${d.toLocaleDateString(region())} · note globale
@@ -111,10 +116,11 @@ export function ouvrirRelecture(id) {
       </div>
       <p class="rounded-xl border border-dashed border-line p-5 text-sm leading-relaxed text-muted">
         ${echappe(t('relecture.detail_ailleurs',
-          "Le détail de cette simulation n'est pas disponible sur cet appareil. Vos questions, "
-          + "vos réponses et leur correction ne quittent jamais l'appareil où la simulation a eu "
-          + "lieu : elles ne partent pas sur nos serveurs. Seules la note et les critères vous "
-          + "suivent d'un appareil à l'autre."))}
+          "Vos questions, vos réponses et leur correction suivent votre compte : elles se "
+          + "relisent depuis n'importe quel appareil où vous vous connectez. Celle-ci fait "
+          + "exception — elle date d'avant, ou son envoi n'a pas abouti. Ouvrez Oralixia sur "
+          + "l'appareil où elle a eu lieu : son détail rejoindra votre compte, et s'affichera "
+          + "ensuite partout."))}
       </p>`;
     ouvrirModale('modal-relecture');
     return;
