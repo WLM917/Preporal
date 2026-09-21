@@ -1103,6 +1103,11 @@ test("l'historique appartient au compte, pas à l'appareil", () => {
   }
   assert.match(remontee, /ligne\.reponses/,
     'le détail envoyé doit être celui qui a été borné à l\'enregistrement');
+  /* Sans cela, une simulation remontée des semaines plus tard par la
+     resynchronisation prend la date du rattrapage et passe en tête de
+     l'historique, devant des simulations bien plus récentes. */
+  assert.match(remontee, /cree_le: ligne\.date/,
+    "la date d'origine doit être conservée, pas celle de l'envoi");
 
   /* Les cinq colonnes ont été ajoutées après coup. Tant que le schéma
      n'est pas à jour, PostgREST refuse la ligne ENTIÈRE — pas seulement
@@ -1110,10 +1115,18 @@ test("l'historique appartient au compte, pas à l'appareil", () => {
      aucune simulation ne remontait, pas même sa note. */
   assert.match(remontee, /colonneAbsente\(/,
     'une colonne manquante doit être reconnue, pas confondue avec une panne');
-  assert.match(remontee, /insert\(base\)/,
+  assert.match(remontee, /inserer\(base\)/,
     'sans les colonnes de détail, la note doit remonter quand même');
+  /* L'identifiant posé par la base doit revenir : sans lui, la copie
+     locale garde son « sim_… » et rien ne dit si elle est déjà en base. */
+  assert.match(remontee, /\.select\('id'\)/,
+    "l'insertion doit rendre l'identifiant de la base");
+  assert.match(remontee, /return (data|reduit\.data)\?\.id/,
+    "remonter\(\) doit rendre cet identifiant, pas un simple booléen");
 
-  const lecture = src.slice(src.indexOf('.select('), src.indexOf(')', src.indexOf('.select(')));
+  const debutLecture = src.indexOf(".from('simulations')\n      .select(");
+  assert.ok(debutLecture > -1, 'la relecture en base a disparu');
+  const lecture = src.slice(debutLecture, src.indexOf(')', src.indexOf('.select(', debutLecture)));
   for (const colonne of DETAIL) {
     assert.ok(lecture.includes(colonne),
       `« ${colonne} » doit être relu, sinon il repart aussitôt effacé par la fusion`);
@@ -1214,8 +1227,8 @@ test("un détail resté sur un appareil finit par remonter", () => {
      un schéma pas encore à jour — y restait pour toujours : rien ne
      retentait. L'historique cessait d'appartenir au compte. */
   const src = modules.find(m => m.nom === 'history.js').source;
-  const debut = src.indexOf('async function rattraper');
-  assert.ok(debut > -1, 'le rattrapage a disparu');
+  const debut = src.indexOf('async function resynchroniser');
+  assert.ok(debut > -1, 'la resynchronisation a disparu');
   const corps = src.slice(debut, src.indexOf('\n}', debut));
 
   assert.match(corps, /aRattraper\(/,
@@ -1224,7 +1237,7 @@ test("un détail resté sur un appareil finit par remonter", () => {
      « await Promise.resolve({error:null}) || await supabase… » le garde
      et n'écrit jamais. On exige la forme qui part vraiment et dont le
      résultat est lu. */
-  assert.match(corps, /const \{ error \} = await supabase\.from\('simulations'\)\.update\(\{/,
+  assert.match(corps, /const \{ data, error \} = await supabase\.from\('simulations'\)\.update\(\{/,
     "l'écriture doit partir pour de bon, et son résultat être lu");
   assert.match(corps, /reponses:\s*d\.reponses/,
     'le détail borné doit être celui qui remonte');
@@ -1234,18 +1247,59 @@ test("un détail resté sur un appareil finit par remonter", () => {
     'un rattrapage est un rattrapage, pas une migration');
   /* Un refus vaut pour tous — colonnes absentes, règle d'écriture pas
      posée. La forme importe peu, l'arrêt compte. */
-  assert.match(corps, /if \(error\)[\s\S]{0,700}?(break;|return remontees;)/,
+  assert.match(corps, /if \(error\)[\s\S]{0,700}?(break;|return faites;)/,
     'un refus doit arrêter la boucle');
   assert.doesNotMatch(corps, /if \(error\)[\s\S]{0,700}?continue;/,
     'répéter neuf fois la même erreur ne sert personne');
 
+  /* Une règle RLS ne renvoie pas d'erreur : elle filtre. La mise à jour
+     repart donc « réussie » sans avoir rien écrit — et on annonçait un
+     rattrapage qui n'avait pas eu lieu. Compter les lignes que la base
+     confirme est la seule façon de faire la différence. */
+  assert.match(corps, /if \(!data\?\.length\)/,
+    'une mise à jour sans erreur ET sans ligne touchée n\'a rien écrit');
+  const apresFiltre = corps.slice(corps.indexOf('if (!data?.length)'));
+  assert.match(apresFiltre.slice(0, 500), /break;|return faites;/,
+    'un filtrage silencieux doit arrêter la boucle, pas être compté comme un succès');
+  assert.ok(corps.indexOf('if (!data?.length)') < corps.indexOf('faites++'),
+    'on ne compte qu\'après avoir vérifié que la base a bien écrit');
+
+  /* aRattraper ne voit que les lignes DÉJÀ en base. Une simulation dont
+     l'enregistrement a entièrement échoué n'y figure pas : rien ne la
+     reprenait, et elle restait dans ce navigateur pour toujours. */
+  assert.match(corps, /jamaisRemontees\(/,
+    "ce qui n'est jamais arrivé en base doit y être inséré, pas seulement complété");
+  const seconde = corps.slice(corps.indexOf('jamaisRemontees('));
+  assert.match(seconde, /await remonter\(s\)/,
+    'une simulation absente de la base doit être insérée');
+  assert.match(seconde, /s\.id = idDistant/,
+    "elle doit adopter l'identifiant de la base, sinon elle repart une deuxième fois");
+
+  /* L'historique local est commun à tout le navigateur. Sur une
+     tablette de famille ou un poste de lycée, il porte aussi les
+     simulations du compte précédent : les envoyer les attribuerait en
+     base au compte connecté. */
+  assert.match(corps, /jamaisRemontees\(liste, session\.id\)/,
+    "on ne remonte que les simulations du compte connecté");
+  const enreg2 = src.slice(src.indexOf('export async function enregistrerSimulation'),
+                           src.indexOf('\n}', src.indexOf('export async function enregistrerSimulation')));
+  assert.match(enreg2, /compte: session\.id \|\| null/,
+    'chaque simulation doit porter le compte qui l\'a faite');
+
   // Il doit être déclenché, et sans retarder l'affichage.
   const chargement = src.slice(src.indexOf('export async function chargerDepuisServeur'),
                                src.indexOf('\n}', src.indexOf('export async function chargerDepuisServeur')));
-  assert.match(chargement, /rendreHistorique\(\);[\s\S]{0,200}rattraper\(/,
+  assert.match(chargement, /rendreHistorique\(\);[\s\S]{0,200}resynchroniser\(/,
     "la liste s'affiche d'abord : le rattrapage ne doit pas la faire attendre");
-  assert.doesNotMatch(chargement, /await rattraper\(/,
+  assert.doesNotMatch(chargement, /await resynchroniser\(/,
     'attendre le rattrapage retarderait l\'affichage pour rien');
+  /* Une base vide n'est pas une raison de renoncer : c'est justement le
+     cas où ce navigateur détient tout ce que le compte n'a jamais reçu.
+     Une LECTURE EN ÉCHEC, si — repartir de zéro doublerait les lignes. */
+  assert.doesNotMatch(chargement, /if \(!data\?\.length\) return;/,
+    'une base vide doit quand même déclencher la remontée des simulations locales');
+  assert.match(chargement, /if \(error\) return/,
+    'une lecture en échec ne doit pas être confondue avec une base vide');
 });
 
 test("le rattrapage ne dépend plus d'un rechargement, et il se voit", () => {
@@ -1266,12 +1320,24 @@ test("le rattrapage ne dépend plus d'un rechargement, et il se voit", () => {
     'sans garde, chaque coup d\'œil relancerait une requête');
 
   const src = modules.find(m => m.nom === 'history.js').source;
-  const debut = src.indexOf('async function rattraper');
+  const debut = src.indexOf('async function resynchroniser');
   const corps = src.slice(debut, src.indexOf('\n}', debut));
-  assert.match(corps, /if \(remontees\)[\s\S]{0,300}toast\(/,
+  assert.match(corps, /if \(faites\)[\s\S]{0,300}toast\(/,
     'un rattrapage réussi doit se dire : le silence ne se distingue pas de la panne');
-  assert.match(corps, /if \(error\)[\s\S]{0,400}toast\([\s\S]{0,120}'erreur'\)/,
+  assert.match(corps, /echouer\(|toast\([\s\S]{0,160}'erreur'\)/,
     'un échec aussi');
+
+  /* Un enregistrement qui échoue laissait croire que tout allait bien :
+     la simulation semblait sur le compte, elle n'était que dans ce
+     navigateur. */
+  const debutE = src.indexOf('export async function enregistrerSimulation');
+  const enreg = src.slice(debutE, src.indexOf('\n}', debutE));
+  assert.match(enreg, /const idDistant = await remonter\(ligne\)/,
+    "l'enregistrement doit lire le résultat de la remontée, pas le jeter");
+  assert.match(enreg, /ligne\.id = idDistant/,
+    "la copie locale doit adopter l'identifiant de la base");
+  assert.match(enreg, /else \{[\s\S]{0,400}toast\([\s\S]{0,200}'erreur'\)/,
+    'une remontée en échec doit se dire, au lieu de passer pour un succès');
 });
 
 /* ── Les modales sur un écran de téléphone ──────────────────── */
@@ -1424,4 +1490,56 @@ test("le prix d'une offre reste lisible quand il ne tient pas à côté du nom",
     'la carte doit être moins rembourrée sur téléphone que sur grand écran');
   assert.match(carte, /inline-flex self-start/,
     "une pastille étirée sur toute la largeur n'en est plus une");
+});
+
+/* ── Compte et abonnement : deux choses distinctes ──────────── */
+
+test("« Gérer mon abonnement » n'apparaît qu'une fois sur l'écran du compte", () => {
+  /* Mon espace affichait deux boutons portant exactement le même
+     libellé : celui de la carte du compte et celui de la carte Premium
+     juste en dessous. La carte du compte — celle qui porte la photo de
+     profil — mène au compte : pseudonyme, photo, mot de passe, données. */
+  const src = lire('index.html');
+  const auth = modules.find(m => m.nom === 'auth.js').source;
+
+  const statiques = (src.match(/data-i18n="accueil\.gerer_mon_abonnement"/g) || []).length;
+  const pose = /btnPremium\.textContent = t\('accueil\.gerer_mon_abonnement'/.test(auth) ? 1 : 0;
+  assert.equal(statiques + pose, 1,
+    `${statiques + pose} boutons « Gérer mon abonnement » sur le même écran : il en faut un`);
+
+  assert.match(src, /id="lien-mon-compte"[^>]*href="\.\/compte\.html"/,
+    'la carte du compte doit mener à « Gérer mon compte »');
+  assert.match(src, /id="lien-mon-compte"[^>]*data-i18n="compte\.gerer_mon_compte"/,
+    'et le dire');
+  assert.match(auth, /\$\('#lien-mon-compte'\)\?\.classList\.toggle\('hidden', !connecte\)/,
+    "gérer son compte n'est pas réservé aux abonnés");
+});
+
+test("« Gérer mon abonnement » ouvre le portail, pas la liste des offres", () => {
+  /* Le bouton de la carte Premium s'intitulait « Gérer mon abonnement »
+     une fois l'accès payé, et rouvrait la liste des offres : on
+     proposait d'acheter à quelqu'un qui avait déjà payé. */
+  const pw = modules.find(m => m.nom === 'paywall.js').source;
+  assert.match(pw, /gererAbonnement = \(\) =>\s*\n?\s*profil\.premium \? ouvrirPortail\(\) : ouvrirPaywall\('fin'\)/,
+    'abonné → portail Stripe ; pas abonné → offres');
+  assert.match(pw, /\$\('#btn-premium'\)\?\.addEventListener\('click', gererAbonnement\)/,
+    'le bouton de la carte Premium doit passer par là');
+  assert.doesNotMatch(pw, /\$\('#btn-premium'\)\?\.addEventListener\('click', \(\) => ouvrirPaywall/,
+    "rouvrir les offres à un abonné n'a aucun sens");
+
+  /* L'entrée du menu de compte existe sur les quatre pages ;
+     brancherPaywall() n'est appelé que sur deux d'entre elles. Le
+     branchement doit donc se faire au chargement du module, sinon
+     « Gérer mon abonnement » ne fait rien sur le simulateur. */
+  const ecoute = pw.indexOf("document.addEventListener('preporal:abonnement'");
+  assert.ok(ecoute > -1, "le menu de compte doit être entendu");
+  assert.ok(ecoute < pw.indexOf('export function brancherPaywall'),
+    'hors de brancherPaywall(), qui ne tourne pas sur toutes les pages');
+
+  const auth = modules.find(m => m.nom === 'auth.js').source;
+  const menu = auth.slice(auth.indexOf("dataset.compte === 'abonnement'"));
+  assert.match(menu.slice(0, 600), /preporal:abonnement/,
+    "l'entrée du menu doit annoncer l'intention…");
+  assert.doesNotMatch(menu.slice(0, 600), /#btn-premium|#btn-portail/,
+    '…et non déléguer son clic à un bouton absent de la moitié des pages');
 });

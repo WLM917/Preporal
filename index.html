@@ -660,7 +660,11 @@
         <div class="mt-4 space-y-2">
           <button id="btn-inscription-2" type="button" class="w-full rounded-xl bg-gradient-to-r from-iris to-iris2 px-4 py-3 font-medium text-white shadow-glow transition hover:brightness-110" data-i18n="auth.inscription">Inscription</button>
           <button id="btn-connexion-2" type="button" class="w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-iris/50" data-i18n="auth.se_connecter">Se connecter</button>
-          <button id="btn-portail" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-iris/50" data-i18n="accueil.gerer_mon_abonnement">Gérer mon abonnement</button>
+          <!-- Deux boutons portaient « Gérer mon abonnement » sur le même
+               écran : celui-ci et celui de la carte Premium juste en dessous.
+               La carte du compte mène au compte — pseudonyme, photo, mot de
+               passe, données — et la carte Premium garde l'abonnement. -->
+          <a id="lien-mon-compte" href="./compte.html" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-center text-sm font-medium transition hover:border-iris/50" data-i18n="compte.gerer_mon_compte">Gérer mon compte</a>
           <button id="btn-deconnexion" type="button" class="hidden w-full rounded-xl border border-line bg-raised px-4 py-3 text-sm font-medium transition hover:border-coral/50" data-i18n="accueil.se_deconnecter">Se déconnecter</button>
         </div>
       </div>

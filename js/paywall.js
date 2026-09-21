@@ -355,13 +355,26 @@ export async function traiterRetourPaiement() {
   majJauge();
 }
 
+/* Une seule porte pour « l'abonnement », quel que soit l'endroit d'où
+   on la pousse : le bouton de la carte Premium, ou l'entrée du menu de
+   compte. Le bouton s'intitulait « Gérer mon abonnement » une fois
+   l'accès payé (voir auth.js) mais rouvrait la liste des offres — on
+   proposait d'acheter à quelqu'un qui avait déjà payé. */
+export const gererAbonnement = () =>
+  profil.premium ? ouvrirPortail() : ouvrirPaywall('fin');
+
+/* Posé au chargement du module, et non dans brancherPaywall() : celui-ci
+   n'est appelé que sur l'accueil et le simulateur, alors que le menu de
+   compte existe sur les quatre pages. */
+document.addEventListener('preporal:abonnement', gererAbonnement);
+
 export function brancherPaywall() {
   rendreOffres();
   // Les offres et la jauge sont dessinées en JavaScript : elles doivent
   // être redessinées quand la langue change.
   surChangementLangue(() => { rendreOffres(); majJauge(); });
   $('#confirmation-age')?.addEventListener('change', majEtatOffres);
-  $('#btn-premium')?.addEventListener('click', () => ouvrirPaywall('fin'));
+  $('#btn-premium')?.addEventListener('click', gererAbonnement);
   $('#btn-portail')?.addEventListener('click', ouvrirPortail);
   traiterRetourPaiement();   // asynchrone : n'immobilise pas le démarrage
   // Le quota est rattaché au compte : il se redessine à chaque connexion.
