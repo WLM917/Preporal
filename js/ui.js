@@ -52,9 +52,13 @@ export function fermerModale(id) {
   document.dispatchEvent(new CustomEvent('preporal:modale-fermee', { detail: { id: m.id } }));
 }
 
+/* Toucher le fond referme. Deux cibles possibles depuis que les modales
+   défilent : le panneau lui-même, ou l'enveloppe de centrage qu'il
+   contient — sans le second cas, toucher à côté de la carte ne fermait
+   plus rien, puisque c'est l'enveloppe qui reçoit le clic. */
 document.addEventListener('click', e => {
   if (e.target.closest('[data-fermer]')) fermerModale();
-  else if (e.target.classList.contains('modale')) fermerModale();
+  else if (e.target.classList.contains('modale') || e.target.hasAttribute('data-fond')) fermerModale();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerModale(); });
 

@@ -123,25 +123,32 @@ export function rendreOffres() {
     const vedette = id === OFFRE_RECOMMANDEE;
     return `
     <button type="button" data-plan="${o.id}"
-      class="plan relative flex h-full flex-col rounded-2xl border p-5 text-left transition disabled:cursor-not-allowed disabled:opacity-50
+      class="plan relative flex h-full flex-col rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 sm:p-5
         ${vedette ? 'border-iris bg-iris/10 hover:brightness-110' : 'border-line bg-ink/50 hover:border-iris/60'}">
-      ${vedette ? `<span class="absolute -top-2.5 left-5 rounded-full bg-iris px-2.5 py-0.5 text-[11px] font-semibold text-white">${echappe(t('offre.recommande', 'Recommandé'))}</span>` : ''}
-      <span class="text-xs font-medium ${vedette ? 'text-iris2' : 'text-muted'}">${echappe(t(`offre.${o.id}.accroche`, o.accroche))}</span>
-      <span class="mt-1 block font-display text-lg font-bold leading-tight">${echappe(nomOffre(o))}</span>
-      <span class="mt-3 block">
-        <span class="whitespace-nowrap font-display text-2xl font-extrabold">${echappe(o.prix)}</span>
-        <span class="ml-1.5 whitespace-nowrap text-xs text-muted">${echappe(t('offre.periode.' + o.periode.replace(/[^a-z0-9]+/gi, '_'), o.periode))}</span>
+      ${vedette ? `<span class="absolute -top-2.5 left-4 rounded-full bg-iris px-2.5 py-0.5 text-[11px] font-semibold text-white sm:left-5">${echappe(t('offre.recommande', 'Recommandé'))}</span>` : ''}
+      <span class="block text-xs font-medium ${vedette ? 'text-iris2' : 'text-muted'}">${echappe(t(`offre.${o.id}.accroche`, o.accroche))}</span>
+
+      <!-- Sur téléphone le prix remonte sur la ligne du nom : les trois
+           cartes empilées prenaient sinon plus de place que l'écran.
+           « flex-wrap » garde la mise en page d'origine quand les deux
+           ne tiennent pas côte à côte, au lieu de déborder. -->
+      <span class="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3 sm:mt-1 sm:block">
+        <span class="block font-display text-base font-bold leading-tight sm:text-lg">${echappe(nomOffre(o))}</span>
+        <span class="block text-right sm:mt-3 sm:text-left">
+          <span class="whitespace-nowrap font-display text-xl font-extrabold sm:text-2xl">${echappe(o.prix)}</span>
+          <span class="ml-1.5 whitespace-nowrap text-xs text-muted">${echappe(t('offre.periode.' + o.periode.replace(/[^a-z0-9]+/gi, '_'), o.periode))}</span>
+        </span>
       </span>
       ${o.essaiJours
-        ? `<span class="mt-2 inline-flex rounded-full border border-mint/50 bg-mint/10 px-2 py-0.5 text-[11px] font-medium text-mint">${echappe(
+        ? `<span class="mt-2 inline-flex self-start rounded-full border border-mint/50 bg-mint/10 px-2 py-0.5 text-[11px] font-medium text-mint">${echappe(
             t('offre.essai', '{n} jours offerts').replace('{n}', o.essaiJours))}</span>`
         : ''}
       ${o.equivalentMensuel
-        ? `<span class="mt-1 block text-xs text-mint">${echappe(
+        ? `<span class="mt-1 block text-xs leading-snug text-mint sm:leading-normal">${echappe(
             t('offre.equivalent', '{m} par mois · soit {e} de moins que six mois au tarif mensuel')
               .replace('{m}', o.equivalentMensuel).replace('{e}', o.economie))}</span>`
         : ''}
-      <span class="mt-3 block text-sm leading-relaxed text-muted">${echappe(t(`offre.${o.id}.detail`, o.detail))}</span>
+      <span class="mt-2 block text-[13px] leading-snug text-muted sm:mt-3 sm:text-sm sm:leading-relaxed">${echappe(t(`offre.${o.id}.detail`, o.detail))}</span>
     </button>`;
   }).join('');
 
@@ -348,13 +355,26 @@ export async function traiterRetourPaiement() {
   majJauge();
 }
 
+/* Une seule porte pour « l'abonnement », quel que soit l'endroit d'où
+   on la pousse : le bouton de la carte Premium, ou l'entrée du menu de
+   compte. Le bouton s'intitulait « Gérer mon abonnement » une fois
+   l'accès payé (voir auth.js) mais rouvrait la liste des offres — on
+   proposait d'acheter à quelqu'un qui avait déjà payé. */
+export const gererAbonnement = () =>
+  profil.premium ? ouvrirPortail() : ouvrirPaywall('fin');
+
+/* Posé au chargement du module, et non dans brancherPaywall() : celui-ci
+   n'est appelé que sur l'accueil et le simulateur, alors que le menu de
+   compte existe sur les quatre pages. */
+document.addEventListener('preporal:abonnement', gererAbonnement);
+
 export function brancherPaywall() {
   rendreOffres();
   // Les offres et la jauge sont dessinées en JavaScript : elles doivent
   // être redessinées quand la langue change.
   surChangementLangue(() => { rendreOffres(); majJauge(); });
   $('#confirmation-age')?.addEventListener('change', majEtatOffres);
-  $('#btn-premium')?.addEventListener('click', () => ouvrirPaywall('fin'));
+  $('#btn-premium')?.addEventListener('click', gererAbonnement);
   $('#btn-portail')?.addEventListener('click', ouvrirPortail);
   traiterRetourPaiement();   // asynchrone : n'immobilise pas le démarrage
   // Le quota est rattaché au compte : il se redessine à chaque connexion.

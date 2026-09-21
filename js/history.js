@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG } from './config.js';
-import { fusionnerHistoriques, bornerDetail, aRattraper } from './fusion.js';
+import { fusionnerHistoriques, bornerDetail, aRattraper, jamaisRemontees } from './fusion.js';
 import { typeTraduit } from './catalogue.js';
 import { $, stock, echappe, toast, couleurNote, jeton } from './ui.js';
 import { supabase, session } from './auth.js';
@@ -40,10 +40,16 @@ const colonneAbsente = message =>
  * On réessaie donc sans le détail plutôt que de tout perdre. La note
  * et la progression sont sauves ; le détail reprendra sa place dès que
  * les colonnes existeront.
+ *
+ * @returns {Promise<string|null>} l'identifiant en base, ou null en cas d'échec
  */
 async function remonter(ligne) {
   const base = {
     utilisateur_id: session.id,
+    /* La date d'origine, et non celle de l'envoi : une simulation
+       remontée des semaines plus tard par resynchroniser() se serait
+       affichée à la date du rattrapage, en tête de l'historique. */
+    cree_le: ligne.date,
     type_id: ligne.typeId,
     sous_choix: ligne.sousChoix,
     score: ligne.score,
@@ -60,19 +66,26 @@ async function remonter(ligne) {
     details: ligne.details
   };
 
+  /* On redemande l'identifiant posé par la base : il remplace ensuite
+     le « sim_… » local, et les deux copies ne font plus qu'une. Sans
+     cela, une simulation restait identifiée différemment de chaque côté
+     et rien ne permettait de savoir si elle était déjà remontée. */
+  const inserer = async corps =>
+    supabase.from('simulations').insert(corps).select('id').single();
+
   try {
-    const { error } = await supabase.from('simulations').insert(complet);
-    if (!error) return true;
+    const { data, error } = await inserer(complet);
+    if (!error) return data?.id || null;
     if (!colonneAbsente(error.message)) throw error;
 
     console.warn('Colonnes de détail absentes : la simulation remonte sans son détail. '
       + 'Jouez supabase/correctif-simulations.sql pour la rendre relisible ailleurs.');
-    const reduit = await supabase.from('simulations').insert(base);
+    const reduit = await inserer(base);
     if (reduit.error) throw reduit.error;
-    return true;
+    return reduit.data?.id || null;
   } catch (e) {
     console.warn('Historique non synchronisé', e);
-    return false;
+    return null;
   }
 }
 
@@ -80,6 +93,10 @@ export async function enregistrerSimulation(entree) {
   const ligne = {
     id: 'sim_' + Date.now(),
     date: new Date().toISOString(),
+    /* À qui elle appartient. L'historique local est commun à tout le
+       navigateur : sans cette marque, une simulation faite sous un
+       compte pourrait être remontée dans un autre. */
+    compte: session.id || null,
     typeId: entree.typeId,
     sousChoix: entree.sousChoix || '',
     score: Math.round(entree.score || 0),
@@ -103,7 +120,19 @@ export async function enregistrerSimulation(entree) {
   stock.ecrire(CONFIG.cles.historique, liste);
 
   // Synchronisation multi-appareils si l'utilisateur est connecté.
-  if (supabase && session.id) await remonter(ligne);
+  if (supabase && session.id) {
+    const idDistant = await remonter(ligne);
+    if (idDistant) {
+      ligne.id = idDistant;                 // liste contient la même référence
+      stock.ecrire(CONFIG.cles.historique, liste);
+    } else {
+      /* L'échec était muet : la simulation semblait enregistrée, et elle
+         ne l'était que dans ce navigateur. On le dit, et la prochaine
+         synchronisation la reprendra — voir resynchroniser(). */
+      toast(t('hist.locale_seulement',
+        "Simulation enregistrée sur cet appareil. Elle rejoindra votre compte à la prochaine connexion."), 'erreur');
+    }
+  }
 
   rendreHistorique();
   return ligne;
@@ -112,15 +141,21 @@ export async function enregistrerSimulation(entree) {
 export async function chargerDepuisServeur() {
   if (!supabase || !session.id) return;
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('simulations')
       .select('id, cree_le, type_id, sous_choix, score, eloquence, nb_questions, criteres, reponses, eloquence_detail, verdict, temps_total, details')
       .eq('utilisateur_id', session.id)
       .order('cree_le', { ascending: false })
       .limit(MAX);
-    if (!data?.length) return;
 
-    const distant = data.map(d => ({
+    /* Une lecture en échec n'est pas une base vide : repartir de zéro
+       ferait remonter une deuxième fois tout ce qui s'y trouve déjà. */
+    if (error) return console.warn('Historique distant illisible', error);
+
+    /* On ne renonce plus quand la base ne rend rien. C'est justement le
+       cas où ce navigateur détient des simulations que le compte n'a
+       jamais reçues : sans cette suite, elles y restaient enfermées. */
+    const distant = (data || []).map(d => ({
       id: d.id, date: d.cree_le, typeId: d.type_id, sousChoix: d.sous_choix,
       score: d.score, eloquence: d.eloquence, nbQuestions: d.nb_questions,
       criteres: d.criteres || {},
@@ -147,7 +182,7 @@ export async function chargerDepuisServeur() {
     rendreHistorique();
 
     // Ce qui n'avait jamais pu remonter le fait maintenant.
-    rattraper(liste, distant).catch(e => console.warn('Rattrapage abandonné', e));
+    resynchroniser(liste, distant).catch(e => console.warn('Rattrapage abandonné', e));
   } catch (e) { console.warn('Historique distant indisponible', e); }
 }
 
@@ -156,52 +191,87 @@ export async function chargerDepuisServeur() {
 const RATTRAPAGE_MAX = 10;
 
 /**
- * Remonte le détail des simulations que la base n'a pas.
+ * Remet le compte et cet appareil d'accord.
  *
- * Sans cela, un détail bloqué par une coupure réseau — ou par un schéma
- * pas encore à jour — y restait pour toujours : rien ne retentait, et
- * la simulation n'était relisible que sur l'appareil où elle avait eu
- * lieu. L'historique cessait d'appartenir au compte.
+ * Deux manques possibles, et ils ne se soignent pas pareil :
+ *
+ *  • la ligne est en base mais sans son détail — réseau coupé au
+ *    moment de l'enregistrement, colonnes pas encore créées : on la
+ *    complète ;
+ *  • la simulation n'est jamais arrivée en base — l'enregistrement a
+ *    entièrement échoué : on l'insère. Ce second cas n'était pas traité,
+ *    et rien ne le reprenait : la simulation restait prisonnière de ce
+ *    navigateur pour toujours.
  */
-async function rattraper(liste, brutes) {
+async function resynchroniser(liste, brutes) {
   if (!supabase || !session.id) return 0;
 
-  const aFaire = aRattraper(liste, brutes).slice(0, RATTRAPAGE_MAX);
-  let remontees = 0;
+  let faites = 0;
+  const echouer = (journal, cle, message) => {
+    console.warn(journal);
+    toast(t(cle, message), 'erreur');
+  };
 
-  for (const s of aFaire) {
+  /* ── Compléter ce qui est en base sans son détail ────────── */
+  for (const s of aRattraper(liste, brutes).slice(0, RATTRAPAGE_MAX)) {
     const d = bornerDetail(s);
-    const { error } = await supabase.from('simulations').update({
+    const { data, error } = await supabase.from('simulations').update({
       reponses: d.reponses,
       eloquence_detail: d.eloquenceDetail,
       verdict: d.verdict,
       temps_total: d.tempsTotal,
       details: d.details
-    }).eq('id', s.id).eq('utilisateur_id', session.id);
+    }).eq('id', s.id).eq('utilisateur_id', session.id).select('id');
 
     if (error) {
-      /* Un refus vaut pour tous : colonnes absentes, ou règle d'écriture
-         pas encore posée. Inutile d'insister neuf fois de plus. */
-      console.warn('Détail non rattrapé : ' + (error.message || error)
-        + ' — jouez supabase/correctif-rattrapage.sql.');
-      toast(t('hist.rattrapage_echec',
-        "Certaines simulations n'ont pas pu être complétées. Réessayez plus tard."), 'erreur');
-      return remontees;
+      /* Un refus vaut pour tous : colonnes absentes, ou droit d'écriture
+         pas encore accordé. Inutile d'insister neuf fois de plus. */
+      echouer('Détail non rattrapé : ' + (error.message || error)
+        + ' — jouez supabase/correctif-rattrapage.sql.',
+        'hist.rattrapage_echec',
+        "Certaines simulations n'ont pas pu être complétées. Réessayez plus tard.");
+      break;
     }
-    remontees++;
+
+    /* Ni erreur, ni ligne touchée. C'est le cas qui mentait : une règle
+       RLS ne renvoie pas d'erreur, elle filtre — la mise à jour repart
+       « réussie » sans avoir rien écrit, et on annonçait un rattrapage
+       qui n'avait pas eu lieu. On ne compte que ce que la base confirme. */
+    if (!data?.length) {
+      echouer('Rattrapage filtré : aucune ligne modifiée pour ' + s.id
+        + ' — jouez supabase/correctif-rattrapage.sql.',
+        'hist.rattrapage_refuse',
+        "Le compte n'a pas accepté de compléter ces simulations. Vérifiez la configuration Supabase.");
+      break;
+    }
+    faites++;
+  }
+
+  /* ── Insérer ce qui n'est jamais arrivé en base ──────────── */
+  for (const s of jamaisRemontees(liste, session.id).slice(0, RATTRAPAGE_MAX)) {
+    const idDistant = await remonter(s);
+    if (!idDistant) {
+      echouer('Simulation jamais remontée : ' + s.id,
+        'hist.remontee_echec',
+        "Certaines simulations n'ont pas pu rejoindre votre compte. Réessayez plus tard.");
+      break;
+    }
+    s.id = idDistant;          // elle cesse d'être « locale uniquement »
+    faites++;
   }
 
   /* Le rattrapage se faisait en silence. Quand rien ne bouge à l'écran,
      on ne peut pas distinguer « ça a marché » de « ça n'a pas tourné » —
      et c'est exactement ce qui s'est passé. */
-  if (remontees) {
+  if (faites) {
+    stock.ecrire(CONFIG.cles.historique, liste);
     rendreHistorique();
-    toast(remontees > 1
+    toast(faites > 1
       ? t('hist.rattrapees', '{n} simulations sont de nouveau relisibles partout.')
-          .replace('{n}', remontees)
+          .replace('{n}', faites)
       : t('hist.rattrapee', 'Cette simulation est de nouveau relisible partout.'));
   }
-  return remontees;
+  return faites;
 }
 
 /* ── Rendu ─────────────────────────────────────────────────── */

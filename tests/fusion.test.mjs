@@ -216,3 +216,62 @@ test('rien à rattraper ne casse rien', () => {
   assert.deepEqual(aRattraper([], []), []);
   assert.deepEqual(aRattraper([null], [null]), []);
 });
+
+
+/* ═══════════════════════════════════════════════════════════
+   Ce qui n'est JAMAIS arrivé en base
+
+   aRattraper ne voit que les lignes déjà présentes en base. Une
+   simulation dont l'enregistrement a entièrement échoué n'y
+   figure pas : rien ne la reprenait, et elle restait dans ce
+   navigateur pour toujours.
+   ═══════════════════════════════════════════════════════════ */
+
+import { jamaisRemontees } from '../js/fusion.js';
+
+const MOI = 'compte-a';
+const mienne = (sur = {}) => ({ id: 'sim_1', date: T, typeId: 'grand-oral',
+  score: 55, nbQuestions: 4, compte: MOI, ...sur });
+
+test('une simulation restée dans ce navigateur est à remonter', () => {
+  const r = jamaisRemontees([mienne()], MOI);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].id, 'sim_1');
+});
+
+test('une simulation déjà en base ne repart pas une deuxième fois', () => {
+  /* Elle porte l'identifiant posé par la base, plus le « sim_… »
+     du navigateur : c'est ce qui les distingue. */
+  assert.deepEqual(jamaisRemontees([mienne({ id: 'uuid-1' })], MOI), []);
+});
+
+test("l'historique d'un autre compte n'est jamais versé au compte connecté", () => {
+  /* Le cas qui compte : une tablette de famille, un poste de lycée.
+     L'historique local est commun à tout le navigateur — le remonter
+     tel quel attribuerait en base les simulations du compte précédent
+     à celui qui est connecté maintenant. */
+  const autrui = mienne({ id: 'sim_2', compte: 'compte-b' });
+  assert.deepEqual(jamaisRemontees([autrui], MOI), [],
+    'une simulation faite sous un autre compte doit rester où elle est');
+});
+
+test('une entrée sans propriétaire connu reste ici', () => {
+  /* Les entrées antérieures à cette marque : on ne sait pas de qui
+     elles sont. Les attribuer au compte connecté serait un pari. */
+  const ancienne = mienne();
+  delete ancienne.compte;
+  assert.deepEqual(jamaisRemontees([ancienne], MOI), []);
+  assert.deepEqual(jamaisRemontees([mienne({ compte: null })], MOI), []);
+});
+
+test('hors connexion, rien ne remonte', () => {
+  assert.deepEqual(jamaisRemontees([mienne({ compte: null })], null), []);
+  assert.deepEqual(jamaisRemontees([mienne()], null), [],
+    'sans compte connecté, il n\'y a personne à qui attribuer quoi que ce soit');
+});
+
+test('rien à remonter ne casse rien', () => {
+  assert.deepEqual(jamaisRemontees(), []);
+  assert.deepEqual(jamaisRemontees([], MOI), []);
+  assert.deepEqual(jamaisRemontees([null, undefined, { id: 42 }], MOI), []);
+});

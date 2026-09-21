@@ -119,3 +119,28 @@ export function aRattraper(fusionnees = [], brutes = []) {
 
   return fusionnees.filter(s => s && sansDetailEnBase.has(s.id) && aDuDetail(s));
 }
+
+/**
+ * Les simulations de CE compte qui ne sont jamais arrivées en base.
+ *
+ * aRattraper ne voit que les lignes déjà présentes en base et privées
+ * de leur détail. Une simulation dont l'enregistrement a entièrement
+ * échoué — réseau coupé, compte pas encore connecté — n'y figure pas :
+ * rien ne la reprenait, et elle restait dans ce navigateur pour
+ * toujours. Elle se reconnaît à son identifiant, posé par le
+ * navigateur ; la base pose un uuid.
+ *
+ * L'historique local n'est pas cloisonné par compte : sur un navigateur
+ * partagé — une tablette de famille, un poste de lycée — il porte aussi
+ * les simulations du compte précédent. Les envoyer au compte connecté
+ * les lui attribuerait pour de bon, en base. On n'envoie donc que ce
+ * qui porte sa marque : une entrée sans propriétaire connu reste ici,
+ * lisible, plutôt que d'être attribuée à quelqu'un au hasard.
+ *
+ * @param {object[]}    fusionnees
+ * @param {string|null} compte  l'identifiant du compte connecté
+ */
+export const jamaisRemontees = (fusionnees = [], compte = null) =>
+  fusionnees.filter(s =>
+    s && typeof s.id === 'string' && s.id.startsWith('sim_')
+    && Boolean(compte) && s.compte === compte);

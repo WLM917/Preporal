@@ -1103,6 +1103,11 @@ test("l'historique appartient au compte, pas à l'appareil", () => {
   }
   assert.match(remontee, /ligne\.reponses/,
     'le détail envoyé doit être celui qui a été borné à l\'enregistrement');
+  /* Sans cela, une simulation remontée des semaines plus tard par la
+     resynchronisation prend la date du rattrapage et passe en tête de
+     l'historique, devant des simulations bien plus récentes. */
+  assert.match(remontee, /cree_le: ligne\.date/,
+    "la date d'origine doit être conservée, pas celle de l'envoi");
 
   /* Les cinq colonnes ont été ajoutées après coup. Tant que le schéma
      n'est pas à jour, PostgREST refuse la ligne ENTIÈRE — pas seulement
@@ -1110,10 +1115,18 @@ test("l'historique appartient au compte, pas à l'appareil", () => {
      aucune simulation ne remontait, pas même sa note. */
   assert.match(remontee, /colonneAbsente\(/,
     'une colonne manquante doit être reconnue, pas confondue avec une panne');
-  assert.match(remontee, /insert\(base\)/,
+  assert.match(remontee, /inserer\(base\)/,
     'sans les colonnes de détail, la note doit remonter quand même');
+  /* L'identifiant posé par la base doit revenir : sans lui, la copie
+     locale garde son « sim_… » et rien ne dit si elle est déjà en base. */
+  assert.match(remontee, /\.select\('id'\)/,
+    "l'insertion doit rendre l'identifiant de la base");
+  assert.match(remontee, /return (data|reduit\.data)\?\.id/,
+    "remonter\(\) doit rendre cet identifiant, pas un simple booléen");
 
-  const lecture = src.slice(src.indexOf('.select('), src.indexOf(')', src.indexOf('.select(')));
+  const debutLecture = src.indexOf(".from('simulations')\n      .select(");
+  assert.ok(debutLecture > -1, 'la relecture en base a disparu');
+  const lecture = src.slice(debutLecture, src.indexOf(')', src.indexOf('.select(', debutLecture)));
   for (const colonne of DETAIL) {
     assert.ok(lecture.includes(colonne),
       `« ${colonne} » doit être relu, sinon il repart aussitôt effacé par la fusion`);
@@ -1214,8 +1227,8 @@ test("un détail resté sur un appareil finit par remonter", () => {
      un schéma pas encore à jour — y restait pour toujours : rien ne
      retentait. L'historique cessait d'appartenir au compte. */
   const src = modules.find(m => m.nom === 'history.js').source;
-  const debut = src.indexOf('async function rattraper');
-  assert.ok(debut > -1, 'le rattrapage a disparu');
+  const debut = src.indexOf('async function resynchroniser');
+  assert.ok(debut > -1, 'la resynchronisation a disparu');
   const corps = src.slice(debut, src.indexOf('\n}', debut));
 
   assert.match(corps, /aRattraper\(/,
@@ -1224,7 +1237,7 @@ test("un détail resté sur un appareil finit par remonter", () => {
      « await Promise.resolve({error:null}) || await supabase… » le garde
      et n'écrit jamais. On exige la forme qui part vraiment et dont le
      résultat est lu. */
-  assert.match(corps, /const \{ error \} = await supabase\.from\('simulations'\)\.update\(\{/,
+  assert.match(corps, /const \{ data, error \} = await supabase\.from\('simulations'\)\.update\(\{/,
     "l'écriture doit partir pour de bon, et son résultat être lu");
   assert.match(corps, /reponses:\s*d\.reponses/,
     'le détail borné doit être celui qui remonte');
@@ -1234,18 +1247,59 @@ test("un détail resté sur un appareil finit par remonter", () => {
     'un rattrapage est un rattrapage, pas une migration');
   /* Un refus vaut pour tous — colonnes absentes, règle d'écriture pas
      posée. La forme importe peu, l'arrêt compte. */
-  assert.match(corps, /if \(error\)[\s\S]{0,700}?(break;|return remontees;)/,
+  assert.match(corps, /if \(error\)[\s\S]{0,700}?(break;|return faites;)/,
     'un refus doit arrêter la boucle');
   assert.doesNotMatch(corps, /if \(error\)[\s\S]{0,700}?continue;/,
     'répéter neuf fois la même erreur ne sert personne');
 
+  /* Une règle RLS ne renvoie pas d'erreur : elle filtre. La mise à jour
+     repart donc « réussie » sans avoir rien écrit — et on annonçait un
+     rattrapage qui n'avait pas eu lieu. Compter les lignes que la base
+     confirme est la seule façon de faire la différence. */
+  assert.match(corps, /if \(!data\?\.length\)/,
+    'une mise à jour sans erreur ET sans ligne touchée n\'a rien écrit');
+  const apresFiltre = corps.slice(corps.indexOf('if (!data?.length)'));
+  assert.match(apresFiltre.slice(0, 500), /break;|return faites;/,
+    'un filtrage silencieux doit arrêter la boucle, pas être compté comme un succès');
+  assert.ok(corps.indexOf('if (!data?.length)') < corps.indexOf('faites++'),
+    'on ne compte qu\'après avoir vérifié que la base a bien écrit');
+
+  /* aRattraper ne voit que les lignes DÉJÀ en base. Une simulation dont
+     l'enregistrement a entièrement échoué n'y figure pas : rien ne la
+     reprenait, et elle restait dans ce navigateur pour toujours. */
+  assert.match(corps, /jamaisRemontees\(/,
+    "ce qui n'est jamais arrivé en base doit y être inséré, pas seulement complété");
+  const seconde = corps.slice(corps.indexOf('jamaisRemontees('));
+  assert.match(seconde, /await remonter\(s\)/,
+    'une simulation absente de la base doit être insérée');
+  assert.match(seconde, /s\.id = idDistant/,
+    "elle doit adopter l'identifiant de la base, sinon elle repart une deuxième fois");
+
+  /* L'historique local est commun à tout le navigateur. Sur une
+     tablette de famille ou un poste de lycée, il porte aussi les
+     simulations du compte précédent : les envoyer les attribuerait en
+     base au compte connecté. */
+  assert.match(corps, /jamaisRemontees\(liste, session\.id\)/,
+    "on ne remonte que les simulations du compte connecté");
+  const enreg2 = src.slice(src.indexOf('export async function enregistrerSimulation'),
+                           src.indexOf('\n}', src.indexOf('export async function enregistrerSimulation')));
+  assert.match(enreg2, /compte: session\.id \|\| null/,
+    'chaque simulation doit porter le compte qui l\'a faite');
+
   // Il doit être déclenché, et sans retarder l'affichage.
   const chargement = src.slice(src.indexOf('export async function chargerDepuisServeur'),
                                src.indexOf('\n}', src.indexOf('export async function chargerDepuisServeur')));
-  assert.match(chargement, /rendreHistorique\(\);[\s\S]{0,200}rattraper\(/,
+  assert.match(chargement, /rendreHistorique\(\);[\s\S]{0,200}resynchroniser\(/,
     "la liste s'affiche d'abord : le rattrapage ne doit pas la faire attendre");
-  assert.doesNotMatch(chargement, /await rattraper\(/,
+  assert.doesNotMatch(chargement, /await resynchroniser\(/,
     'attendre le rattrapage retarderait l\'affichage pour rien');
+  /* Une base vide n'est pas une raison de renoncer : c'est justement le
+     cas où ce navigateur détient tout ce que le compte n'a jamais reçu.
+     Une LECTURE EN ÉCHEC, si — repartir de zéro doublerait les lignes. */
+  assert.doesNotMatch(chargement, /if \(!data\?\.length\) return;/,
+    'une base vide doit quand même déclencher la remontée des simulations locales');
+  assert.match(chargement, /if \(error\) return/,
+    'une lecture en échec ne doit pas être confondue avec une base vide');
 });
 
 test("le rattrapage ne dépend plus d'un rechargement, et il se voit", () => {
@@ -1266,10 +1320,226 @@ test("le rattrapage ne dépend plus d'un rechargement, et il se voit", () => {
     'sans garde, chaque coup d\'œil relancerait une requête');
 
   const src = modules.find(m => m.nom === 'history.js').source;
-  const debut = src.indexOf('async function rattraper');
+  const debut = src.indexOf('async function resynchroniser');
   const corps = src.slice(debut, src.indexOf('\n}', debut));
-  assert.match(corps, /if \(remontees\)[\s\S]{0,300}toast\(/,
+  assert.match(corps, /if \(faites\)[\s\S]{0,300}toast\(/,
     'un rattrapage réussi doit se dire : le silence ne se distingue pas de la panne');
-  assert.match(corps, /if \(error\)[\s\S]{0,400}toast\([\s\S]{0,120}'erreur'\)/,
+  assert.match(corps, /echouer\(|toast\([\s\S]{0,160}'erreur'\)/,
     'un échec aussi');
+
+  /* Un enregistrement qui échoue laissait croire que tout allait bien :
+     la simulation semblait sur le compte, elle n'était que dans ce
+     navigateur. */
+  const debutE = src.indexOf('export async function enregistrerSimulation');
+  const enreg = src.slice(debutE, src.indexOf('\n}', debutE));
+  assert.match(enreg, /const idDistant = await remonter\(ligne\)/,
+    "l'enregistrement doit lire le résultat de la remontée, pas le jeter");
+  assert.match(enreg, /ligne\.id = idDistant/,
+    "la copie locale doit adopter l'identifiant de la base");
+  assert.match(enreg, /else \{[\s\S]{0,400}toast\([\s\S]{0,200}'erreur'\)/,
+    'une remontée en échec doit se dire, au lieu de passer pour un succès');
+});
+
+/* ── Les modales sur un écran de téléphone ──────────────────── */
+
+/** Toutes les modales d'une page : identifiant, classes, corps. */
+function modales(source) {
+  const trouvees = [];
+  const ouverture = /<div id="(modal-[\w-]+)" class="modale ([^"]*)"[^>]*>\n([^\n]*)\n/g;
+  for (const m of source.matchAll(ouverture)) {
+    trouvees.push({ id: m[1], classes: m[2], suivante: m[3] });
+  }
+  return trouvees;
+}
+
+test("aucune modale ne garde son contenu hors d'atteinte sur un téléphone", () => {
+  /* « grid place-items-center » centre, mais ne laisse jamais défiler :
+     ce qui dépasse est perdu des deux côtés. Sur un iPhone SE, la carte
+     d'offres mesurait 1174 px pour 667 px de vue, et la case de
+     confirmation d'âge — sans laquelle lancerCheckout refuse de partir —
+     restait hors de l'écran quoi qu'on fasse. Personne ne pouvait donc
+     payer depuis un téléphone, et l'inscription souffrait du même mal
+     (977 px, rognés en haut comme en bas).
+
+     Le montage qui tient : le panneau défile, une enveloppe d'au moins
+     une hauteur d'écran centre la carte tant que la place suffit, et
+     grandit au-delà plutôt que de rogner le haut. */
+  for (const { fichier } of PAGES) {
+    const source = lire(fichier);
+    const liste = modales(source);
+    assert.ok(liste.length >= 3, `${fichier} : les modales devraient être retrouvées`);
+
+    for (const { id, classes, suivante } of liste) {
+      assert.match(classes, /overflow-y-auto/,
+        `${fichier} · ${id} : sans défilement, ce qui dépasse est inatteignable`);
+      assert.doesNotMatch(classes, /place-items-center/,
+        `${fichier} · ${id} : centrer sans défiler rogne le haut et le bas`);
+      assert.match(suivante, /data-fond/,
+        `${fichier} · ${id} : toucher le fond doit encore fermer`);
+      assert.match(suivante, /min-h-full/,
+        `${fichier} · ${id} : l'enveloppe doit faire au moins une hauteur d'écran`);
+      assert.match(suivante, /items-center/,
+        `${fichier} · ${id} : sans align-items, la carte s'étire d'un bord à l'autre`);
+    }
+  }
+
+  const ui = modules.find(m => m.nom === 'ui.js').source;
+  const fond = ui.slice(ui.indexOf("addEventListener('click'"));
+  assert.match(fond.slice(0, 400), /data-fond/,
+    "c'est l'enveloppe qui reçoit le clic désormais, plus le panneau");
+});
+
+/* Échelles Tailwind, pour comparer deux valeurs plutôt que constater
+   qu'une classe est écrite quelque part. */
+const TAILLES = {
+  'text-xs': 12, 'text-[13px]': 13, 'text-sm': 14, 'text-base': 16,
+  'text-lg': 18, 'text-xl': 20, 'text-2xl': 24, 'text-3xl': 30,
+  'leading-none': 1, 'leading-tight': 1.25, 'leading-snug': 1.375,
+  'leading-normal': 1.5, 'leading-relaxed': 1.625, 'leading-loose': 2
+};
+
+/** Valeur numérique d'une classe d'espacement ou de taille. */
+function valeur(classe) {
+  if (classe in TAILLES) return TAILLES[classe];
+  const m = /^(?:p|px|py|pt|pb|m|mt|mb|gap|gap-x|gap-y)-(\d+(?:\.\d+)?)$/.exec(classe);
+  return m ? Number(m[1]) : null;
+}
+
+/** Paires (base, sm:) d'un attribut class, avec leurs valeurs. */
+function paires(attribut) {
+  const classes = attribut.split(/\s+/).filter(Boolean);
+  const base = new Map();
+  for (const c of classes) {
+    const v = valeur(c);
+    if (v !== null) base.set(c.replace(/-[\d.]+$/, '').replace(/^(text|leading)-.*/, '$1'), { c, v });
+  }
+  const trouvees = [];
+  for (const c of classes) {
+    if (!c.startsWith('sm:')) continue;
+    const nu = c.slice(3);
+    const v = valeur(nu);
+    if (v === null) continue;
+    const cle = nu.replace(/-[\d.]+$/, '').replace(/^(text|leading)-.*/, '$1');
+    const avant = base.get(cle);
+    if (avant) trouvees.push({ mobile: avant.c, bureau: nu, petit: avant.v, grand: v });
+  }
+  return trouvees;
+}
+
+test("la modale d'offre est plus petite sur téléphone que sur grand écran", () => {
+  /* Le reproche était « ça s'affiche trop grand sur mobile, on a du mal
+     à lire toutes les informations ». Le remède n'est pas d'écrire des
+     classes « sm: » quelque part : c'est que chaque réglage réduit
+     vraiment la place prise sur un téléphone. On compare donc les deux
+     valeurs, au lieu de vérifier qu'une classe existe.
+
+     Mesures avant/après, iPhone SE : carte 1174 px → 946 px, dont la
+     grille d'offres 762 px → 572 px. */
+  const bouts = [];
+  for (const { fichier } of PAGES) {
+    const source = lire(fichier);
+    const debut = source.indexOf('<div id="modal-paywall"');
+    const fin = source.indexOf('\n</div>', debut);
+    assert.ok(debut > 0 && fin > debut, `${fichier} : modale d'offre introuvable`);
+    bouts.push({ nom: fichier, bloc: source.slice(debut, fin) });
+  }
+  bouts.push({ nom: 'js/paywall.js', bloc: modules.find(m => m.nom === 'paywall.js').source });
+
+  let comptees = 0;
+  for (const { nom, bloc } of bouts) {
+    for (const attribut of bloc.match(/class="[^"]*"/g) || []) {
+      for (const p of paires(attribut.slice(7, -1))) {
+        comptees++;
+        assert.ok(p.petit < p.grand,
+          `${nom} : « ${p.mobile} » devrait être plus petit que « sm:${p.bureau} »`);
+      }
+    }
+  }
+  assert.ok(comptees >= 8,
+    `seulement ${comptees} réglage(s) adapté(s) au téléphone : la modale reste dessinée pour un grand écran`);
+
+  /* Une grande taille de caractère sur téléphone doit être un choix,
+     pas un oubli : le titre en text-2xl repassait sur deux lignes et
+     coûtait à lui seul près de trente pixels. Elle doit donc toujours
+     venir avec la valeur du grand écran à côté. */
+  for (const { nom, bloc } of bouts) {
+    for (const attribut of bloc.match(/class="[^"]*"/g) || []) {
+      const classes = attribut.slice(7, -1).split(/\s+/);
+      const grande = classes.find(c => /^text-(xl|2xl|3xl)$/.test(c));
+      if (!grande) continue;
+      assert.ok(classes.some(c => /^sm:text-/.test(c)),
+        `${nom} : « ${grande} » sans valeur de repli plus petite sur téléphone`);
+    }
+  }
+});
+
+test("le prix d'une offre reste lisible quand il ne tient pas à côté du nom", () => {
+  /* Sur téléphone, le prix remonte sur la ligne du nom pour gagner une
+     ligne par offre. Mais « Oralixia Extra » et « 54,90 € pour 6 mois »
+     ne tiennent pas toujours côte à côte : sans flex-wrap, le prix
+     déborderait de la carte au lieu de repasser dessous. */
+  const src = modules.find(m => m.nom === 'paywall.js').source;
+  const carte = src.slice(src.indexOf('<button type="button" data-plan='),
+                          src.indexOf('</button>`'));
+  assert.match(carte, /flex flex-wrap items-baseline/,
+    'la ligne nom + prix doit pouvoir se replier');
+  assert.match(carte, /sm:block/,
+    'sur grand écran, le prix revient sous le nom');
+  const classesCarte = /class="(plan [^"]*)"/.exec(carte)[1].split(/\s+/);
+  assert.ok(!classesCarte.includes('p-5') && classesCarte.includes('sm:p-5'),
+    'la carte doit être moins rembourrée sur téléphone que sur grand écran');
+  assert.match(carte, /inline-flex self-start/,
+    "une pastille étirée sur toute la largeur n'en est plus une");
+});
+
+/* ── Compte et abonnement : deux choses distinctes ──────────── */
+
+test("« Gérer mon abonnement » n'apparaît qu'une fois sur l'écran du compte", () => {
+  /* Mon espace affichait deux boutons portant exactement le même
+     libellé : celui de la carte du compte et celui de la carte Premium
+     juste en dessous. La carte du compte — celle qui porte la photo de
+     profil — mène au compte : pseudonyme, photo, mot de passe, données. */
+  const src = lire('index.html');
+  const auth = modules.find(m => m.nom === 'auth.js').source;
+
+  const statiques = (src.match(/data-i18n="accueil\.gerer_mon_abonnement"/g) || []).length;
+  const pose = /btnPremium\.textContent = t\('accueil\.gerer_mon_abonnement'/.test(auth) ? 1 : 0;
+  assert.equal(statiques + pose, 1,
+    `${statiques + pose} boutons « Gérer mon abonnement » sur le même écran : il en faut un`);
+
+  assert.match(src, /id="lien-mon-compte"[^>]*href="\.\/compte\.html"/,
+    'la carte du compte doit mener à « Gérer mon compte »');
+  assert.match(src, /id="lien-mon-compte"[^>]*data-i18n="compte\.gerer_mon_compte"/,
+    'et le dire');
+  assert.match(auth, /\$\('#lien-mon-compte'\)\?\.classList\.toggle\('hidden', !connecte\)/,
+    "gérer son compte n'est pas réservé aux abonnés");
+});
+
+test("« Gérer mon abonnement » ouvre le portail, pas la liste des offres", () => {
+  /* Le bouton de la carte Premium s'intitulait « Gérer mon abonnement »
+     une fois l'accès payé, et rouvrait la liste des offres : on
+     proposait d'acheter à quelqu'un qui avait déjà payé. */
+  const pw = modules.find(m => m.nom === 'paywall.js').source;
+  assert.match(pw, /gererAbonnement = \(\) =>\s*\n?\s*profil\.premium \? ouvrirPortail\(\) : ouvrirPaywall\('fin'\)/,
+    'abonné → portail Stripe ; pas abonné → offres');
+  assert.match(pw, /\$\('#btn-premium'\)\?\.addEventListener\('click', gererAbonnement\)/,
+    'le bouton de la carte Premium doit passer par là');
+  assert.doesNotMatch(pw, /\$\('#btn-premium'\)\?\.addEventListener\('click', \(\) => ouvrirPaywall/,
+    "rouvrir les offres à un abonné n'a aucun sens");
+
+  /* L'entrée du menu de compte existe sur les quatre pages ;
+     brancherPaywall() n'est appelé que sur deux d'entre elles. Le
+     branchement doit donc se faire au chargement du module, sinon
+     « Gérer mon abonnement » ne fait rien sur le simulateur. */
+  const ecoute = pw.indexOf("document.addEventListener('preporal:abonnement'");
+  assert.ok(ecoute > -1, "le menu de compte doit être entendu");
+  assert.ok(ecoute < pw.indexOf('export function brancherPaywall'),
+    'hors de brancherPaywall(), qui ne tourne pas sur toutes les pages');
+
+  const auth = modules.find(m => m.nom === 'auth.js').source;
+  const menu = auth.slice(auth.indexOf("dataset.compte === 'abonnement'"));
+  assert.match(menu.slice(0, 600), /preporal:abonnement/,
+    "l'entrée du menu doit annoncer l'intention…");
+  assert.doesNotMatch(menu.slice(0, 600), /#btn-premium|#btn-portail/,
+    '…et non déléguer son clic à un bouton absent de la moitié des pages');
 });

@@ -532,6 +532,9 @@ export function majInterface() {
   $('#btn-inscription-2')?.classList.toggle('hidden', connecte);
   $('#btn-deconnexion')?.classList.toggle('hidden', !connecte);
   $('#btn-portail')?.classList.toggle('hidden', !(connecte && profil.premium));
+  /* « Gérer mon compte » n'est pas réservé aux abonnés : c'est là que se
+     changent le pseudonyme, la photo, le mot de passe et les données. */
+  $('#lien-mon-compte')?.classList.toggle('hidden', !connecte);
 
   const textePremium = $('#texte-premium');
   if (textePremium && profil.premium) {
@@ -705,7 +708,11 @@ function brancherBoutons() {
     if (b.dataset.compte === 'deconnexion') deconnexion();
     if (b.dataset.compte === 'abonnement') {
       fermerMenuCompte();
-      ($('#btn-portail') && profil.premium ? $('#btn-portail') : $('#btn-premium'))?.click();
+      /* L'entrée déléguait son clic à un bouton de la page. Il n'existe
+         ni sur le simulateur ni sur les témoignages : « Gérer mon
+         abonnement » n'y faisait donc rien du tout. paywall.js écoute
+         cet évènement, et il est chargé sur les quatre pages. */
+      document.dispatchEvent(new CustomEvent('preporal:abonnement'));
     }
   });
 
