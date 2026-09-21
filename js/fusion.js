@@ -93,3 +93,29 @@ export function bornerDetail(entree = {}) {
     details: (entree.details || []).slice(0, REPONSES_MAX)
   };
 }
+
+/* ── Ce qui n'a jamais pu remonter ──────────────────────────
+   Une simulation peut avoir son détail ici et pas en base :
+   réseau coupé au moment de l'enregistrement, colonnes pas
+   encore créées, serveur qui a refusé. Rien ne retentait, et ce
+   détail restait prisonnier de l'appareil où la simulation avait
+   eu lieu — l'historique cessait d'appartenir au compte. */
+
+/** Une entrée porte-t-elle un détail relisible ? */
+const aDuDetail = s => Array.isArray(s?.reponses) && s.reponses.length > 0;
+
+/**
+ * Les simulations dont le détail existe ici mais manque en base.
+ *
+ * @param {object[]} fusionnees  le résultat de fusionnerHistoriques
+ * @param {object[]} brutes      les lignes telles que la base les a rendues
+ * @returns {object[]} à remonter, les plus récentes d'abord
+ */
+export function aRattraper(fusionnees = [], brutes = []) {
+  /* On ne se fie pas au résultat fusionné pour savoir ce que la base
+     possède : la fusion vient justement d'y greffer le détail local. */
+  const sansDetailEnBase = new Set(
+    brutes.filter(b => b && b.id != null && !aDuDetail(b)).map(b => b.id));
+
+  return fusionnees.filter(s => s && sansDetailEnBase.has(s.id) && aDuDetail(s));
+}

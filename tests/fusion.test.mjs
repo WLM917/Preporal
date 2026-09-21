@@ -165,3 +165,54 @@ test('une entrée vide ne fait pas tomber le bornage', () => {
   assert.equal(r.verdict, '');
   assert.equal(r.eloquenceDetail, null);
 });
+
+/* ═══ Ce qui n'a jamais pu remonter ══════════════════════════ */
+
+import { aRattraper } from '../js/fusion.js';
+
+const enBase = (sur = {}) => ({ id: 'uuid-1', date: T, typeId: 'grand-oral',
+  score: 55, nbQuestions: 4, criteres: {}, details: [], ...sur });
+
+test('une simulation dont la base ignore le détail est à rattraper', () => {
+  /* Le cas de ta simulation du 19 septembre : son détail est resté sur
+     l'iPad, les colonnes n'existaient pas encore. */
+  const fusionnee = { ...enBase(), reponses: [{ question: 'Q', texte: 'R' }] };
+  const r = aRattraper([fusionnee], [enBase({ reponses: [] })]);
+
+  assert.equal(r.length, 1);
+  assert.equal(r[0].id, 'uuid-1');
+});
+
+test('une simulation que la base connaît déjà n’est pas renvoyée', () => {
+  const avecDetail = { ...enBase(), reponses: [{ question: 'Q', texte: 'R' }] };
+  assert.deepEqual(aRattraper([avecDetail], [avecDetail]), [],
+    'la renvoyer à chaque chargement serait du trafic pour rien');
+});
+
+test('une simulation sans détail nulle part n’est pas rattrapable', () => {
+  /* Celle dont l'ancien bug a détruit le détail : il n'existe plus. */
+  assert.deepEqual(aRattraper([enBase()], [enBase()]), []);
+});
+
+test('une simulation locale jamais remontée n’est pas confondue', () => {
+  /* Elle n'a pas d'identifiant en base : c'est l'insertion qui la
+     portera, pas le rattrapage. */
+  const locale = { id: 'sim_123', date: T, typeId: 'grand-oral', score: 55,
+                   nbQuestions: 4, reponses: [{ question: 'Q', texte: 'R' }] };
+  assert.deepEqual(aRattraper([locale], [enBase({ reponses: [] })]), []);
+});
+
+test('on ne se fie pas au résultat fusionné pour savoir ce que la base a', () => {
+  /* La fusion vient justement d'y greffer le détail local : lire le
+     détail dans la ligne fusionnée ferait croire que la base l'a. */
+  const brute = enBase({ reponses: [] });
+  const fusionnee = { ...brute, reponses: [{ question: 'Q', texte: 'R' }] };
+  assert.equal(aRattraper([fusionnee], [brute]).length, 1,
+    'la comparaison doit porter sur les lignes brutes');
+});
+
+test('rien à rattraper ne casse rien', () => {
+  assert.deepEqual(aRattraper(), []);
+  assert.deepEqual(aRattraper([], []), []);
+  assert.deepEqual(aRattraper([null], [null]), []);
+});

@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { CONFIG } from './config.js';
-import { fusionnerHistoriques, bornerDetail } from './fusion.js';
+import { fusionnerHistoriques, bornerDetail, aRattraper } from './fusion.js';
 import { typeTraduit } from './catalogue.js';
 import { $, stock, echappe, toast, couleurNote, jeton } from './ui.js';
 import { supabase, session } from './auth.js';
@@ -142,10 +142,53 @@ export async function chargerDepuisServeur() {
 
        Écraser le local par le distant perdrait donc ce détail — c'est
        exactement ce que faisait la version précédente. On greffe. */
-    stock.ecrire(CONFIG.cles.historique,
-      fusionnerHistoriques(lireHistorique(), distant, MAX));
+    const liste = fusionnerHistoriques(lireHistorique(), distant, MAX);
+    stock.ecrire(CONFIG.cles.historique, liste);
     rendreHistorique();
+
+    // Ce qui n'avait jamais pu remonter le fait maintenant.
+    rattraper(liste, distant).catch(e => console.warn('Rattrapage abandonné', e));
   } catch (e) { console.warn('Historique distant indisponible', e); }
+}
+
+/* Au-delà, on s'arrête : un rattrapage est un rattrapage, pas une
+   migration. Le reste suivra au prochain chargement. */
+const RATTRAPAGE_MAX = 10;
+
+/**
+ * Remonte le détail des simulations que la base n'a pas.
+ *
+ * Sans cela, un détail bloqué par une coupure réseau — ou par un schéma
+ * pas encore à jour — y restait pour toujours : rien ne retentait, et
+ * la simulation n'était relisible que sur l'appareil où elle avait eu
+ * lieu. L'historique cessait d'appartenir au compte.
+ */
+async function rattraper(liste, brutes) {
+  if (!supabase || !session.id) return 0;
+
+  const aFaire = aRattraper(liste, brutes).slice(0, RATTRAPAGE_MAX);
+  let remontees = 0;
+
+  for (const s of aFaire) {
+    const d = bornerDetail(s);
+    const { error } = await supabase.from('simulations').update({
+      reponses: d.reponses,
+      eloquence_detail: d.eloquenceDetail,
+      verdict: d.verdict,
+      temps_total: d.tempsTotal,
+      details: d.details
+    }).eq('id', s.id).eq('utilisateur_id', session.id);
+
+    if (error) {
+      /* Un refus vaut pour tous : colonnes absentes, ou règle d'écriture
+         pas encore posée. Inutile d'insister neuf fois de plus. */
+      console.warn('Détail non rattrapé : ' + (error.message || error)
+        + ' — jouez supabase/correctif-rattrapage.sql.');
+      break;
+    }
+    remontees++;
+  }
+  return remontees;
 }
 
 /* ── Rendu ─────────────────────────────────────────────────── */
