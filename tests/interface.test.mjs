@@ -1232,8 +1232,12 @@ test("un détail resté sur un appareil finit par remonter", () => {
     "on ne complète qu'une ligne précise, et seulement dans son compte");
   assert.match(corps, /slice\(0, RATTRAPAGE_MAX\)/,
     'un rattrapage est un rattrapage, pas une migration');
-  assert.match(corps, /if \(error\)[\s\S]{0,300}break;/,
-    'un refus vaut pour tous : inutile de répéter neuf fois la même erreur');
+  /* Un refus vaut pour tous — colonnes absentes, règle d'écriture pas
+     posée. La forme importe peu, l'arrêt compte. */
+  assert.match(corps, /if \(error\)[\s\S]{0,700}?(break;|return remontees;)/,
+    'un refus doit arrêter la boucle');
+  assert.doesNotMatch(corps, /if \(error\)[\s\S]{0,700}?continue;/,
+    'répéter neuf fois la même erreur ne sert personne');
 
   // Il doit être déclenché, et sans retarder l'affichage.
   const chargement = src.slice(src.indexOf('export async function chargerDepuisServeur'),
@@ -1242,4 +1246,30 @@ test("un détail resté sur un appareil finit par remonter", () => {
     "la liste s'affiche d'abord : le rattrapage ne doit pas la faire attendre");
   assert.doesNotMatch(chargement, /await rattraper\(/,
     'attendre le rattrapage retarderait l\'affichage pour rien');
+});
+
+test("le rattrapage ne dépend plus d'un rechargement, et il se voit", () => {
+  /* Il ne partait qu'au chargement de la page. Un site resté ouvert
+     depuis le matin — le cas normal sur une tablette — ne l'avait donc
+     jamais déclenché, et rien à l'écran ne permettait de s'en rendre
+     compte : on ne distinguait pas « ça a marché » de « ça n'a pas
+     tourné ». */
+  const app = modules.find(m => m.nom === 'app.js').source;
+  assert.match(app, /visibilitychange/,
+    'revenir sur l\'onglet doit resynchroniser : sur une tablette, on ne recharge pas');
+  const retour = app.slice(app.indexOf("addEventListener('visibilitychange'"));
+  assert.match(retour.slice(0, 500), /chargerDepuisServeur\(\)/,
+    'le retour sur l\'onglet doit relancer la synchronisation');
+  assert.match(retour.slice(0, 500), /document\.hidden/,
+    'on ne synchronise qu\'en revenant, pas en partant');
+  assert.match(retour.slice(0, 500), /FRAICHEUR_HISTORIQUE|Date\.now\(\) - /,
+    'sans garde, chaque coup d\'œil relancerait une requête');
+
+  const src = modules.find(m => m.nom === 'history.js').source;
+  const debut = src.indexOf('async function rattraper');
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+  assert.match(corps, /if \(remontees\)[\s\S]{0,300}toast\(/,
+    'un rattrapage réussi doit se dire : le silence ne se distingue pas de la panne');
+  assert.match(corps, /if \(error\)[\s\S]{0,400}toast\([\s\S]{0,120}'erreur'\)/,
+    'un échec aussi');
 });
