@@ -115,6 +115,7 @@ export const textes = () => ({
       ${bloc(t('legal.cgv.3', '3. Commande et paiement'), pa('cgv.3_corps', "Le paiement s'effectue en ligne via Stripe (carte bancaire et moyens proposés par Stripe). La commande est validée après confirmation du paiement. Une facture est disponible dans l'espace client."))}
       ${bloc(t('legal.cgv.4', '4. Résiliation et reconduction'), `
         <p>${t('legal.cgv.4_resilier', "Les abonnements {m} et {e} sont résiliables à tout moment depuis « Gérer mon compte », qui ouvre le portail client Stripe. La résiliation prend effet à la fin de la période déjà réglée : l'accès est conservé jusque-là, et aucun prorata n'est remboursé. Le portail permet également de passer d'une formule à l'autre.").replace('{m}', OFFRES.mensuel.nom).replace('{e}', OFFRES.extra.nom)}</p>
+        ${pa('cgv.4_changement', "Le changement de formule prend effet immédiatement. La part non utilisée de la période en cours est portée au crédit du compte client et déduite des sommes dues au titre de la nouvelle formule ; un crédit excédentaire s'impute sur les échéances suivantes. Le Pass 48 heures, paiement unique, n'est pas une formule d'abonnement : il ne peut pas remplacer un abonnement par ce moyen.")}
         <p>${t('legal.cgv.4_essai', "Résilier pendant les {jours} jours d'essai de l'offre {nom} n'entraîne aucun prélèvement.").replace('{jours}', OFFRES.extra.essaiJours).replace('{nom}', OFFRES.extra.nom)}</p>
         <p>${t('legal.cgv.4_l215', "Conformément à l'article L215-1 du code de la consommation, {n} informe l'abonné de sa faculté de ne pas reconduire son abonnement semestriel, au plus tôt trois mois et au plus tard un mois avant l'échéance. À défaut d'information, l'abonné peut mettre fin gratuitement au contrat à tout moment à compter de la date de reconduction, et obtenir le remboursement des sommes prélevées après celle-ci.").replace('{n}', nomEnPhrase())}</p>
         ${pa('cgv.4_pass48', "Le Pass 48 heures est un paiement unique : il ne se reconduit pas et n'a pas à être résilié. À l'échéance, l'accès revient à l'offre gratuite.")}`)}
@@ -217,13 +218,23 @@ export function brancherLegal() {
   surChangementLangue(verifierMentions);
 
   $$('[data-legal]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      // Le texte est construit à l'ouverture : il suit la langue courante.
-      const texte = textes()[btn.dataset.legal];
-      if (!texte) return;
-      $('#legal-titre').textContent = texte.titre;
-      $('#legal-contenu').innerHTML = texte.contenu;
-      ouvrirModale('modal-legal');
-    });
+    btn.addEventListener('click', () => ouvrirTexte(btn.dataset.legal));
   });
+
+  /* « ?legal=cgv » ouvre les CGV. Le portail Stripe affiche des liens
+     vers nos conditions et notre politique de confidentialité — là où
+     l'on résilie et où l'on change de formule, c'est-à-dire là où on
+     en a besoin. Sans adresse propre, ces textes n'étaient joignables
+     qu'en passant par le pied de page. */
+  const demande = new URL(window.location.href).searchParams.get('legal');
+  if (demande && Object.hasOwn(textes(), demande)) ouvrirTexte(demande);
+}
+
+/** Ouvre un texte légal. Construit à l'ouverture : il suit la langue courante. */
+function ouvrirTexte(cle) {
+  const texte = textes()[cle];
+  if (!texte) return;
+  $('#legal-titre').textContent = texte.titre;
+  $('#legal-contenu').innerHTML = texte.contenu;
+  ouvrirModale('modal-legal');
 }

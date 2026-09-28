@@ -286,7 +286,9 @@ export async function ouvrirPortail() {
         'Content-Type': 'application/json',
         ...(session.jeton ? { Authorization: 'Bearer ' + session.jeton } : {})
       },
-      body: JSON.stringify({ userId: session.id, email: session.email, origine: window.location.origin })
+      /* Ni identifiant ni adresse : le serveur ne s'y fie plus, il
+         lit le compte dans le jeton. La langue, elle, sert au portail. */
+      body: JSON.stringify({ langue: langue() })
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok || !data.url) throw new Error(data.erreur || t('paywall.portail_indispo', 'Portail indisponible.'));

@@ -1172,9 +1172,17 @@ Ce qui a été traité, et ce qui reste **à votre charge**.
    pointer sur un tarif **récurrent de six mois**, et non plus sur un paiement
    unique. Créez-le dans Stripe avant le déploiement, sinon la souscription
    échoue.
-4. **Portail client Stripe.** Pour que le changement de formule fonctionne :
-   Stripe → Settings → Billing → Customer portal → autorisez la mise à jour
-   d'abonnement et listez-y les deux tarifs (mensuel et six mois).
+4. **Portail client Stripe.** Rien à cocher : `api/_lib/portail.js` crée
+   lui-même, au premier affichage du portail, une configuration qui autorise
+   l'échange entre l'offre mensuelle et l'offre six mois, et la retrouve
+   ensuite par sa signature. Le réglage du tableau de bord (Settings →
+   Billing → Customer portal) n'est plus lu pour ces sessions.
+   Si le portail n'affiche toujours que « Annuler l'abonnement », les
+   journaux Vercel disent pourquoi (« Configuration du portail impossible »)
+   — le plus souvent, une clé restreinte sans droit d'écriture sur
+   *Customer portal*. Le portail reste utilisable dans ce cas, sans échange.
+   Pour que la page de compte suive un changement de formule, le webhook
+   doit écouter `customer.subscription.updated` (voir plus haut).
 5. **Colonnes du profil.** `supabase/schema.sql` ajoute `pseudo`,
    `telephone`, `couleur` et `avatar_url`. Sans elles, les réglages
    s'affichent bien mais ne survivent pas à un changement d'appareil : la

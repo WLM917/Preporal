@@ -176,18 +176,34 @@ function rendreAbonnement() {
         ${echappe(t('compte.premium_actif', 'Premium actif'))}
       </p>
       <p class="font-display text-base font-bold">${echappe(offre ? nomOffre(offre) : t('compte.abonnement', 'Abonnement'))}</p>
-      ${offre ? `<p class="text-muted">${echappe(offre.prix)} · ${echappe(offre.periode)}</p>` : ''}
+      ${offre ? `<p class="text-muted">${echappe(offre.prix)} · ${echappe(
+        // Même clé que la modale d'offre : la période restait en français.
+        t('offre.periode.' + offre.periode.replace(/[^a-z0-9]+/gi, '_'), offre.periode))}</p>` : ''}
       <p class="leading-relaxed text-muted">${echappe(dateLisible
         ? t('compte.actif_jusquau', "Actif jusqu'au {date}").replace('{date}', dateLisible)
         : t('compte.reconduction', 'Reconduit automatiquement. Résiliable à tout moment.'))}</p>`;
 
-    actions.innerHTML = `
+    /* Un pass ne se résilie pas et ne s'échange pas : c'est un paiement
+       unique. « Résilier ou changer de formule » menait à un portail où
+       il n'y avait rien à résilier. On propose ce qui a du sens pour
+       lui : passer à un abonnement. */
+    actions.innerHTML = profil.plan === 'pass48' ? `
+      <button type="button" data-action="offres"
+        class="w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90">
+        ${echappe(t('compte.passer_abonnement', 'Passer à un abonnement'))}
+      </button>
+      <p class="text-xs leading-relaxed text-muted">${echappe(t('compte.pass_aide',
+        "Le Pass 48 heures ne se reconduit pas : l'accès s'arrête à son échéance, sans rien à résilier."))}</p>` : `
       <button type="button" data-action="portail"
         class="w-full rounded-xl bg-inverse px-4 py-3 font-display font-bold text-sur-inverse transition hover:opacity-90">
         ${echappe(t('compte.gerer_abonnement', 'Résilier ou changer de formule'))}
       </button>
-      <p class="text-xs leading-relaxed text-muted">${echappe(t('compte.resiliation_aide',
-        "Une résiliation prend effet à la fin de la période déjà payée : vous gardez l'accès jusque-là."))}</p>`;
+      <p class="text-xs leading-relaxed text-muted">${echappe(t('compte.changement_aide',
+        "Vous y passez de l'offre mensuelle à l'offre six mois, et inversement : la part non utilisée de la période en cours vous est créditée."))}
+        ${echappe(t('compte.resiliation_aide',
+        "Une résiliation prend effet à la fin de la période déjà payée : vous gardez l'accès jusque-là."))}</p>
+      <p class="text-xs leading-relaxed text-muted">${echappe(t('compte.pass_ponctuel',
+        "Le Pass 48 heures est un achat ponctuel, pas une formule d'abonnement : il se prend depuis les offres, une fois l'abonnement terminé."))}</p>`;
   }
 
   $$('#actions-abonnement [data-action]').forEach(b => b.addEventListener('click', () => {
