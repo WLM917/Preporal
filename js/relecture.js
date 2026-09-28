@@ -244,9 +244,22 @@ function boutonTelecharger(s, d) {
       .replace('{type}', type.court).replace('{date}', d.toLocaleDateString(region()));
     document.body.classList.add('impression-relecture');
 
+    /* Chaque réponse est un bloc repliable, et seule la première est
+       ouverte d'office : un bloc replié ne s'imprime pas. Le PDF
+       s'arrêtait donc à la première question dès qu'on n'avait pas
+       tout déplié à la main. On déplie tout le temps de l'impression,
+       puis on rend l'écran tel qu'il était.
+
+       En JavaScript et non en CSS : les navigateurs récents masquent
+       le contenu d'un bloc fermé en dehors de ses enfants, et un
+       « display:block » posé sur ceux-ci n'y change plus rien. */
+    const replies = [...document.querySelectorAll('#relecture-contenu details:not([open])')];
+    replies.forEach(bloc => { bloc.open = true; });
+
     const restaurer = () => {
       document.body.classList.remove('impression-relecture');
       document.title = titreInitial;
+      replies.forEach(bloc => { bloc.open = false; });
       window.removeEventListener('afterprint', restaurer);
     };
     window.addEventListener('afterprint', restaurer);
