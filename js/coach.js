@@ -9,7 +9,7 @@ import { session, exigerCompte } from './auth.js';
 import { ouvrirPaywall } from './paywall.js';
 import { ouvrirAppel, Appel } from './appel.js';
 import { preparerPiece, piecePourApi, PIECES_MAX } from './upload.js';
-import { langue, t, region } from './i18n.js';
+import { langue, t, region, surChangementLangue } from './i18n.js';
 import { messageRefus } from './questions.js';
 
 const historique = [];
@@ -19,6 +19,8 @@ let occupe = false;
 
 /* Lu à l'appel, pas au chargement : les traductions arrivent après. */
 const accueil = () => t('coach.accueil', 'Bonjour, je suis votre coach Oralixia. Dites-moi quel oral vous préparez, ou collez votre plan, votre texte ou votre sujet : je vous aide à structurer, reformuler et anticiper les questions du jury.');
+
+const ID_ACCUEIL = 'coach-accueil';
 
 function bulle(role, texte, id, { ecoutable = true } = {}) {
   const fil = $('#fil-coach');
@@ -313,10 +315,51 @@ function brancherMicro() {
   });
 }
 
+/**
+ * Écrit — ou réécrit — le message d'accueil dans la langue courante.
+ *
+ * Il n'était posé qu'au chargement de la page. Passer le site en
+ * espagnol laissait donc le coach dire bonjour en français, et c'est
+ * la première chose qu'on lit en arrivant. Ce texte est le nôtre, pas
+ * une réponse du modèle : le retraduire est toujours juste, même au
+ * milieu d'une conversation. Les autres bulles, elles, ne sont pas
+ * touchées — ce sont de vrais échanges, on ne les réécrit pas.
+ *
+ * L'historique envoyé au modèle reçoit la même correction : sans
+ * cela, il garderait un premier tour en français et continuerait de
+ * s'y raccrocher.
+ */
+function poserAccueil() {
+  const fil = $('#fil-coach');
+  if (!fil) return;
+
+  const texte = accueil();
+  const ancienne = fil.querySelector('#' + ID_ACCUEIL);
+  const defilement = fil.scrollTop;
+
+  const el = bulle('assistant', texte, ID_ACCUEIL);
+  if (ancienne) {
+    fil.insertBefore(el, fil.firstChild);   // elle reprend sa place, en tête
+    ancienne.remove();
+    fil.scrollTop = defilement;             // on ne saute pas au bas du fil
+  }
+
+  if (historique[0]?.role === 'assistant') historique[0].content = texte;
+  else historique.unshift({ role: 'assistant', content: texte });
+}
+
+/* Le libellé du bouton est réécrit en clair quand on bascule la
+   lecture audio : il ne porte donc plus son data-i18n d'origine, et un
+   changement de langue le remettait sur « activée » alors que la
+   lecture était coupée. */
+function majBoutonVoix() {
+  const b = $('#btn-voix-coach');
+  if (b) b.textContent = t(lectureAuto ? 'coach.lecture_activee' : 'coach.lecture_coupee',
+    lectureAuto ? 'Lecture audio : activée' : 'Lecture audio : coupée');
+}
+
 export function initCoach() {
-  const bonjour = accueil();
-  bulle('assistant', bonjour);
-  historique.push({ role: 'assistant', content: bonjour });
+  poserAccueil();
 
   reprendreSimulationConfiee();
 
@@ -350,21 +393,22 @@ export function initCoach() {
     saisie.style.height = Math.min(160, saisie.scrollHeight) + 'px';
   });
 
-  $('#btn-voix-coach')?.addEventListener('click', e => {
+  $('#btn-voix-coach')?.addEventListener('click', () => {
     lectureAuto = !lectureAuto;
     if (!lectureAuto) Voix.stop();
-    e.currentTarget.textContent = t(lectureAuto ? 'coach.lecture_activee' : 'coach.lecture_coupee',
-      lectureAuto ? 'Lecture audio : activée' : 'Lecture audio : coupée');
+    majBoutonVoix();
   });
 
   $('#btn-vider-coach')?.addEventListener('click', () => {
     historique.length = 0;
     $('#fil-coach').innerHTML = '';
     Voix.stop();
-    const bonjour = accueil();
-    bulle('assistant', bonjour);
-    historique.push({ role: 'assistant', content: bonjour });
+    poserAccueil();
   });
+
+  /* Changer de langue doit se voir tout de suite dans la conversation,
+     pas seulement au message suivant. */
+  surChangementLangue(() => { poserAccueil(); majBoutonVoix(); });
 
   brancherMicro();
 }
