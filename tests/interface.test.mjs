@@ -1600,3 +1600,108 @@ test("aucun texte ne promet que le détail reste sur l'appareil", () => {
       `${langue} : la traduction doit parler du compte, pas de l'appareil seul`);
   }
 });
+
+/* ── Le coach suit la langue choisie ─────────────────────────── */
+
+test("le message d'accueil du coach suit le changement de langue", () => {
+  /* Il n'était posé qu'au chargement de la page : passer le site en
+     espagnol laissait le coach dire bonjour en français, et c'est la
+     première chose qu'on lit en arrivant sur la vue.
+
+     Ce texte est le nôtre, pas une réponse du modèle : le retraduire
+     est toujours juste. Les autres bulles sont de vrais échanges, on
+     ne les réécrit pas. */
+  const src = modules.find(m => m.nom === 'coach.js').source;
+
+  assert.match(src, /surChangementLangue/,
+    'le coach doit être prévenu du changement de langue');
+  const branchement = src.slice(src.indexOf('surChangementLangue(() =>'));
+  assert.match(branchement.slice(0, 200), /poserAccueil\(\)/,
+    "…et reposer son message d'accueil");
+
+  const debut = src.indexOf('function poserAccueil');
+  assert.ok(debut > -1, "poserAccueil a disparu");
+  const corps = src.slice(debut, src.indexOf('\n}', debut));
+
+  assert.match(corps, /const texte = accueil\(\)/,
+    'le texte doit être relu dans la langue courante, pas réutilisé');
+  assert.match(corps, /ancienne[\s\S]{0,200}remove\(\)/,
+    "l'ancienne bulle doit disparaître, sinon le fil en compte deux");
+  assert.match(corps, /insertBefore\(el, fil\.firstChild\)/,
+    "la nouvelle doit reprendre la tête du fil, pas s'ajouter à la fin");
+  /* Chercher « historique[0] … = texte » ne prouve rien : un
+     « if (false) » devant garde la forme et n'écrit jamais. On exige
+     la garde qui décide vraiment, et on interdit celles qui ne
+     décident rien. */
+  assert.match(corps, /if \(historique\[0\]\?\.role === 'assistant'\)\s*historique\[0\]\.content = texte;/,
+    "l'historique envoyé au modèle doit porter la même langue, sinon il s'y raccroche");
+  assert.match(corps, /else historique\.unshift\(/,
+    "…et être créé s'il est vide");
+  assert.doesNotMatch(corps, /if \((false|0|null|undefined)\)/,
+    'une garde toujours fausse neutralise la correction sans se voir');
+  assert.match(corps, /scrollTop = defilement|scrollTop = /,
+    'on ne saute pas au bas du fil au milieu d\'une lecture');
+
+  /* Le libellé du bouton audio est réécrit en clair à chaque bascule :
+     il ne porte donc plus son data-i18n, et un changement de langue le
+     remettait sur « activée » alors que la lecture était coupée. */
+  assert.match(src, /function majBoutonVoix/,
+    "l'état de la lecture audio doit survivre au changement de langue");
+  assert.match(branchement.slice(0, 200), /majBoutonVoix\(\)/,
+    '…et être réappliqué quand la langue change');
+  const bascule = src.slice(src.indexOf("$('#btn-voix-coach')?.addEventListener"));
+  assert.match(bascule.slice(0, 250), /majBoutonVoix\(\)/,
+    'la bascule et le changement de langue doivent écrire le même libellé');
+});
+
+/* ── Une mention absente ne s'affiche pas en orange ──────────── */
+
+test("aucune mention manquante n'est étalée devant les visiteurs", () => {
+  /* « SIRET : [À COMPLÉTER] » en orange au milieu des mentions légales
+     parle à l'éditeur et à personne d'autre. Un visiteur y lit un site
+     inachevé, juste avant de sortir sa carte.
+
+     La ligne entière disparaît donc tant que la valeur manque. Ce n'est
+     pas une dispense : l'avertissement destiné à l'éditeur continue de
+     partir dans la console (voir verifierMentions). */
+  const src = modules.find(m => m.nom === 'legal.js').source;
+
+  assert.doesNotMatch(src, /À COMPLÉTER['"]|>\[À COMPLÉTER\]</,
+    'plus de pastille orange dans le texte livré');
+  assert.match(src, /const ou = v => \(val\(v\) \? echappe\(val\(v\)\) : ''\)/,
+    'une valeur absente devient vide, pas un crochet');
+  assert.match(src, /const ligne = \(libelle, valeur\) => \(valeur \?/,
+    'un libellé sans valeur ne doit pas rester seul');
+  assert.match(src, /const blocSi = \(titre, corps\) => \(val\(corps\) \?/,
+    "un bloc sans contenu ne doit pas s'afficher vide");
+
+  /* L'éditeur, lui, doit rester prévenu — sinon on aurait troqué une
+     laideur contre un oubli. */
+  const verif = src.slice(src.indexOf('export function verifierMentions'));
+  assert.match(verif.slice(0, 1200), /console\.warn\(/,
+    "l'avertissement à l'éditeur doit survivre au nettoyage");
+  assert.match(verif.slice(0, 1200), /L111-1/,
+    "…et rappeler que les mentions restent obligatoires avant de vendre");
+
+  /* Là où le nom de l'éditeur est pris dans une phrase, un vide la
+     casse : on y met le nom du service, qui est vrai. */
+  assert.match(src, /const nomEnPhrase = \(\) => EDITEUR\.nom \|\| echappe\(CONFIG\.nomProduit\)/,
+    'une phrase ne doit jamais se refermer sur un trou');
+  /* Une phrase peut encore utiliser la valeur brute — mais seulement
+     protégée par un « EDITEUR.nom ? … : … » qui prévoit le vide. */
+  for (const m of src.matchAll(/\.replace\('\{n\}', EDITEUR\.nom\)/g)) {
+    const avant = src.slice(Math.max(0, m.index - 300), m.index);
+    assert.match(avant, /EDITEUR\.nom\s*\n?\s*\?/,
+      'une phrase qui prend le nom brut doit prévoir le cas où il manque');
+  }
+  assert.ok(src.includes("replace('{n}', nomEnPhrase())"),
+    'les autres phrases doivent passer par nomEnPhrase');
+
+  /* Et les deux textes de repli doivent exister dans les trois langues. */
+  for (const langue of ['en', 'es']) {
+    const dico = lire(`js/langues/${langue}.js`);
+    for (const cle of ['legal.mentions.mediation_ue', 'legal.rgpd.droits_compte', 'legal.cgv.1_sans_editeur']) {
+      assert.ok(dico.includes(`"${cle}"`), `${langue} : « ${cle} » manque`);
+    }
+  }
+});
