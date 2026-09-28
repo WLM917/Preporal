@@ -1705,3 +1705,68 @@ test("aucune mention manquante n'est étalée devant les visiteurs", () => {
     }
   }
 });
+
+/* ── Le PDF d'une simulation passée ─────────────────────────── */
+
+test("le PDF d'une simulation contient toute la correction", () => {
+  /* Le PDF s'arrêtait au milieu de la première question. Deux causes :
+
+     • la feuille d'impression visait la carte par « #modal-relecture >
+       div » et la zone qui défile par « > div > div ». L'ajout d'une
+       enveloppe de centrage, pour que les fenêtres défilent sur
+       téléphone, a décalé chacun d'un cran : la carte gardait sa hauteur
+       maximale de 88 % de l'écran, et le reste était coupé ;
+
+     • chaque réponse est un bloc repliable, seule la première ouverte
+       d'office, et un bloc replié ne s'imprime pas.
+
+     Mesuré dans Chromium sur une simulation de trois questions :
+     avant, 1 page et 2 éléments sur 14 ; après, 4 pages et 14 sur 14. */
+  for (const { fichier } of PAGES) {
+    const source = lire(fichier);
+    const debut = source.indexOf('@media print');
+    const print = source.slice(debut, source.indexOf('</style>', debut));
+    assert.ok(debut > -1, `${fichier} : feuille d'impression introuvable`);
+
+    /* Un sélecteur par profondeur se casse au premier élément ajouté :
+       c'est exactement ce qui est arrivé. */
+    assert.doesNotMatch(print, /#modal-relecture\s*>\s*div/,
+      `${fichier} : la carte doit être visée par ce qu'elle est, pas par sa profondeur`);
+
+    const regle = sel => {
+      const i = print.indexOf(sel);
+      return i === -1 ? '' : print.slice(i, print.indexOf('}', i));
+    };
+    const carte = regle('#modal-relecture [role="dialog"]');
+    assert.match(carte, /max-height:none !important/,
+      `${fichier} : la carte ne doit plus être bornée à une hauteur d'écran`);
+    assert.match(carte, /overflow:visible !important/, `${fichier} : …ni couper ce qui dépasse`);
+    assert.match(regle('#relecture-contenu'), /overflow:visible !important/,
+      `${fichier} : la zone qui défile à l'écran doit se déplier à l'impression`);
+    assert.match(regle('#modal-relecture [data-fond]'), /min-height:0 !important/,
+      `${fichier} : l'enveloppe de centrage ne doit pas imposer sa hauteur d'écran`);
+    assert.match(regle('body.impression-relecture {'), /overflow:visible !important/,
+      `${fichier} : le corps de page, bloqué pendant la fenêtre, doit se libérer`);
+  }
+
+  const r = modules.find(m => m.nom === 'relecture.js').source;
+  const debut = r.indexOf('function boutonTelecharger');
+  const corps = r.slice(debut, r.indexOf('\n}', debut));
+  assert.match(corps, /querySelectorAll\('#relecture-contenu details:not\(\[open\]\)'\)/,
+    'les réponses repliées doivent être retrouvées…');
+  assert.match(corps, /\.forEach\(bloc => \{ bloc\.open = true; \}\)/,
+    "…et dépliées avant l'impression");
+  /* L'ordre des lignes ne prouve pas l'ordre d'exécution : un dépliage
+     glissé dans un setTimeout apparaît avant window.print() dans le
+     texte, et s'exécute après. Entre le relevé des blocs et la remise
+     en état, rien ne doit être différé. */
+  const depliage = corps.slice(corps.indexOf('const replies'), corps.indexOf('const restaurer'));
+  assert.ok(depliage.includes('bloc.open = true'), 'le dépliage a disparu');
+  assert.doesNotMatch(depliage, /setTimeout\(|requestAnimationFrame\(|\.then\(|await /,
+    "le dépliage doit être fait avant l'impression, sans être différé");
+  assert.ok(corps.indexOf('bloc.open = true') < corps.indexOf('window.print()'),
+    "le dépliage doit précéder l'impression, pas la suivre");
+  const restaurer = corps.slice(corps.indexOf('const restaurer'));
+  assert.match(restaurer.slice(0, 400), /\.forEach\(bloc => \{ bloc\.open = false; \}\)/,
+    "après l'impression, l'écran doit revenir tel qu'il était");
+});

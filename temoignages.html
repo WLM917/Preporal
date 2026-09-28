@@ -206,15 +206,26 @@
        devient la page entière. Sans cette exception, la règle
        « .modale { display:none } » ci-dessus imprimerait une feuille
        blanche — ce qui était le cas avant l'ajout du téléchargement. */
+    /* Les éléments sont visés par ce qu'ils SONT — la fenêtre, la
+       carte (role="dialog"), la zone qui défile — et non par leur
+       profondeur. Ces règles disaient « > div » pour la carte et
+       « > div > div » pour la zone qui défile : l'ajout d'une enveloppe
+       de centrage, pour que les fenêtres défilent sur téléphone, a
+       décalé chacun d'un cran. La carte gardait alors sa hauteur
+       maximale de 88 % de l'écran, la zone intérieure restait coupée,
+       et le PDF s'arrêtait au milieu de la première question. */
+    body.impression-relecture { overflow:visible !important; }
     body.impression-relecture #modal-relecture { display:block !important; position:static !important;
-      background:#fff !important; padding:0 !important; backdrop-filter:none !important; }
-    body.impression-relecture #modal-relecture > div { max-width:none !important; max-height:none !important;
-      border:0 !important; box-shadow:none !important; background:#fff !important; }
+      overflow:visible !important; background:#fff !important; padding:0 !important; backdrop-filter:none !important; }
+    body.impression-relecture #modal-relecture [data-fond] { display:block !important;
+      min-height:0 !important; padding:0 !important; }
+    body.impression-relecture #modal-relecture [role="dialog"] { max-width:none !important; max-height:none !important;
+      overflow:visible !important; border:0 !important; box-shadow:none !important; background:#fff !important; }
+    body.impression-relecture #relecture-contenu { overflow:visible !important; max-height:none !important; }
     body.impression-relecture #modal-relecture * { color:#111 !important; border-color:#d8d5e4 !important;
       box-shadow:none !important; background:#fff !important; }
     body.impression-relecture #modal-relecture .sans-impression,
     body.impression-relecture #modal-relecture [data-fermer] { display:none !important; }
-    body.impression-relecture #modal-relecture > div > div { overflow:visible !important; }
     body.impression-relecture #relecture-contenu > div,
     body.impression-relecture #relecture-contenu details { break-inside: avoid; }
   }
