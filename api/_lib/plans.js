@@ -54,11 +54,21 @@ export function planDepuisPrix(priceId) {
   return null;
 }
 
-/** Clé d'offre portée par un abonnement Stripe, métadonnées d'abord. */
+/**
+ * Clé d'offre portée par un abonnement Stripe — le TARIF d'abord.
+ *
+ * Les métadonnées sont posées une seule fois, au paiement. Changer de
+ * formule dans le portail change le tarif de l'abonnement, pas ses
+ * métadonnées : les lire en premier gardait « mensuel » à un abonné
+ * passé à l'offre six mois, et sa page de compte affichait toujours
+ * 9,90 € par mois alors qu'il en payait 54,90 pour six. Elles ne
+ * servent plus que de repli, quand le tarif n'est pas reconnu.
+ */
 export function planDeLAbonnement(sub) {
-  const parMetadonnees = sub?.metadata?.plan;
-  if (parMetadonnees && PLANS[parMetadonnees]) return parMetadonnees;
-
   const prix = sub?.items?.data?.[0]?.price?.id || sub?.plan?.id || null;
-  return planDepuisPrix(prix);
+  const parTarif = planDepuisPrix(prix);
+  if (parTarif) return parTarif;
+
+  const parMetadonnees = sub?.metadata?.plan;
+  return parMetadonnees && PLANS[parMetadonnees] ? parMetadonnees : null;
 }
