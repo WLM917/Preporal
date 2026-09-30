@@ -9,7 +9,7 @@ module.exports = {
      colonnes sur grand écran, qui ne s'est donc jamais affichée.
      tests/interface.test.mjs vérifie désormais cette liste. */
   content: ['./index.html', './simulateur.html', './temoignages.html', './compte.html',
-            './moderation.html', './js/**/*.js'],
+            './moderation.html', './guides/**/*.html', './js/**/*.js'],
   theme: {
     extend: {
       colors: {

@@ -98,6 +98,7 @@ export default {
   "accueil.some_people_say_studying_abroad_is_essential_do_you_": "\u00abSome people say studying abroad is essential. Do you agree? Give reasons and examples.\u00bb",
   "accueil.structure_de_la_reponse": "Estructura de la respuesta",
   "accueil.temoignages": "Testimonios",
+  "accueil.guides": "Guías",
   "accueil.tes_documents_restent_a_toi": "Tus documentos siguen siendo tuyos",
   "accueil.tout_effacer": "Borrar todo",
   "accueil.types_d_oraux_couverts_entretien_grand_oral_brevet_c": "tipos de oral cubiertos: entrevista, Grand Oral, brevet, oposiciones, pitch, oral de asignatura",

@@ -1,0 +1,175 @@
+/* ═══════════════════════════════════════════════════════════
+   guides.css — pages guides (/guides/*.html)
+
+   Les guides sont des pages de contenu, lues par les candidats
+   et par les moteurs de recherche. Elles ne chargent aucun module
+   JavaScript : le texte s'affiche tout de suite, même sur un
+   téléphone lent, et il est lisible sans exécuter de script.
+
+   Les couleurs reprennent les variables des autres pages, pour
+   que les classes Tailwind de l'en-tête et du pied de page
+   (bg-ink, text-muted, border-line…) fonctionnent à l'identique.
+   Le corps de l'article est stylé ici plutôt qu'en classes
+   Tailwind : un guide ajouté plus tard n'a donc pas besoin de
+   régénérer assets/tailwind.css pour s'afficher correctement.
+   ═══════════════════════════════════════════════════════════ */
+
+:root[data-theme="sombre"] {
+  color-scheme: dark;
+  --ink:8 7 12; --surface:17 16 24; --raised:24 22 34; --line:38 35 54;
+  --muted:156 150 180; --soft:244 242 250; --inverse:255 255 255; --sur-inverse:10 9 16;
+  --iris:124 92 255; --iris2:167 139 255; --mint:61 220 151; --amber:245 165 36; --coral:255 93 108;
+  --ombre: rgba(0,0,0,.9);
+  --halo1: rgba(124,92,255,.20); --halo2: rgba(245,165,36,.08);
+  --verre: rgba(8,7,12,.72);
+}
+:root[data-theme="clair"] {
+  color-scheme: light;
+  --ink:255 255 255; --surface:247 246 251; --raised:239 237 246; --line:225 222 237;
+  --muted:95 89 128; --soft:20 18 28; --inverse:20 18 28; --sur-inverse:255 255 255;
+  --iris:106 69 245; --iris2:90 52 232; --mint:18 163 102; --amber:178 106 0; --coral:217 48 68;
+  --ombre: rgba(28,20,60,.16);
+  --halo1: rgba(124,92,255,.13); --halo2: rgba(245,165,36,.10);
+  --verre: rgba(255,255,255,.78);
+}
+
+body {
+  background-color: rgb(var(--ink));
+  color: rgb(var(--soft));
+  background-image:
+    radial-gradient(760px 460px at 50% -160px, var(--halo1), transparent 70%),
+    radial-gradient(560px 340px at 100% 0%, var(--halo2), transparent 70%);
+  background-repeat: no-repeat; background-attachment: fixed;
+}
+
+.verre { background: var(--verre); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.rail { scrollbar-width: none; }
+.rail::-webkit-scrollbar { display: none; }
+:focus-visible { outline: 2px solid rgb(var(--iris2)); outline-offset: 3px; border-radius: 6px; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* ═══════════ Article ═══════════ */
+.guide {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2.5rem 1rem 5rem;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+@media (min-width: 640px) { .guide { padding-inline: 1.5rem; } }
+
+.guide-fil { font-size: .875rem; color: rgb(var(--muted)); }
+.guide-fil a { color: inherit; text-decoration: none; }
+.guide-fil a:hover { color: rgb(var(--soft)); }
+.guide-fil span[aria-hidden] { margin-inline: .4em; }
+
+.guide-surtitre {
+  margin-top: 1.75rem;
+  font-size: .8125rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: rgb(var(--iris2));
+}
+
+.guide h1 {
+  margin-top: .5rem;
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-weight: 800; letter-spacing: -.03em; line-height: 1.08;
+  font-size: clamp(1.9rem, 5.4vw, 2.9rem);
+  text-wrap: balance;
+}
+
+.guide-chapo { margin-top: 1.25rem; font-size: 1.1875rem; line-height: 1.6; color: rgb(var(--soft) / .88); }
+.guide-meta { margin-top: 1rem; font-size: .875rem; color: rgb(var(--muted)); }
+
+.guide h2 {
+  margin-top: 3rem; scroll-margin-top: 5rem;
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-weight: 800; letter-spacing: -.02em; line-height: 1.15;
+  font-size: clamp(1.45rem, 3.4vw, 1.9rem);
+}
+.guide h3 {
+  margin-top: 2rem; scroll-margin-top: 5rem;
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-weight: 700; line-height: 1.25; font-size: 1.25rem;
+}
+.guide p, .guide ul, .guide ol { margin-top: 1rem; }
+.guide ul, .guide ol { padding-left: 1.35rem; }
+.guide ul { list-style: disc; }
+.guide ol { list-style: decimal; }
+.guide li { margin-top: .4rem; }
+.guide li::marker { color: rgb(var(--iris2)); }
+.guide strong { font-weight: 700; color: rgb(var(--soft)); }
+.guide a { color: rgb(var(--iris2)); text-decoration: underline; text-underline-offset: .2em; }
+.guide a:hover { color: rgb(var(--soft)); }
+
+/* Sommaire */
+.guide-sommaire {
+  margin-top: 2rem; padding: 1.25rem 1.5rem;
+  border: 1px solid rgb(var(--line)); border-radius: 1rem; background: rgb(var(--surface));
+}
+.guide-sommaire p { margin: 0; font-weight: 700; font-size: .9375rem; }
+.guide-sommaire ol { margin-top: .5rem; font-size: .9375rem; }
+.guide-sommaire a { text-decoration: none; color: rgb(var(--soft) / .85); }
+.guide-sommaire a:hover { color: rgb(var(--iris2)); }
+
+/* Ce que le jury ou le recruteur cherche */
+.guide-teste {
+  margin-top: .75rem; padding-left: .9rem;
+  border-left: 3px solid rgb(var(--amber));
+  font-size: .96875rem; color: rgb(var(--soft) / .82);
+}
+
+/* Exemple de réponse */
+.guide-exemple {
+  margin-top: 1rem; padding: 1rem 1.25rem;
+  border-radius: .9rem; background: rgb(var(--raised));
+  border: 1px solid rgb(var(--line));
+  font-size: 1rem;
+}
+.guide-exemple > p:first-child { margin-top: 0; }
+.guide-exemple .etiquette {
+  display: block; margin-bottom: .35rem;
+  font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: rgb(var(--mint));
+}
+.guide-exemple.a-eviter .etiquette { color: rgb(var(--coral)); }
+
+/* Tableau simple */
+.guide table { margin-top: 1.25rem; width: 100%; border-collapse: collapse; font-size: .96875rem; }
+.guide th, .guide td { padding: .6rem .75rem; border-bottom: 1px solid rgb(var(--line)); text-align: left; vertical-align: top; }
+.guide th { font-weight: 700; background: rgb(var(--surface)); }
+.guide .tableau { overflow-x: auto; }
+
+/* Encart d'entraînement */
+.guide-cta {
+  margin-top: 3rem; padding: 1.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgb(var(--iris) / .45);
+  background: linear-gradient(135deg, rgb(var(--iris) / .16), rgb(var(--amber) / .08));
+}
+.guide-cta h2 { margin-top: 0; font-size: 1.5rem; }
+.guide-cta p { margin-top: .6rem; }
+.guide-cta .bouton {
+  display: inline-block; margin-top: 1.1rem; padding: .8rem 1.25rem;
+  border-radius: .9rem; text-decoration: none;
+  background: rgb(var(--inverse)); color: rgb(var(--sur-inverse));
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 700;
+}
+.guide-cta .bouton:hover { opacity: .9; color: rgb(var(--sur-inverse)); }
+.guide-cta .petit { font-size: .875rem; color: rgb(var(--muted)); }
+
+/* À lire aussi / liste des guides */
+.guide .guide-liens { margin-top: 1rem; display: grid; gap: .75rem; padding: 0; list-style: none; }
+.guide-liens li { margin: 0; }
+.guide-liens li::marker { content: none; }
+.guide-liens a {
+  display: block; padding: 1rem 1.25rem; text-decoration: none;
+  border: 1px solid rgb(var(--line)); border-radius: 1rem; background: rgb(var(--surface));
+  color: rgb(var(--soft));
+}
+.guide-liens a:hover { border-color: rgb(var(--iris) / .6); color: rgb(var(--soft)); }
+.guide-liens strong { display: block; font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: 1.0625rem; }
+.guide-liens span { display: block; margin-top: .25rem; font-size: .9375rem; color: rgb(var(--muted)); }
+
+.guide-sources { margin-top: 2.5rem; font-size: .875rem; color: rgb(var(--muted)); }
+.guide-sources a { color: inherit; }

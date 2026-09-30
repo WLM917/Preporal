@@ -98,6 +98,7 @@ export default {
   "accueil.some_people_say_studying_abroad_is_essential_do_you_": "\"Some people say studying abroad is essential. Do you agree? Give reasons and examples.\"",
   "accueil.structure_de_la_reponse": "Answer structure",
   "accueil.temoignages": "Testimonials",
+  "accueil.guides": "Guides",
   "accueil.tes_documents_restent_a_toi": "Your documents stay yours",
   "accueil.tout_effacer": "Clear all",
   "accueil.types_d_oraux_couverts_entretien_grand_oral_brevet_c": "types of oral exam covered: job interview, Grand Oral, brevet, competitive entrance, pitch, subject viva",
