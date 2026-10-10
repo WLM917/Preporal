@@ -16,13 +16,13 @@
   </url>
   <url>
     <loc>https://www.oralixia.com/guides/</loc>
-    <lastmod>2026-10-03</lastmod>
+    <lastmod>2026-10-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.oralixia.com/guides/questions-entretien-alternance.html</loc>
-    <lastmod>2026-09-30</lastmod>
+    <lastmod>2026-10-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -35,6 +35,12 @@
   <url>
     <loc>https://www.oralixia.com/guides/pourquoi-vous-recruter.html</loc>
     <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.oralixia.com/guides/questions-a-poser-fin-entretien.html</loc>
+    <lastmod>2026-10-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
