@@ -16,13 +16,13 @@
   </url>
   <url>
     <loc>https://www.oralixia.com/guides/</loc>
-    <lastmod>2026-10-10</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.oralixia.com/guides/questions-entretien-alternance.html</loc>
-    <lastmod>2026-10-10</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -41,6 +41,12 @@
   <url>
     <loc>https://www.oralixia.com/guides/questions-a-poser-fin-entretien.html</loc>
     <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.oralixia.com/guides/qualites-defauts-entretien.html</loc>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
