@@ -463,6 +463,42 @@ déjà une photo ». Deux corrections, et la seconde compte le plus :
 L'évènement `error` d'une image ne remonte pas : il est écouté **en phase de
 capture** au niveau du document.
 
+### « Safari ne peut pas ouvrir la page car le serveur est introuvable »
+
+Sur son plan gratuit, Supabase **met en pause** un projet après une semaine
+de faible activité. L'adresse `…supabase.co` disparaît alors du DNS, et plus
+rien ne marche : connexion par Google ou par mot de passe (« Load failed »),
+simulations, historique. C'est arrivé en octobre 2026.
+
+**Le réparer** : supabase.com/dashboard → l'organisation → le projet →
+**Resume project**. Quelques minutes de redémarrage ; l'API peut répondre
+`PGRST205` pendant qu'elle recharge la liste des tables, c'est normal. Un
+projet en pause se restaure jusqu'à un an après.
+
+**L'éviter** — deux voies :
+
+- **Supabase Pro** : un projet payant n'est jamais mis en pause. C'est la
+  voie sûre pour un site qui encaisse.
+- **La veille quotidienne**, déjà en place : Vercel appelle `/api/veille`
+  une fois par jour (`crons` dans `vercel.json`), qui fait une lecture
+  minuscule dans la base. Selon la documentation de Supabase, quelques
+  requêtes par jour suffisent à garder un projet actif.
+  - Le plan gratuit de Vercel n'accepte qu'**une exécution par jour** :
+    un rythme plus rapide fait échouer le déploiement du site entier.
+    `tests/veille.test.mjs` y veille.
+  - Vercel ne relance pas une tâche qui échoue. Ses journaux :
+    Vercel → le projet → Settings → Cron Jobs → View Logs.
+  - Facultatif : une variable `CRON_SECRET` (16 caractères au moins) dans
+    Vercel réserve la route à Vercel. Sans elle, la route reste ouverte,
+    bornée en débit, et ne renvoie rien de ce qu'elle lit.
+
+Pendant une panne, les paiements ne sont pas perdus : le webhook répond
+500 et Stripe renvoie l'évènement pendant trois jours (voir
+`api/_lib/supabaseAdmin.js`). Avant ce correctif, il répondait « reçu » —
+un paiement encaissé pendant la panne d'octobre 2026 n'a donc pas pu être
+enregistré, et doit être renvoyé à la main : Stripe → Developers →
+Webhooks → l'évènement → **Resend**.
+
 ### Gérer les comptes depuis supabase.com
 
 **Authentication → Users** est la liste de référence. On y trouve, par compte :
