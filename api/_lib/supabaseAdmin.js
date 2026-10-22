@@ -32,16 +32,34 @@ export async function utilisateurDepuisJeton(req) {
 }
 
 /** Écrit le statut Premium dans la table profils. */
+/* Une écriture refusée doit LEVER une erreur, pas passer inaperçue.
+
+   Le client Supabase ne lève rien quand la base est injoignable : il
+   rend un objet { error } — et ce résultat était ignoré. Le webhook
+   répondait donc « reçu » à Stripe, qui ne réessayait jamais, et un
+   client débité pendant une panne de la base ne recevait jamais son
+   Premium, sans que personne le sache. C'est arrivé : le projet
+   Supabase a été mis en pause pour inactivité.
+
+   En levant, le webhook répond 500, et Stripe renvoie l'évènement de
+   lui-même pendant trois jours : le Premium arrive dès que la base
+   revient. */
 export async function majProfil(utilisateurId, champs) {
   const sb = supabaseAdmin();
   if (!sb || !utilisateurId) return;
-  await sb.from('profils').upsert({ id: utilisateurId, ...champs, maj_le: new Date().toISOString() });
+  const { error } = await sb.from('profils')
+    .upsert({ id: utilisateurId, ...champs, maj_le: new Date().toISOString() });
+  if (error) throw new Error(`Profil non mis à jour (${utilisateurId}) : ${error.message || error}`);
 }
 
 /** Retrouve un profil par identifiant client Stripe. */
+/* « Aucun profil » et « impossible de demander » ne sont pas la même
+   réponse : confondre les deux faisait abandonner l'évènement, au lieu
+   de le laisser revenir quand la base répondrait de nouveau. */
 export async function profilParClientStripe(stripeClientId) {
   const sb = supabaseAdmin();
   if (!sb) return null;
-  const { data } = await sb.from('profils').select('id').eq('stripe_client_id', stripeClientId).maybeSingle();
+  const { data, error } = await sb.from('profils').select('id').eq('stripe_client_id', stripeClientId).maybeSingle();
+  if (error) throw new Error(`Profil introuvable faute de base (${stripeClientId}) : ${error.message || error}`);
   return data || null;
 }
