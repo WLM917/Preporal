@@ -157,6 +157,7 @@ export default {
   "auth.err.identifiants": "Wrong e-mail or password.",
   "auth.err.mdp_court": "Your password must be at least 8 characters.",
   "auth.err.non_confirme": "Confirm your address first: the link is in your inbox.",
+  "auth.err.service": "The sign-in service is not responding right now. Check your internet connection, then try again in a few minutes.",
   "auth.et_la": "and the",
   "auth.exemple_email": "you@example.com",
   "auth.exemple_nom": "Dupont",

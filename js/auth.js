@@ -330,7 +330,23 @@ const messagesSupabase = () => ({
   'Email not confirmed': t('auth.err.non_confirme', "Confirmez d'abord votre adresse : le lien est dans votre boîte mail."),
   'Password should be at least 6 characters': t('auth.err.mdp_court', 'Le mot de passe doit faire au moins 8 caractères.')
 });
-const lisible = e => messagesSupabase()[e?.message] || e?.message || t('auth.err.generique', 'Une erreur est survenue.');
+/* Le service de connexion ne répond pas : projet Supabase en pause,
+   réseau coupé, panne chez l'hébergeur. Le navigateur appelle ça
+   « Load failed » ou « Failed to fetch », et ce texte s'affichait tel
+   quel sous le bouton — en anglais, et sans rien dire à personne.
+
+   On reconnaît la panne à la classe d'erreur que la bibliothèque
+   d'authentification lève dans ce cas (auth-js : toute requête qui
+   n'aboutit pas, ou un 502/503/504), et au texte du navigateur en
+   dernier recours. */
+const messagePanne = () => t('auth.err.service',
+  'Le service de connexion ne répond pas pour le moment. Vérifiez votre connexion internet, puis réessayez dans quelques minutes.');
+const enPanne = e => e?.name === 'AuthRetryableFetchError'
+  || /load failed|failed to fetch|networkerror|fetch failed/i.test(String(e?.message || ''));
+
+const lisible = e => enPanne(e)
+  ? messagePanne()
+  : messagesSupabase()[e?.message] || e?.message || t('auth.err.generique', 'Une erreur est survenue.');
 
 /* Où revenir après authentification : sur son espace, pas sur l'accueil. */
 const retour = () => new URL('./index.html?vue=compte', location.href).href;
@@ -391,10 +407,24 @@ async function sonderOAuth(url) {
     }
     return null;
   } catch {
-    /* Le réseau, un bloqueur ou une politique inter-origines ont empêché
-       la sonde : ce n'est pas une preuve de panne. On laisse passer
-       plutôt que d'interdire une connexion qui marcherait. */
-    return null;
+    /* Un bloqueur ou une règle inter-origines peuvent arrêter la sonde
+       alors que la connexion marcherait : son échec ne prouve rien à
+       lui seul. On le vérifie avec une requête « no-cors », à laquelle
+       ces règles ne s'appliquent pas. Si elle échoue aussi, le serveur
+       est injoignable — et partir vers lui menait le visiteur sur une
+       page d'erreur du navigateur, hors du site : « Safari ne peut pas
+       ouvrir la page car le serveur est introuvable ». */
+    return (await serviceJoignable()) ? null : messagePanne();
+  }
+}
+
+/** Le serveur d'authentification répond-il, même mal ? */
+async function serviceJoignable() {
+  try {
+    await fetch(`${CONFIG.supabase.url}/auth/v1/health`, { mode: 'no-cors', cache: 'no-store' });
+    return true;
+  } catch {
+    return false;
   }
 }
 

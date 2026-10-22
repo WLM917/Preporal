@@ -1770,3 +1770,54 @@ test("le PDF d'une simulation contient toute la correction", () => {
   assert.match(restaurer.slice(0, 400), /\.forEach\(bloc => \{ bloc\.open = false; \}\)/,
     "après l'impression, l'écran doit revenir tel qu'il était");
 });
+
+/* ── Le service de connexion en panne ───────────────────────── */
+
+test("une panne du service de connexion se dit, et Google ne fait pas quitter le site", () => {
+  /* Le projet Supabase a été mis en pause pour inactivité. Les boutons
+     de connexion affichaient alors le message brut du navigateur —
+     « Load failed » sur Safari, « Failed to fetch » sur Chrome — et
+     « Continuer avec Google » envoyait le visiteur sur une page
+     d'erreur, hors du site : « Safari ne peut pas ouvrir la page car le
+     serveur est introuvable ».
+
+     Mesuré dans Chromium, projet simulé en pause : avant, « Failed to
+     fetch » deux fois et le site quitté ; après, le même message clair
+     sur les trois boutons, et le visiteur reste sur la page. Avec le
+     service joignable, rien ne change : mauvais mot de passe, lien
+     envoyé, départ vers Google. */
+  const src = modules.find(m => m.nom === 'auth.js').source;
+
+  // La panne est reconnue à la classe d'erreur, pas seulement au texte.
+  const enPanne = src.slice(src.indexOf('const enPanne'), src.indexOf('const lisible'));
+  assert.match(enPanne, /e\?\.name === 'AuthRetryableFetchError'/,
+    "la classe que lève la bibliothèque d'authentification pour une requête qui n'aboutit pas");
+  assert.match(enPanne, /load failed/i, 'le texte de Safari, en dernier recours');
+  assert.match(enPanne, /failed to fetch/i, 'et celui de Chrome');
+
+  const lisible = src.slice(src.indexOf('const lisible'), src.indexOf('\n\n', src.indexOf('const lisible')));
+  assert.match(lisible, /enPanne\(e\)\s*\n?\s*\? messagePanne\(\)/,
+    "une panne doit donner le message clair, avant tout repli sur le texte brut");
+
+  // Google : la sonde qui échoue ne suffit plus à laisser partir.
+  const sonde = src.slice(src.indexOf('async function sonderOAuth'), src.indexOf('async function serviceJoignable'));
+  const rattrapage = sonde.slice(sonde.lastIndexOf('} catch'));
+  assert.doesNotMatch(rattrapage, /^\s*\} catch \{[\s\S]*?\n\s*return null;\s*\n\s*\}/,
+    "un échec de la sonde ne doit plus laisser partir le visiteur sans vérification");
+  assert.match(rattrapage, /\(await serviceJoignable\(\)\) \? null : messagePanne\(\)/,
+    'si le serveur est injoignable, on le dit au lieu de quitter le site');
+
+  /* « no-cors » : une règle inter-origines ne peut pas faire échouer
+     cette requête. Sans lui, un simple refus CORS passerait pour une
+     panne, et on bloquerait une connexion qui marche. */
+  const joignable = src.slice(src.indexOf('async function serviceJoignable'));
+  assert.match(joignable.slice(0, 400), /mode: 'no-cors'/,
+    "seule une vraie panne réseau doit faire échouer la vérification");
+  assert.match(joignable.slice(0, 400), /CONFIG\.supabase\.url/,
+    "c'est le serveur d'authentification qu'on interroge");
+
+  for (const langue of ['en', 'es']) {
+    assert.ok(lire(`js/langues/${langue}.js`).includes('"auth.err.service"'),
+      `${langue} : le message de panne doit être traduit`);
+  }
+});
