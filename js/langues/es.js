@@ -157,6 +157,7 @@ export default {
   "auth.err.identifiants": "Correo o contrase\u00f1a incorrectos.",
   "auth.err.mdp_court": "La contrase\u00f1a debe tener al menos 8 caracteres.",
   "auth.err.non_confirme": "Confirma primero tu direcci\u00f3n: el enlace est\u00e1 en tu buz\u00f3n.",
+  "auth.err.service": "El servicio de inicio de sesi\u00f3n no responde en este momento. Comprueba tu conexi\u00f3n a internet y vuelve a intentarlo en unos minutos.",
   "auth.et_la": "y la",
   "auth.exemple_email": "tu@ejemplo.com",
   "auth.exemple_nom": "Dupont",
